@@ -1,0 +1,213 @@
+package gcp
+
+import (
+	"context"
+	"fmt"
+	"strings"
+
+	"github.com/aws/smithy-go/ptr"
+	"github.com/raito-io/cli-plugin-gcp/gcp/common"
+	"github.com/raito-io/cli-plugin-gcp/gcp/iam"
+	"github.com/raito-io/cli/base/data_source"
+	"github.com/raito-io/cli/base/wrappers"
+
+	exporter "github.com/raito-io/cli/base/access_provider/sync_from_target"
+	importer "github.com/raito-io/cli/base/access_provider/sync_to_target"
+	"github.com/raito-io/cli/base/util/config"
+)
+
+type AccessSyncer struct {
+	iamServiceProvider   func(configMap *config.ConfigMap) iam.IAMService
+	raitoManagedBindings []iam.IamBinding
+}
+
+func NewDataAccessSyncer() *AccessSyncer {
+	return &AccessSyncer{
+		iamServiceProvider: newIamServiceProvider,
+	}
+}
+
+func (a *AccessSyncer) SyncAccessProvidersFromTarget(ctx context.Context, accessProviderHandler wrappers.AccessProviderHandler, configMap *config.ConfigMap) error {
+	bindings, err := a.iamServiceProvider(configMap).GetIAMPolicyBindings(ctx, configMap)
+
+	if err != nil || len(bindings) == 0 {
+		return err
+	}
+
+	accessProviderMap := make(map[string]*exporter.AccessProvider)
+
+	for _, binding := range bindings {
+		managed, err2 := isRaitoManagedBinding(ctx, binding)
+
+		if err2 != nil {
+			return err2
+		}
+
+		if configMap.GetBoolWithDefault(common.ExcludeNonAplicablePermissions, true) && !managed {
+			continue
+		}
+
+		ignore := false
+
+		for _, ignoredBinding := range a.raitoManagedBindings {
+			if ignoredBinding.Equals(binding) {
+				ignore = true
+				break
+			}
+		}
+
+		if ignore {
+			continue
+		}
+
+		apName := fmt.Sprintf("%s_%s_%s", binding.ResourceType, binding.Resource, strings.Replace(binding.Role, "/", "_", -1))
+
+		if _, f := accessProviderMap[apName]; !f {
+			accessProviderMap[apName] = &exporter.AccessProvider{
+				ExternalId:        apName,
+				Name:              apName,
+				NamingHint:        apName,
+				NotInternalizable: !managed,
+				WhoLocked:         ptr.Bool(false),
+				WhatLocked:        ptr.Bool(true),
+				WhatLockedReason:  ptr.String("This is a single resource AP"),
+				Action:            exporter.Grant,
+				NameLocked:        ptr.Bool(false),
+				DeleteLocked:      ptr.Bool(false),
+				Access: []*exporter.Access{
+					{
+						ActualName: apName,
+						What: []exporter.WhatItem{
+							{
+								DataObject: &data_source.DataObjectReference{
+									FullName: binding.Resource,
+									Type:     binding.ResourceType,
+								},
+								Permissions: []string{binding.Role},
+							},
+						},
+					},
+				},
+				Who: &exporter.WhoItem{
+					Users:  make([]string, 0),
+					Groups: make([]string, 0),
+				},
+			}
+		}
+
+		if strings.HasPrefix(binding.Member, "user:") || strings.HasPrefix(binding.Member, "serviceAccount:") {
+			accessProviderMap[apName].Who.Users = append(accessProviderMap[apName].Who.Users, strings.Split(binding.Member, ":")[1])
+		} else if strings.HasPrefix(binding.Member, "group:") {
+			accessProviderMap[apName].Who.Groups = append(accessProviderMap[apName].Who.Groups, strings.Split(binding.Member, ":")[1])
+		}
+	}
+
+	for _, ap := range accessProviderMap {
+		err = accessProviderHandler.AddAccessProviders(ap)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessProviders *importer.AccessProviderImport, accessProviderFeedbackHandler wrappers.AccessProviderFeedbackHandler, configMap *config.ConfigMap) error {
+	bindingsToAdd := make([]iam.IamBinding, 0)
+	bindingsToDelete := make([]iam.IamBinding, 0)
+
+	for _, ap := range accessProviders.AccessProviders {
+		for _, v := range ap.Access {
+			members := []string{}
+
+			for _, m := range ap.Who.Users {
+				if strings.Contains(m, "gserviceaccount.com") {
+					members = append(members, "serviceAccount:"+m)
+				} else {
+					members = append(members, "user:"+m)
+				}
+			}
+
+			for _, m := range ap.Who.Groups {
+				members = append(members, "group:"+m)
+			}
+
+			for _, m := range members {
+				for _, w := range v.What {
+					for _, p := range w.Permissions {
+						binding := iam.IamBinding{
+							Member:       m,
+							Role:         p,
+							Resource:     w.DataObject.FullName,
+							ResourceType: w.DataObject.Type,
+						}
+
+						if ap.Delete {
+							bindingsToDelete = append(bindingsToDelete, binding)
+						} else {
+							bindingsToAdd = append(bindingsToAdd, binding)
+						}
+					}
+				}
+			}
+
+			// record feedback
+			err := accessProviderFeedbackHandler.AddAccessProviderFeedback(ap.Id, importer.AccessSyncFeedbackInformation{AccessId: v.Id, ActualName: v.Id})
+
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	iamService := a.iamServiceProvider(configMap)
+
+	for _, b := range bindingsToDelete {
+		common.Logger.Info(fmt.Sprintf("Revoking binding %+v", b))
+
+		err := iamService.RemoveIamBinding(ctx, configMap, b)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, b := range bindingsToAdd {
+		common.Logger.Info(fmt.Sprintf("Granting binding %+v", b))
+
+		err := iamService.AddIamBinding(ctx, configMap, b)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	// these bindings will be ignored during SyncAccessProvidersFromTarget
+	a.raitoManagedBindings = append(a.raitoManagedBindings, bindingsToAdd...)
+
+	return nil
+}
+
+func (a *AccessSyncer) SyncAccessAsCodeToTarget(ctx context.Context, accessProviders *importer.AccessProviderImport, prefix string, configMap *config.ConfigMap) error {
+	return fmt.Errorf("access as code is not yet supported by this plugin")
+}
+
+func isRaitoManagedBinding(ctx context.Context, binding iam.IamBinding) (bool, error) {
+	meta, err := GetDataSourceMetaData(ctx)
+
+	if err != nil {
+		return false, err
+	}
+
+	for _, doType := range meta.DataObjectTypes {
+		if strings.EqualFold(binding.ResourceType, doType.Type) {
+			for _, perm := range doType.Permissions {
+				if strings.EqualFold(binding.Role, perm.Permission) {
+					return true, nil
+				}
+			}
+		}
+	}
+
+	return false, nil
+}
