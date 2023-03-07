@@ -299,19 +299,14 @@ func TestAccessSyncer_SyncAccessProvidersToTarget(t *testing.T) {
 					Users:  []string{"user1@example.com", "sa@gserviceaccount.com"},
 					Groups: []string{"group1@example.com"},
 				},
-				Access: []*sync_to_target.Access{
+				ActualName: ptr.String("a1"),
+				What: []sync_to_target.WhatItem{
 					{
-						Id:         "a1",
-						ActualName: ptr.String("a1"),
-						What: []sync_to_target.WhatItem{
-							{
-								DataObject: &data_source.DataObjectReference{
-									FullName: "project1",
-									Type:     "project",
-								},
-								Permissions: []string{"role/owner"},
-							},
+						DataObject: &data_source.DataObjectReference{
+							FullName: "project1",
+							Type:     "project",
 						},
+						Permissions: []string{"role/owner"},
 					},
 				},
 			},
@@ -335,19 +330,14 @@ func TestAccessSyncer_SyncAccessProvidersToTarget(t *testing.T) {
 					Users:  []string{"user1@example.com", "sa@gserviceaccount.com"},
 					Groups: []string{"group1@example.com"},
 				},
-				Access: []*sync_to_target.Access{
+				ActualName: ptr.String("a1"),
+				What: []sync_to_target.WhatItem{
 					{
-						Id:         "a1",
-						ActualName: ptr.String("a1"),
-						What: []sync_to_target.WhatItem{
-							{
-								DataObject: &data_source.DataObjectReference{
-									FullName: "project1",
-									Type:     "project",
-								},
-								Permissions: []string{"role/owner"},
-							},
+						DataObject: &data_source.DataObjectReference{
+							FullName: "project1",
+							Type:     "project",
 						},
+						Permissions: []string{"role/owner"},
 					},
 				},
 			},

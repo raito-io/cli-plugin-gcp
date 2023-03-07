@@ -74,18 +74,14 @@ func (a *AccessSyncer) SyncAccessProvidersFromTarget(ctx context.Context, access
 				Action:            exporter.Grant,
 				NameLocked:        ptr.Bool(false),
 				DeleteLocked:      ptr.Bool(false),
-				Access: []*exporter.Access{
+				ActualName:        apName,
+				What: []exporter.WhatItem{
 					{
-						ActualName: apName,
-						What: []exporter.WhatItem{
-							{
-								DataObject: &data_source.DataObjectReference{
-									FullName: binding.Resource,
-									Type:     binding.ResourceType,
-								},
-								Permissions: []string{binding.Role},
-							},
+						DataObject: &data_source.DataObjectReference{
+							FullName: binding.Resource,
+							Type:     binding.ResourceType,
 						},
+						Permissions: []string{binding.Role},
 					},
 				},
 				Who: &exporter.WhoItem{
@@ -117,46 +113,44 @@ func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessPro
 	bindingsToDelete := make([]iam.IamBinding, 0)
 
 	for _, ap := range accessProviders.AccessProviders {
-		for _, v := range ap.Access {
-			members := []string{}
+		members := []string{}
 
-			for _, m := range ap.Who.Users {
-				if strings.Contains(m, "gserviceaccount.com") {
-					members = append(members, "serviceAccount:"+m)
-				} else {
-					members = append(members, "user:"+m)
-				}
+		for _, m := range ap.Who.Users {
+			if strings.Contains(m, "gserviceaccount.com") {
+				members = append(members, "serviceAccount:"+m)
+			} else {
+				members = append(members, "user:"+m)
 			}
+		}
 
-			for _, m := range ap.Who.Groups {
-				members = append(members, "group:"+m)
-			}
+		for _, m := range ap.Who.Groups {
+			members = append(members, "group:"+m)
+		}
 
-			for _, m := range members {
-				for _, w := range v.What {
-					for _, p := range w.Permissions {
-						binding := iam.IamBinding{
-							Member:       m,
-							Role:         p,
-							Resource:     w.DataObject.FullName,
-							ResourceType: w.DataObject.Type,
-						}
+		for _, m := range members {
+			for _, w := range ap.What {
+				for _, p := range w.Permissions {
+					binding := iam.IamBinding{
+						Member:       m,
+						Role:         p,
+						Resource:     w.DataObject.FullName,
+						ResourceType: w.DataObject.Type,
+					}
 
-						if ap.Delete {
-							bindingsToDelete = append(bindingsToDelete, binding)
-						} else {
-							bindingsToAdd = append(bindingsToAdd, binding)
-						}
+					if ap.Delete {
+						bindingsToDelete = append(bindingsToDelete, binding)
+					} else {
+						bindingsToAdd = append(bindingsToAdd, binding)
 					}
 				}
 			}
+		}
 
-			// record feedback
-			err := accessProviderFeedbackHandler.AddAccessProviderFeedback(ap.Id, importer.AccessSyncFeedbackInformation{AccessId: v.Id, ActualName: v.Id})
+		// record feedback
+		err := accessProviderFeedbackHandler.AddAccessProviderFeedback(ap.Id, importer.AccessSyncFeedbackInformation{AccessId: ap.Id, ActualName: ap.Id})
 
-			if err != nil {
-				return err
-			}
+		if err != nil {
+			return err
 		}
 	}
 
