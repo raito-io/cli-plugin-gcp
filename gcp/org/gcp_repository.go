@@ -28,6 +28,7 @@ func (r *GCPRepository) GetProjects(ctx context.Context, configMap *config.Confi
 			common.Logger.Warn(fmt.Sprintf("Failed to fetch the GCP projects: %s", err.Error()))
 			return nil, nil
 		}
+
 		return nil, err
 	}
 
@@ -75,6 +76,7 @@ func getFoldersForParent(ctx context.Context, configMap *config.ConfigMap, paren
 			common.Logger.Warn(fmt.Sprintf("Failed to fetch the GCP folders in %s: %s", parent, err.Error()))
 			return nil, nil
 		}
+
 		return nil, err
 	}
 

@@ -48,6 +48,12 @@ func NewIAMService(configMap *config.ConfigMap) *iamService {
 		Project:      &projectIamRepository{},
 	}
 
+	if configMap.GetStringWithDefault(common.GcpProjectId, "") != "" {
+		repos = map[IamType]IAMRepository{
+			Project: &projectIamRepository{},
+		}
+	}
+
 	if configMap.GetBool(common.GsuiteIdentityStoreSync) {
 		repos[GSuite] = &gsuiteIamRepository{}
 	}
