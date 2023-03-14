@@ -208,6 +208,11 @@ func (r *projectIamRepository) RemoveBinding(ctx context.Context, configMap *con
 		}
 	}
 
+	if binding == nil {
+		common.Logger.Warn(fmt.Sprintf("Did not find binding for removal; Removing GCP Project %s Iam Policy Binding: role %q member %q", id, member, role))
+		return nil
+	}
+
 	// Order doesn't matter for bindings or members, so to remove, move the last item
 	// into the removed spot and shrink the slice.
 	if len(binding.Members) == 1 {

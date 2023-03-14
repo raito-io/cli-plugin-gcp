@@ -43,8 +43,9 @@ type iamService struct {
 
 func NewIAMService(configMap *config.ConfigMap) *iamService {
 	repos := map[IamType]IAMRepository{
-		Folder:  &folderIamRepository{},
-		Project: &projectIamRepository{},
+		Organization: &organizationIamRepository{},
+		Folder:       &folderIamRepository{},
+		Project:      &projectIamRepository{},
 	}
 
 	if configMap.GetBool(common.GsuiteIdentityStoreSync) {
@@ -215,6 +216,11 @@ func (s *iamService) getIdsByRepoType(ctx context.Context, configMap *config.Con
 
 	for t := range s.repos {
 		out[t] = make([]string, 0)
+	}
+
+	// add gcp org id
+	if _, f := out[Organization]; f {
+		out[Organization] = append(out[Organization], configMap.GetString(common.GcpOrgId))
 	}
 
 	// get project ids

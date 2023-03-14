@@ -2,10 +2,14 @@ package gcp
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"github.com/raito-io/cli-plugin-gcp/gcp/common"
+	"github.com/raito-io/cli-plugin-gcp/gcp/iam"
 	"github.com/raito-io/cli-plugin-gcp/gcp/org"
 	ds "github.com/raito-io/cli/base/data_source"
+	"github.com/raito-io/golang-set/set"
 
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/raito-io/cli/base/wrappers"
@@ -29,14 +33,29 @@ func newDsRepoProvider() dataSourceRepository {
 	return org.NewGCPRepository()
 }
 
+func GetOrgDataObjectName(configmap *config.ConfigMap) string {
+	return fmt.Sprintf("gcp-org-%s", configmap.GetString(common.GcpOrgId))
+}
+
 func (s *DataSourceSyncer) SyncDataSource(ctx context.Context, dataSourceHandler wrappers.DataSourceObjectHandler, configMap *config.ConfigMap) error {
+	err := dataSourceHandler.AddDataObjects(&ds.DataObject{
+		Name:       GetOrgDataObjectName(configMap),
+		Type:       strings.ToLower(iam.Organization.String()),
+		FullName:   GetOrgDataObjectName(configMap),
+		ExternalId: GetOrgDataObjectName(configMap),
+	})
+
+	if err != nil {
+		return err
+	}
+
 	folders, err := s.repoProvider().GetFolders(ctx, configMap)
 
 	if err != nil {
 		return err
 	}
 
-	err = dataSourceHandler.AddDataObjects(handleGcpOrgEntities(folders)...)
+	err = dataSourceHandler.AddDataObjects(handleGcpOrgEntities(folders, configMap)...)
 
 	if err != nil {
 		return err
@@ -48,7 +67,7 @@ func (s *DataSourceSyncer) SyncDataSource(ctx context.Context, dataSourceHandler
 		return err
 	}
 
-	err = dataSourceHandler.AddDataObjects(handleGcpOrgEntities(projects)...)
+	err = dataSourceHandler.AddDataObjects(handleGcpOrgEntities(projects, configMap)...)
 
 	if err != nil {
 		return err
@@ -57,12 +76,17 @@ func (s *DataSourceSyncer) SyncDataSource(ctx context.Context, dataSourceHandler
 	return nil
 }
 
-func handleGcpOrgEntities(entities []org.GcpOrgEntity) []*ds.DataObject {
+var externalIds = set.NewSet[string]()
+
+func handleGcpOrgEntities(entities []org.GcpOrgEntity, configMap *config.ConfigMap) []*ds.DataObject {
 	dos := make([]*ds.DataObject, len(entities))
 
 	for i, p := range entities {
-		parent := ""
-		if p.Parent != nil {
+		externalIds.Add(p.Id)
+
+		parent := GetOrgDataObjectName(configMap)
+
+		if _, f := externalIds[parent]; f && p.Parent != nil && !strings.EqualFold(p.Parent.Type, iam.Organization.String()) {
 			parent = p.Parent.Id
 		}
 
@@ -148,25 +172,35 @@ func GetDataSourceMetaData(ctx context.Context) (*ds.MetaData, error) {
 		},
 	}
 
+	org := strings.ToLower(iam.Organization.String())
+	project := strings.ToLower(iam.Project.String())
+	folder := strings.ToLower(iam.Folder.String())
+
 	return &ds.MetaData{
 		Type:              "gcp",
-		SupportedFeatures: []string{ds.RowFiltering, ds.ColumnMasking},
+		SupportedFeatures: []string{},
 		DataObjectTypes: []*ds.DataObjectType{
 			{
 				Name:        ds.Datasource,
 				Type:        ds.Datasource,
 				Permissions: []*ds.DataObjectTypePermission{},
-				Children:    []string{"folder", "project"},
+				Children:    []string{org},
 			},
 			{
-				Name:        "folder",
-				Type:        "folder",
+				Name:        org,
+				Type:        org,
 				Permissions: managed_permissions,
-				Children:    []string{"project"},
+				Children:    []string{folder, project},
 			},
 			{
-				Name:        "project",
-				Type:        "project",
+				Name:        folder,
+				Type:        folder,
+				Permissions: managed_permissions,
+				Children:    []string{folder, project},
+			},
+			{
+				Name:        project,
+				Type:        project,
 				Permissions: managed_permissions,
 				Children:    []string{},
 			},

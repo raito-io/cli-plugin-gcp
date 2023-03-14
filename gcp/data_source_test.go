@@ -65,7 +65,7 @@ func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 
 	//Then
 	assert.NoError(t, err)
-	assert.Len(t, dataSourceObjectHandlerMock.DataObjects, 2)
+	assert.Len(t, dataSourceObjectHandlerMock.DataObjects, 3)
 
 	for _, do := range dataSourceObjectHandlerMock.DataObjects {
 		if do.ExternalId == "p1" {
