@@ -229,6 +229,11 @@ func (s *iamService) getIdsByRepoType(ctx context.Context, configMap *config.Con
 		out[Organization] = append(out[Organization], configMap.GetString(common.GcpOrgId))
 	}
 
+	// GSuite we add empty string as id to get it in the loop as it does not have resource Ids to loop over
+	if _, f := out[GSuite]; f {
+		out[GSuite] = append(out[GSuite], "")
+	}
+
 	// get project ids
 	if _, f := out[Project]; f {
 		gcpProjectId := configMap.GetString(common.GcpProjectId)
@@ -260,11 +265,6 @@ func (s *iamService) getIdsByRepoType(ctx context.Context, configMap *config.Con
 		for _, folder := range gcpFolderIds {
 			out[Folder] = append(out[Folder], folder.Id)
 		}
-	}
-
-	// GSuite we add empty string as id to get it in the loop as it does not have resource Ids to loop over
-	if _, f := out[GSuite]; f {
-		out[GSuite] = append(out[GSuite], "")
 	}
 
 	return out, nil
