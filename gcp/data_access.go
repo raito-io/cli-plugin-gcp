@@ -113,6 +113,70 @@ func (a *AccessSyncer) SyncAccessProvidersFromTarget(ctx context.Context, access
 	return nil
 }
 func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessProviders *importer.AccessProviderImport, accessProviderFeedbackHandler wrappers.AccessProviderFeedbackHandler, configMap *config.ConfigMap) error {
+	bindingsToAdd, bindingsToDelete := ConvertAccessProviderToBindings(accessProviders)
+
+	for _, ap := range accessProviders.AccessProviders {
+		// record feedback
+		err := accessProviderFeedbackHandler.AddAccessProviderFeedback(ap.Id, importer.AccessSyncFeedbackInformation{AccessId: ap.Id, ActualName: ap.Id})
+
+		if err != nil {
+			return err
+		}
+	}
+
+	iamService := a.iamServiceProvider(configMap)
+
+	for _, b := range bindingsToDelete {
+		common.Logger.Info(fmt.Sprintf("Revoking binding %+v", b))
+
+		err := iamService.RemoveIamBinding(ctx, configMap, b)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, b := range bindingsToAdd {
+		common.Logger.Info(fmt.Sprintf("Granting binding %+v", b))
+
+		err := iamService.AddIamBinding(ctx, configMap, b)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	// these bindings will be ignored during SyncAccessProvidersFromTarget
+	a.raitoManagedBindings = append(a.raitoManagedBindings, bindingsToAdd...)
+
+	return nil
+}
+
+func (a *AccessSyncer) SyncAccessAsCodeToTarget(ctx context.Context, accessProviders *importer.AccessProviderImport, prefix string, configMap *config.ConfigMap) error {
+	return fmt.Errorf("access as code is not yet supported by this plugin")
+}
+
+func isRaitoManagedBinding(ctx context.Context, binding iam.IamBinding) (bool, error) {
+	meta, err := GetDataSourceMetaData(ctx)
+
+	if err != nil {
+		return false, err
+	}
+
+	for _, doType := range meta.DataObjectTypes {
+		if strings.EqualFold(binding.ResourceType, doType.Type) {
+			for _, perm := range doType.Permissions {
+				if strings.EqualFold(binding.Role, perm.Permission) {
+					return true, nil
+				}
+			}
+		}
+	}
+
+	return false, nil
+}
+
+func ConvertAccessProviderToBindings(accessProviders *importer.AccessProviderImport) ([]iam.IamBinding, []iam.IamBinding) {
 	bindingsToAdd := make([]iam.IamBinding, 0)
 	bindingsToDelete := make([]iam.IamBinding, 0)
 
@@ -198,63 +262,7 @@ func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessPro
 				}
 			}
 		}
-
-		// record feedback
-		err := accessProviderFeedbackHandler.AddAccessProviderFeedback(ap.Id, importer.AccessSyncFeedbackInformation{AccessId: ap.Id, ActualName: ap.Id})
-
-		if err != nil {
-			return err
-		}
 	}
 
-	iamService := a.iamServiceProvider(configMap)
-
-	for _, b := range bindingsToDelete {
-		common.Logger.Info(fmt.Sprintf("Revoking binding %+v", b))
-
-		err := iamService.RemoveIamBinding(ctx, configMap, b)
-
-		if err != nil {
-			return err
-		}
-	}
-
-	for _, b := range bindingsToAdd {
-		common.Logger.Info(fmt.Sprintf("Granting binding %+v", b))
-
-		err := iamService.AddIamBinding(ctx, configMap, b)
-
-		if err != nil {
-			return err
-		}
-	}
-
-	// these bindings will be ignored during SyncAccessProvidersFromTarget
-	a.raitoManagedBindings = append(a.raitoManagedBindings, bindingsToAdd...)
-
-	return nil
-}
-
-func (a *AccessSyncer) SyncAccessAsCodeToTarget(ctx context.Context, accessProviders *importer.AccessProviderImport, prefix string, configMap *config.ConfigMap) error {
-	return fmt.Errorf("access as code is not yet supported by this plugin")
-}
-
-func isRaitoManagedBinding(ctx context.Context, binding iam.IamBinding) (bool, error) {
-	meta, err := GetDataSourceMetaData(ctx)
-
-	if err != nil {
-		return false, err
-	}
-
-	for _, doType := range meta.DataObjectTypes {
-		if strings.EqualFold(binding.ResourceType, doType.Type) {
-			for _, perm := range doType.Permissions {
-				if strings.EqualFold(binding.Role, perm.Permission) {
-					return true, nil
-				}
-			}
-		}
-	}
-
-	return false, nil
+	return bindingsToAdd, bindingsToDelete
 }
