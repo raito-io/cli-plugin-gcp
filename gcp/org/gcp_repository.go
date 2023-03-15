@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/raito-io/cli-plugin-gcp/gcp/common"
-	ds "github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/cli/base/util/config"
 )
 
@@ -25,13 +24,15 @@ func (r *GCPRepository) GetProjects(ctx context.Context, configMap *config.Confi
 	res, err := crm.Projects.List().Do()
 
 	if err != nil {
+		if strings.Contains(err.Error(), "403") {
+			common.Logger.Warn(fmt.Sprintf("Failed to fetch the GCP projects: %s", err.Error()))
+			return nil, nil
+		}
+
 		return nil, err
 	}
 
 	projects := make([]GcpOrgEntity, len(res.Projects))
-
-	dsId := configMap.GetString("data-source-id")
-	orgId := configMap.GetString(common.GcpOrgId)
 
 	for i, p := range res.Projects {
 		projects[i].Name = p.Name
@@ -42,11 +43,6 @@ func (r *GCPRepository) GetProjects(ctx context.Context, configMap *config.Confi
 			parent := GcpOrgEntity{
 				Id:   p.Parent.Id,
 				Type: p.Parent.Type,
-			}
-
-			if orgId == "" || parent.Id == orgId {
-				parent.Id = dsId
-				parent.Type = ds.Datasource
 			}
 
 			projects[i].Parent = &parent
@@ -76,6 +72,11 @@ func getFoldersForParent(ctx context.Context, configMap *config.ConfigMap, paren
 	res, err := crm.Folders.List().Parent(parent).Do()
 
 	if err != nil {
+		if strings.Contains(err.Error(), "403") {
+			common.Logger.Warn(fmt.Sprintf("Failed to fetch the GCP folders in %s: %s", parent, err.Error()))
+			return nil, nil
+		}
+
 		return nil, err
 	}
 
@@ -91,12 +92,6 @@ func getFoldersForParent(ctx context.Context, configMap *config.ConfigMap, paren
 			pObj := GcpOrgEntity{
 				Id:   split[1],
 				Type: split[0],
-			}
-			folders[i].Parent = &pObj
-		} else {
-			pObj := GcpOrgEntity{
-				Id:   configMap.GetString("data-source-id"),
-				Type: ds.Datasource,
 			}
 			folders[i].Parent = &pObj
 		}

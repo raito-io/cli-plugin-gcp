@@ -37,6 +37,10 @@ func (a *AccessSyncer) SyncAccessProvidersFromTarget(ctx context.Context, access
 	accessProviderMap := make(map[string]*exporter.AccessProvider)
 
 	for _, binding := range bindings {
+		if strings.EqualFold(binding.ResourceType, iam.Organization.String()) {
+			binding.Resource = GetOrgDataObjectName(configMap)
+		}
+
 		managed, err2 := isRaitoManagedBinding(ctx, binding)
 
 		if err2 != nil {
@@ -127,9 +131,27 @@ func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessPro
 			members = append(members, "group:"+m)
 		}
 
-		for _, m := range members {
-			for _, w := range ap.What {
-				for _, p := range w.Permissions {
+		delete_members := []string{}
+
+		if ap.DeletedWho != nil {
+			for _, m := range ap.DeletedWho.Users {
+				if strings.Contains(m, "gserviceaccount.com") {
+					delete_members = append(delete_members, "serviceAccount:"+m)
+				} else {
+					delete_members = append(delete_members, "user:"+m)
+				}
+			}
+
+			for _, m := range ap.DeletedWho.Groups {
+				delete_members = append(delete_members, "group:"+m)
+			}
+		}
+
+		// process the WhatItems
+		for _, w := range ap.What {
+			for _, p := range w.Permissions {
+				// for active members add bindings (except if AP gets deleted)
+				for _, m := range members {
 					binding := iam.IamBinding{
 						Member:       m,
 						Role:         p,
@@ -141,6 +163,37 @@ func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessPro
 						bindingsToDelete = append(bindingsToDelete, binding)
 					} else {
 						bindingsToAdd = append(bindingsToAdd, binding)
+					}
+				}
+
+				// for deleted members remove bindings
+				for _, m := range delete_members {
+					binding := iam.IamBinding{
+						Member:       m,
+						Role:         p,
+						Resource:     w.DataObject.FullName,
+						ResourceType: w.DataObject.Type,
+					}
+
+					bindingsToDelete = append(bindingsToDelete, binding)
+				}
+			}
+		}
+
+		// process the Deled WhatItems
+		if ap.DeleteWhat != nil {
+			for _, w := range ap.DeleteWhat {
+				for _, p := range w.Permissions {
+					// for ALL members delete the bindings
+					for _, m := range append(members, delete_members...) {
+						binding := iam.IamBinding{
+							Member:       m,
+							Role:         p,
+							Resource:     w.DataObject.FullName,
+							ResourceType: w.DataObject.Type,
+						}
+
+						bindingsToDelete = append(bindingsToDelete, binding)
 					}
 				}
 			}
