@@ -307,6 +307,7 @@ func getApName(name string) string {
 	}
 
 	shortName := ""
+
 	for i := 0; i < len(name); i++ {
 		if i < len(name)-80 {
 			continue

@@ -69,6 +69,7 @@ func NewIAMService(configMap *config.ConfigMap) *iamService {
 func (s *iamService) WithServiceIamRepo(serviceRepo IAMRepository, ids func(ctx context.Context, configMap *config.ConfigMap) ([]string, error)) IAMService {
 	s.repos[Service] = serviceRepo
 	s.serviceRepoIds = ids
+
 	return s
 }
 
