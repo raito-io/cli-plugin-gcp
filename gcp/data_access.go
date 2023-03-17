@@ -19,12 +19,24 @@ import (
 type AccessSyncer struct {
 	iamServiceProvider   func(configMap *config.ConfigMap) iam.IAMService
 	raitoManagedBindings []iam.IamBinding
+	getDSMetadata        func(ctx context.Context) (*data_source.MetaData, error)
 }
 
 func NewDataAccessSyncer() *AccessSyncer {
 	return &AccessSyncer{
 		iamServiceProvider: newIamServiceProvider,
+		getDSMetadata:      GetDataSourceMetaData,
 	}
+}
+
+func (a *AccessSyncer) WithDataSourceMetadataFetcher(getDSMetadata func(ctx context.Context) (*data_source.MetaData, error)) *AccessSyncer {
+	a.getDSMetadata = getDSMetadata
+	return a
+}
+
+func (a *AccessSyncer) WithIAMServiceProvider(provider func(configMap *config.ConfigMap) iam.IAMService) *AccessSyncer {
+	a.iamServiceProvider = provider
+	return a
 }
 
 func (a *AccessSyncer) SyncAccessProvidersFromTarget(ctx context.Context, accessProviderHandler wrappers.AccessProviderHandler, configMap *config.ConfigMap) error {
@@ -34,6 +46,24 @@ func (a *AccessSyncer) SyncAccessProvidersFromTarget(ctx context.Context, access
 		return err
 	}
 
+	aps, err := a.ConvertBindingsToAccessProviders(ctx, configMap, bindings)
+
+	if err != nil || len(aps) == 0 {
+		return err
+	}
+
+	for _, ap := range aps {
+		err = accessProviderHandler.AddAccessProviders(ap)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (a *AccessSyncer) ConvertBindingsToAccessProviders(ctx context.Context, configMap *config.ConfigMap, bindings []iam.IamBinding) ([]*exporter.AccessProvider, error) {
 	accessProviderMap := make(map[string]*exporter.AccessProvider)
 
 	for _, binding := range bindings {
@@ -41,13 +71,14 @@ func (a *AccessSyncer) SyncAccessProvidersFromTarget(ctx context.Context, access
 			binding.Resource = GetOrgDataObjectName(configMap)
 		}
 
-		managed, err2 := isRaitoManagedBinding(ctx, binding)
+		managed, err2 := a.isRaitoManagedBinding(ctx, binding)
 
 		if err2 != nil {
-			return err2
+			return nil, err2
 		}
 
 		if configMap.GetBoolWithDefault(common.ExcludeNonAplicablePermissions, true) && !managed {
+			common.Logger.Warn(fmt.Sprintf("Skipping role %s for %s on %s %s as it is not an applicable permission for this datasource and %s is false", binding.Role, binding.Member, binding.Resource, binding.ResourceType, common.ExcludeNonAplicablePermissions))
 			continue
 		}
 
@@ -89,8 +120,9 @@ func (a *AccessSyncer) SyncAccessProvidersFromTarget(ctx context.Context, access
 					},
 				},
 				Who: &exporter.WhoItem{
-					Users:  make([]string, 0),
-					Groups: make([]string, 0),
+					Users:           make([]string, 0),
+					Groups:          make([]string, 0),
+					AccessProviders: make([]string, 0),
 				},
 			}
 		}
@@ -99,19 +131,21 @@ func (a *AccessSyncer) SyncAccessProvidersFromTarget(ctx context.Context, access
 			accessProviderMap[apName].Who.Users = append(accessProviderMap[apName].Who.Users, strings.Split(binding.Member, ":")[1])
 		} else if strings.HasPrefix(binding.Member, "group:") {
 			accessProviderMap[apName].Who.Groups = append(accessProviderMap[apName].Who.Groups, strings.Split(binding.Member, ":")[1])
+		} else if strings.HasPrefix(binding.Member, "special_group:") && configMap.GetStringWithDefault(common.GcpProjectId, "") != "" && strings.Contains(binding.Member, "project") {
+			// this is a special IAM construct that creates a removable link between ownership on a service resource and ownership on org level
+			// e.g. owners on a GCP project are owners on BQ datasets. This binding is removable but can not be (re-)created by a user.
+			accessProviderMap[apName].Who.AccessProviders = append(accessProviderMap[apName].Who.AccessProviders, fmt.Sprintf("datasource_%s_%s", configMap.GetString(common.GcpProjectId), strings.Replace(binding.Role, "/", "_", -1)))
 		}
 	}
 
+	aps := make([]*exporter.AccessProvider, 0)
 	for _, ap := range accessProviderMap {
-		err = accessProviderHandler.AddAccessProviders(ap)
-
-		if err != nil {
-			return err
-		}
+		aps = append(aps, ap)
 	}
 
-	return nil
+	return aps, nil
 }
+
 func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessProviders *importer.AccessProviderImport, accessProviderFeedbackHandler wrappers.AccessProviderFeedbackHandler, configMap *config.ConfigMap) error {
 	bindingsToAdd, bindingsToDelete := ConvertAccessProviderToBindings(accessProviders)
 
@@ -156,8 +190,8 @@ func (a *AccessSyncer) SyncAccessAsCodeToTarget(ctx context.Context, accessProvi
 	return fmt.Errorf("access as code is not yet supported by this plugin")
 }
 
-func isRaitoManagedBinding(ctx context.Context, binding iam.IamBinding) (bool, error) {
-	meta, err := GetDataSourceMetaData(ctx)
+func (a *AccessSyncer) isRaitoManagedBinding(ctx context.Context, binding iam.IamBinding) (bool, error) {
+	meta, err := a.getDSMetadata(ctx)
 
 	if err != nil {
 		return false, err
@@ -183,7 +217,7 @@ func ConvertAccessProviderToBindings(accessProviders *importer.AccessProviderImp
 	for _, ap := range accessProviders.AccessProviders {
 		members := []string{}
 
-		for _, m := range ap.Who.Users {
+		for _, m := range append(ap.Who.Users, ap.Who.UsersInherited...) {
 			if strings.Contains(m, "gserviceaccount.com") {
 				members = append(members, "serviceAccount:"+m)
 			} else {
@@ -198,7 +232,7 @@ func ConvertAccessProviderToBindings(accessProviders *importer.AccessProviderImp
 		delete_members := []string{}
 
 		if ap.DeletedWho != nil {
-			for _, m := range ap.DeletedWho.Users {
+			for _, m := range append(ap.DeletedWho.Users, ap.DeletedWho.UsersInherited...) {
 				if strings.Contains(m, "gserviceaccount.com") {
 					delete_members = append(delete_members, "serviceAccount:"+m)
 				} else {

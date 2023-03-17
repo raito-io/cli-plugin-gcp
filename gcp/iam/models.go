@@ -34,11 +34,13 @@ const (
 	Folder
 	Organization
 	GSuite
+	Service
 )
 
 type IAMPolicyContainer struct {
-	V1 *crmV1.Policy
-	V2 *crmV2.Policy
+	V1      *crmV1.Policy
+	V2      *crmV2.Policy
+	Service []IamBinding // Service IAM repo should immediately fill bindings as []IamBinding
 }
 
 type IAMBindings struct {
