@@ -78,7 +78,7 @@ func (a *AccessSyncer) ConvertBindingsToAccessProviders(ctx context.Context, con
 		}
 
 		if configMap.GetBoolWithDefault(common.ExcludeNonAplicablePermissions, true) && !managed {
-			common.Logger.Warn(fmt.Sprintf("Skipping role %s for %s on %s %s as it is not an applicable permission for this datasource and %s is false", binding.Role, binding.Member, binding.Resource, binding.ResourceType, common.ExcludeNonAplicablePermissions))
+			common.Logger.Info(fmt.Sprintf("Skipping role %s for %s on %s %s as it is not an applicable permission for this datasource and %s is false", binding.Role, binding.Member, binding.Resource, binding.ResourceType, common.ExcludeNonAplicablePermissions))
 			continue
 		}
 
