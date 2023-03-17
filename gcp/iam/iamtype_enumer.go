@@ -9,11 +9,11 @@ import (
 	"strings"
 )
 
-const _IamTypeName = "ProjectFolderOrganizationGSuite"
+const _IamTypeName = "ProjectFolderOrganizationGSuiteService"
 
-var _IamTypeIndex = [...]uint8{0, 7, 13, 25, 31}
+var _IamTypeIndex = [...]uint8{0, 7, 13, 25, 31, 38}
 
-const _IamTypeLowerName = "projectfolderorganizationgsuite"
+const _IamTypeLowerName = "projectfolderorganizationgsuiteservice"
 
 func (i IamType) String() string {
 	if i < 0 || i >= IamType(len(_IamTypeIndex)-1) {
@@ -30,9 +30,10 @@ func _IamTypeNoOp() {
 	_ = x[Folder-(1)]
 	_ = x[Organization-(2)]
 	_ = x[GSuite-(3)]
+	_ = x[Service-(4)]
 }
 
-var _IamTypeValues = []IamType{Project, Folder, Organization, GSuite}
+var _IamTypeValues = []IamType{Project, Folder, Organization, GSuite, Service}
 
 var _IamTypeNameToValueMap = map[string]IamType{
 	_IamTypeName[0:7]:        Project,
@@ -43,6 +44,8 @@ var _IamTypeNameToValueMap = map[string]IamType{
 	_IamTypeLowerName[13:25]: Organization,
 	_IamTypeName[25:31]:      GSuite,
 	_IamTypeLowerName[25:31]: GSuite,
+	_IamTypeName[31:38]:      Service,
+	_IamTypeLowerName[31:38]: Service,
 }
 
 var _IamTypeNames = []string{
@@ -50,6 +53,7 @@ var _IamTypeNames = []string{
 	_IamTypeName[7:13],
 	_IamTypeName[13:25],
 	_IamTypeName[25:31],
+	_IamTypeName[31:38],
 }
 
 // IamTypeString retrieves an enum value from the enum constants string name.

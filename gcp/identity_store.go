@@ -31,6 +31,11 @@ func newIamServiceProvider(configMap *config.ConfigMap) iam.IAMService {
 	return iam.NewIAMService(configMap)
 }
 
+func (s *IdentityStoreSyncer) WithIAMServiceProvider(provider func(configMap *config.ConfigMap) iam.IAMService) *IdentityStoreSyncer {
+	s.iamServiceProvider = provider
+	return s
+}
+
 func (s *IdentityStoreSyncer) SyncIdentityStore(ctx context.Context, identityHandler wrappers.IdentityStoreIdentityHandler, configMap *config.ConfigMap) error {
 	// get groups and make a membership map key: ID of user/group, value array of Group IDs it is member of
 	groupMembership := make(map[string][]string)
@@ -92,6 +97,7 @@ func (s *IdentityStoreSyncer) SyncIdentityStore(ctx context.Context, identityHan
 		}
 	}
 
+	// get serviceAccounts
 	serviceAcounts, err := s.iamServiceProvider(configMap).GetServiceAccounts(ctx, configMap)
 
 	if err != nil {
