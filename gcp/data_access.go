@@ -105,7 +105,7 @@ func (a *AccessSyncer) ConvertBindingsToAccessProviders(ctx context.Context, con
 				NotInternalizable: !managed,
 				WhoLocked:         ptr.Bool(false),
 				WhatLocked:        ptr.Bool(true),
-				WhatLockedReason:  ptr.String("This is a single resource AP"),
+				WhatLockedReason:  ptr.String("This Access Provider was imported from GCP and can only cover 1 Data Object. If you want a GCP Access Provider with multiple Data Objects, you can create a new one in Raito"),
 				Action:            exporter.Grant,
 				NameLocked:        ptr.Bool(false),
 				DeleteLocked:      ptr.Bool(false),

@@ -331,13 +331,13 @@ func (_c *MockIAMService_RemoveIamBinding_Call) RunAndReturn(run func(context.Co
 	return _c
 }
 
-// WithServiceIamRepo provides a mock function with given fields: localRepo, ids
-func (_m *MockIAMService) WithServiceIamRepo(localRepo IAMRepository, ids func(context.Context, *config.ConfigMap) ([]string, error)) IAMService {
-	ret := _m.Called(localRepo, ids)
+// WithServiceIamRepo provides a mock function with given fields: resourceTypes, localRepo, ids
+func (_m *MockIAMService) WithServiceIamRepo(resourceTypes []string, localRepo IAMRepository, ids func(context.Context, *config.ConfigMap) ([]string, error)) IAMService {
+	ret := _m.Called(resourceTypes, localRepo, ids)
 
 	var r0 IAMService
-	if rf, ok := ret.Get(0).(func(IAMRepository, func(context.Context, *config.ConfigMap) ([]string, error)) IAMService); ok {
-		r0 = rf(localRepo, ids)
+	if rf, ok := ret.Get(0).(func([]string, IAMRepository, func(context.Context, *config.ConfigMap) ([]string, error)) IAMService); ok {
+		r0 = rf(resourceTypes, localRepo, ids)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(IAMService)
@@ -353,15 +353,16 @@ type MockIAMService_WithServiceIamRepo_Call struct {
 }
 
 // WithServiceIamRepo is a helper method to define mock.On call
+//   - resourceTypes []string
 //   - localRepo IAMRepository
 //   - ids func(context.Context , *config.ConfigMap)([]string , error)
-func (_e *MockIAMService_Expecter) WithServiceIamRepo(localRepo interface{}, ids interface{}) *MockIAMService_WithServiceIamRepo_Call {
-	return &MockIAMService_WithServiceIamRepo_Call{Call: _e.mock.On("WithServiceIamRepo", localRepo, ids)}
+func (_e *MockIAMService_Expecter) WithServiceIamRepo(resourceTypes interface{}, localRepo interface{}, ids interface{}) *MockIAMService_WithServiceIamRepo_Call {
+	return &MockIAMService_WithServiceIamRepo_Call{Call: _e.mock.On("WithServiceIamRepo", resourceTypes, localRepo, ids)}
 }
 
-func (_c *MockIAMService_WithServiceIamRepo_Call) Run(run func(localRepo IAMRepository, ids func(context.Context, *config.ConfigMap) ([]string, error))) *MockIAMService_WithServiceIamRepo_Call {
+func (_c *MockIAMService_WithServiceIamRepo_Call) Run(run func(resourceTypes []string, localRepo IAMRepository, ids func(context.Context, *config.ConfigMap) ([]string, error))) *MockIAMService_WithServiceIamRepo_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(IAMRepository), args[1].(func(context.Context, *config.ConfigMap) ([]string, error)))
+		run(args[0].([]string), args[1].(IAMRepository), args[2].(func(context.Context, *config.ConfigMap) ([]string, error)))
 	})
 	return _c
 }
@@ -371,7 +372,7 @@ func (_c *MockIAMService_WithServiceIamRepo_Call) Return(_a0 IAMService) *MockIA
 	return _c
 }
 
-func (_c *MockIAMService_WithServiceIamRepo_Call) RunAndReturn(run func(IAMRepository, func(context.Context, *config.ConfigMap) ([]string, error)) IAMService) *MockIAMService_WithServiceIamRepo_Call {
+func (_c *MockIAMService_WithServiceIamRepo_Call) RunAndReturn(run func([]string, IAMRepository, func(context.Context, *config.ConfigMap) ([]string, error)) IAMService) *MockIAMService_WithServiceIamRepo_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -13,7 +13,7 @@ import (
 
 //go:generate go run github.com/vektra/mockery/v2 --name=IAMService --with-expecter --inpackage
 type IAMService interface {
-	WithServiceIamRepo(localRepo IAMRepository, ids func(ctx context.Context, configMap *config.ConfigMap) ([]string, error)) IAMService
+	WithServiceIamRepo(resourceTypes []string, localRepo IAMRepository, ids func(ctx context.Context, configMap *config.ConfigMap) ([]string, error)) IAMService
 	GetUsers(ctx context.Context, configMap *config.ConfigMap) ([]UserEntity, error)
 	GetGroups(ctx context.Context, configMap *config.ConfigMap) ([]GroupEntity, error)
 	GetServiceAccounts(ctx context.Context, configMap *config.ConfigMap) ([]UserEntity, error)
@@ -38,9 +38,10 @@ type dataSourceRepository interface {
 }
 
 type iamService struct {
-	repos          map[IamType]IAMRepository
-	gcpRepo        dataSourceRepository
-	serviceRepoIds func(ctx context.Context, configMap *config.ConfigMap) ([]string, error)
+	repos            map[IamType]IAMRepository
+	gcpRepo          dataSourceRepository
+	serviceRepoIds   func(ctx context.Context, configMap *config.ConfigMap) ([]string, error)
+	serviceRepoTypes set.Set[string]
 }
 
 func NewIAMService(configMap *config.ConfigMap) *iamService {
@@ -66,9 +67,10 @@ func NewIAMService(configMap *config.ConfigMap) *iamService {
 	}
 }
 
-func (s *iamService) WithServiceIamRepo(serviceRepo IAMRepository, ids func(ctx context.Context, configMap *config.ConfigMap) ([]string, error)) IAMService {
+func (s *iamService) WithServiceIamRepo(resourceTypes []string, serviceRepo IAMRepository, ids func(ctx context.Context, configMap *config.ConfigMap) ([]string, error)) IAMService {
 	s.repos[Service] = serviceRepo
 	s.serviceRepoIds = ids
+	s.serviceRepoTypes = set.NewSet[string](resourceTypes...)
 
 	return s
 }
@@ -207,6 +209,22 @@ func (s *iamService) GetIAMPolicyBindings(ctx context.Context, configMap *config
 }
 
 func (s *iamService) AddIamBinding(ctx context.Context, configMap *config.ConfigMap, binding IamBinding) error {
+	existing_bindings, err := s.GetIAMPolicyBindings(ctx, configMap)
+
+	if err != nil {
+		return err
+	}
+
+	for _, eb := range existing_bindings {
+		if eb.Equals(binding) {
+			return nil
+		}
+	}
+
+	if s.serviceRepoTypes.Contains(binding.ResourceType) {
+		binding.ResourceType = Service.String()
+	}
+
 	for t, repo := range s.repos {
 		if strings.EqualFold(t.String(), binding.ResourceType) {
 			return repo.AddBinding(ctx, configMap, binding.Resource, binding.Member, binding.Role)
@@ -217,13 +235,36 @@ func (s *iamService) AddIamBinding(ctx context.Context, configMap *config.Config
 }
 
 func (s *iamService) RemoveIamBinding(ctx context.Context, configMap *config.ConfigMap, binding IamBinding) error {
+	existing_bindings, err := s.GetIAMPolicyBindings(ctx, configMap)
+
+	if err != nil {
+		return err
+	}
+
+	found := false
+
+	for _, eb := range existing_bindings {
+		if eb.Equals(binding) {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		return nil
+	}
+
+	if s.serviceRepoTypes.Contains(binding.ResourceType) {
+		binding.ResourceType = Service.String()
+	}
+
 	for t, repo := range s.repos {
 		if strings.EqualFold(t.String(), binding.ResourceType) {
 			return repo.RemoveBinding(ctx, configMap, binding.Resource, binding.Member, binding.Role)
 		}
 	}
 
-	return fmt.Errorf("adding IAM bindings for resource type %s is not supported", binding.ResourceType)
+	return fmt.Errorf("removing IAM bindings for resource type %s is not supported", binding.ResourceType)
 }
 
 func (s *iamService) getIdsByRepoType(ctx context.Context, configMap *config.ConfigMap) (map[IamType][]string, error) {
