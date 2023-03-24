@@ -87,7 +87,7 @@ func getFoldersForParent(ctx context.Context, configMap *config.ConfigMap, paren
 		folders[i].Id = strings.Split(p.Name, "/")[1]
 		folders[i].Type = "folder"
 
-		split := strings.Split(p.Parent, "/")
+		split := strings.Split(p.Parent, "s/") // the "s" is not a typo, resource IDs are always plural e.g. folders/<id> for a folder
 		if len(split) == 2 && !strings.HasPrefix(parent, "organizations/") {
 			pObj := GcpOrgEntity{
 				Id:   split[1],

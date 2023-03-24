@@ -86,8 +86,10 @@ func handleGcpOrgEntities(entities []org.GcpOrgEntity, configMap *config.ConfigM
 
 		parent := GetOrgDataObjectName(configMap)
 
-		if _, f := externalIds[parent]; f && p.Parent != nil && !strings.EqualFold(p.Parent.Type, iam.Organization.String()) {
-			parent = p.Parent.Id
+		if p.Parent != nil && !strings.EqualFold(p.Parent.Type, iam.Organization.String()) {
+			if _, f := externalIds[p.Parent.Id]; f {
+				parent = p.Parent.Id
+			}
 		}
 
 		dos[i] = &ds.DataObject{
@@ -121,54 +123,6 @@ func GetDataSourceMetaData(ctx context.Context) (*ds.MetaData, error) {
 		{
 			Permission:  "roles/viewer",
 			Description: "View most Google Cloud resources. See the list of included permissions.",
-		},
-		{
-			Permission:  "roles/bigquery.admin",
-			Description: "Administer all BigQuery resources and data",
-		},
-		{
-			Permission:  "roles/bigquery.dataEditor",
-			Description: "Access to edit all the contents of datasets",
-		},
-		{
-			Permission:  "roles/bigquery.dataOwner",
-			Description: "Full access to datasets and all of their contents",
-		},
-		{
-			Permission:  "roles/bigquery.dataViewer",
-			Description: "Access to view datasets and all of their contents",
-		},
-		{
-			Permission:  "roles/bigquery.filteredDataViewer",
-			Description: "Access to view filtered table data defined by a row access policy",
-		},
-		{
-			Permission:  "roles/bigquery.jobUser",
-			Description: "Access to run jobs",
-		},
-		{
-			Permission:  "roles/bigquery.metadataViewer",
-			Description: "Access to view table and dataset metadata",
-		},
-		{
-			Permission:  "roles/bigquery.readSessionUser",
-			Description: "Access to create and use read sessions",
-		},
-		{
-			Permission:  "roles/bigquery.resourceAdmin",
-			Description: "Administer all BigQuery resources.",
-		},
-		{
-			Permission:  "roles/bigquery.resourceEditor",
-			Description: "Manage all BigQuery resources, but cannot make purchasing decisions.",
-		},
-		{
-			Permission:  "roles/bigquery.resourceViewer",
-			Description: "View all BigQuery resources but cannot make changes or purchasing decisions.",
-		},
-		{
-			Permission:  "roles/bigquery.user",
-			Description: "When applied to a project, access to run queries, create datasets, read dataset metadata, and list tables. When applied to a dataset, access to read dataset metadata and list tables within the dataset.",
 		},
 	}
 
