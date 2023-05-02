@@ -134,7 +134,9 @@ func (a *AccessSyncer) ConvertBindingsToAccessProviders(ctx context.Context, con
 		} else if strings.HasPrefix(binding.Member, "special_group:") && configMap.GetStringWithDefault(common.GcpProjectId, "") != "" && strings.Contains(binding.Member, "project") {
 			// this is a special IAM construct that creates a removable link between ownership on a service resource and ownership on org level
 			// e.g. owners on a GCP project are owners on BQ datasets. This binding is removable but can not be (re-)created by a user.
-			accessProviderMap[apName].Who.AccessProviders = append(accessProviderMap[apName].Who.AccessProviders, getApName(fmt.Sprintf("datasource_%s_%s", configMap.GetString(common.GcpProjectId), strings.Replace(binding.Role, "/", "_", -1))))
+			if _, f := accessProviderMap[getApName(fmt.Sprintf("datasource_%s_%s", configMap.GetString(common.GcpProjectId), strings.Replace(binding.Role, "/", "_", -1)))]; f {
+				accessProviderMap[apName].Who.AccessProviders = append(accessProviderMap[apName].Who.AccessProviders, getApName(fmt.Sprintf("datasource_%s_%s", configMap.GetString(common.GcpProjectId), strings.Replace(binding.Role, "/", "_", -1))))
+			}
 		}
 	}
 
