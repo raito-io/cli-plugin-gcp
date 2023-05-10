@@ -25,6 +25,7 @@ func (r *organizationIamRepository) GetUsers(ctx context.Context, configMap *con
 
 	if policy.V1 == nil {
 		common.Logger.Warn(fmt.Sprintf("getUsers: Could not retrieve IAM policy for organization %s", id))
+		return []UserEntity{}, nil
 	}
 
 	users := make([]UserEntity, 0)
@@ -58,6 +59,7 @@ func (r *organizationIamRepository) GetGroups(ctx context.Context, configMap *co
 
 	if policy.V1 == nil {
 		common.Logger.Warn(fmt.Sprintf("getGroups: Could not retrieve IAM policy for organization %s", id))
+		return []GroupEntity{}, nil
 	}
 
 	groups := make([]GroupEntity, 0)
