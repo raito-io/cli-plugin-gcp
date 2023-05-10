@@ -94,6 +94,7 @@ func (r *projectIamRepository) GetServiceAccounts(ctx context.Context, configMap
 
 	if policy.V1 == nil {
 		common.Logger.Warn(fmt.Sprintf("getServiceAccounts: Could not retrieve IAM policy for project %s", id))
+		return []UserEntity{}, nil
 	}
 
 	users := make([]UserEntity, 0)
