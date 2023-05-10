@@ -120,7 +120,6 @@ func (r *organizationIamRepository) GetServiceAccounts(ctx context.Context, conf
 	return users, nil
 }
 
-//nolint:dupl
 func (r *organizationIamRepository) GetIamPolicy(ctx context.Context, configMap *config.ConfigMap, id string) (IAMPolicyContainer, error) {
 	if !strings.HasPrefix(id, "organizations/") {
 		id = fmt.Sprintf("organizations/%s", id)
