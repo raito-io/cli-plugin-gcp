@@ -94,6 +94,7 @@ func (r *organizationIamRepository) GetServiceAccounts(ctx context.Context, conf
 
 	if policy.V1 == nil {
 		common.Logger.Warn(fmt.Sprintf("getServiceAccounts: Could not retrieve IAM policy for project %s", id))
+		return []UserEntity{}, nil
 	}
 
 	users := make([]UserEntity, 0)
@@ -119,7 +120,6 @@ func (r *organizationIamRepository) GetServiceAccounts(ctx context.Context, conf
 	return users, nil
 }
 
-//nolint:dupl
 func (r *organizationIamRepository) GetIamPolicy(ctx context.Context, configMap *config.ConfigMap, id string) (IAMPolicyContainer, error) {
 	if !strings.HasPrefix(id, "organizations/") {
 		id = fmt.Sprintf("organizations/%s", id)

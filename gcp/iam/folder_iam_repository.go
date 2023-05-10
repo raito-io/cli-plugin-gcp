@@ -121,7 +121,6 @@ func (r *folderIamRepository) GetServiceAccounts(ctx context.Context, configMap 
 	return users, nil
 }
 
-//nolint:dupl
 func (r *folderIamRepository) GetIamPolicy(ctx context.Context, configMap *config.ConfigMap, id string) (IAMPolicyContainer, error) {
 	if !strings.HasPrefix(id, "folders/") {
 		id = fmt.Sprintf("folders/%s", id)
