@@ -113,16 +113,22 @@ func GetDataSourceMetaData(ctx context.Context) (*ds.MetaData, error) {
 
 	managed_permissions := []*ds.DataObjectTypePermission{
 		{
-			Permission:  "roles/owner",
-			Description: "Full access to most Google Cloud resources. See the list of included permissions.",
+			Permission:             "roles/owner",
+			Description:            "Full access to most Google Cloud resources. See the list of included permissions.",
+			UsageGlobalPermissions: []string{ds.Read, ds.Write, ds.Admin},
+			GlobalPermissions:      []string{ds.Admin},
 		},
 		{
-			Permission:  "roles/editor",
-			Description: "View, create, update, and delete most Google Cloud resources. See the list of included permissions.",
+			Permission:             "roles/editor",
+			Description:            "View, create, update, and delete most Google Cloud resources. See the list of included permissions.",
+			UsageGlobalPermissions: []string{ds.Read, ds.Write},
+			GlobalPermissions:      []string{ds.Write},
 		},
 		{
-			Permission:  "roles/viewer",
-			Description: "View most Google Cloud resources. See the list of included permissions.",
+			Permission:             "roles/viewer",
+			Description:            "View most Google Cloud resources. See the list of included permissions.",
+			UsageGlobalPermissions: []string{ds.Read},
+			GlobalPermissions:      []string{ds.Read},
 		},
 	}
 
