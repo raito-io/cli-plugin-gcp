@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/aws/smithy-go v1.13.5
 	github.com/hashicorp/go-hclog v1.5.0
-	github.com/raito-io/cli v0.41.0-pre
+	github.com/raito-io/cli v0.42.0
 	github.com/raito-io/golang-set v0.0.4
 	github.com/stretchr/testify v1.8.3
 	github.com/vektra/mockery/v2 v2.27.1
