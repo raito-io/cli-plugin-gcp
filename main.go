@@ -23,8 +23,7 @@ func main() {
 	err := base.RegisterPlugins(
 		wrappers.IdentityStoreSync(gcp.NewIdentityStoreSyncer()),
 		wrappers.DataSourceSync(gcp.NewDataSourceSyncer()),
-		wrappers.DataAccessSync(gcp.NewDataAccessSyncer()),
-		wrappers.DataUsageSync(gcp.NewDataUsageSyncer()), &info.InfoImpl{
+		wrappers.DataAccessSync(gcp.NewDataAccessSyncer()), &info.InfoImpl{
 			Info: &plugin.PluginInfo{
 				Name:    "gcp",
 				Version: plugin.ParseVersion(version),
