@@ -23,7 +23,9 @@ func (s *IdentityStoreSyncer) GetIdentityStoreMetaData(ctx context.Context) (*is
 	common.Logger.Debug("Returning meta data for GCP organization identity store")
 
 	return &is.MetaData{
-		Type: "gcp",
+		Type:        "gcp",
+		CanBeLinked: true,
+		CanBeMaster: true,
 	}, nil
 }
 
