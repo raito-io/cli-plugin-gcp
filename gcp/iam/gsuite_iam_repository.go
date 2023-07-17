@@ -161,7 +161,6 @@ func (r *gsuiteIamRepository) groupMembers(ctx context.Context, configMap *confi
 		for _, m := range members.Members {
 			if strings.EqualFold(m.Type, "user") {
 				res = append(res, fmt.Sprintf("user:%s", m.Email))
-
 			} else if strings.EqualFold(m.Type, "group") {
 				res = append(res, fmt.Sprintf("group:%s", m.Email))
 			}
