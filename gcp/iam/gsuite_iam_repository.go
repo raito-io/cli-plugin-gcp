@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/raito-io/cli-plugin-gcp/gcp/common"
 	"github.com/raito-io/cli/base/util/config"
@@ -158,7 +159,12 @@ func (r *gsuiteIamRepository) groupMembers(ctx context.Context, configMap *confi
 		}
 
 		for _, m := range members.Members {
-			res = append(res, fmt.Sprintf("user:%s", m.Email))
+			if strings.EqualFold(m.Type, "user") {
+				res = append(res, fmt.Sprintf("user:%s", m.Email))
+
+			} else if strings.EqualFold(m.Type, "group") {
+				res = append(res, fmt.Sprintf("group:%s", m.Email))
+			}
 		}
 
 		if members.NextPageToken != "" {
