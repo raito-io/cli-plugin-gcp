@@ -209,18 +209,6 @@ func (s *iamService) GetIAMPolicyBindings(ctx context.Context, configMap *config
 }
 
 func (s *iamService) AddIamBinding(ctx context.Context, configMap *config.ConfigMap, binding IamBinding) error {
-	existing_bindings, err := s.GetIAMPolicyBindings(ctx, configMap)
-
-	if err != nil {
-		return err
-	}
-
-	for _, eb := range existing_bindings {
-		if eb.Equals(binding) {
-			return nil
-		}
-	}
-
 	if s.serviceRepoTypes.Contains(binding.ResourceType) {
 		binding.ResourceType = Service.String()
 	}
@@ -235,25 +223,6 @@ func (s *iamService) AddIamBinding(ctx context.Context, configMap *config.Config
 }
 
 func (s *iamService) RemoveIamBinding(ctx context.Context, configMap *config.ConfigMap, binding IamBinding) error {
-	existing_bindings, err := s.GetIAMPolicyBindings(ctx, configMap)
-
-	if err != nil {
-		return err
-	}
-
-	found := false
-
-	for _, eb := range existing_bindings {
-		if eb.Equals(binding) {
-			found = true
-			break
-		}
-	}
-
-	if !found {
-		return nil
-	}
-
 	if s.serviceRepoTypes.Contains(binding.ResourceType) {
 		binding.ResourceType = Service.String()
 	}
