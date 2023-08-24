@@ -12,20 +12,16 @@
 <p align="center">
     <a href="/LICENSE.md" target="_blank"><img src="https://img.shields.io/badge/license-Apache%202-brightgreen.svg" alt="Software License" /></a>
     <a href="https://github.com/raito-io/cli-plugin-gcp/actions/workflows/build.yml" target="_blank"><img src="https://img.shields.io/github/actions/workflow/status/raito-io/cli-plugin-gcp/build.yml?branch=main" alt="Build status"/></a>
-    <a href="https://codecov.io/gh/raito-io/cli-plugin-gcp" target="_blank"><img src="https://img.shields.io/codecov/c/github/raito-io/cli-plugin-gcp" alt="Code Coverage" /></a>
+    <!--a href="https://codecov.io/gh/raito-io/cli-plugin-gcp" target="_blank"><img src="https://img.shields.io/codecov/c/github/raito-io/cli-plugin-gcp" alt="Code Coverage" /></a-->
 </p>
 
 <hr/>
 
 # Raito CLI Plugin - Google Cloud Platform
 
-:rotating_light: :rotating_light: :rotating_light:
 
-**Note: This repository is still in a very early stage of development.  
-It contains code that will allow communication with Raito Cloud once it is released.
+**Note: This repository is still in an early stage of development.
 At this point, no contributions are accepted to the project yet.**
-
-:rotating_light: :rotating_light: :rotating_light:
 
 This Raito CLI plugin implements the integration with Google Cloud Platform. It can
  - Synchronize the users and groups in GSuite
