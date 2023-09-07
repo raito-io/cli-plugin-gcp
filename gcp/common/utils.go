@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/hashicorp/go-hclog"
+	hclog "github.com/hashicorp/go-hclog"
 	"github.com/raito-io/cli/base"
 	"github.com/raito-io/cli/base/util/config"
 	"golang.org/x/oauth2/google"

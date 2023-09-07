@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/raito-io/cli-plugin-gcp/gcp/common"
 	"github.com/raito-io/cli/base/util/config"
-	"google.golang.org/api/cloudresourcemanager/v1"
+	cloudresourcemanager "google.golang.org/api/cloudresourcemanager/v1"
+
+	"github.com/raito-io/cli-plugin-gcp/gcp/common"
 )
 
 var organizationIamPolicyCache map[string]*cloudresourcemanager.Policy = make(map[string]*cloudresourcemanager.Policy)

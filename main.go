@@ -3,13 +3,15 @@ package main
 import (
 	"fmt"
 
-	"github.com/hashicorp/go-hclog"
-	"github.com/raito-io/cli-plugin-gcp/gcp"
-	"github.com/raito-io/cli-plugin-gcp/gcp/common"
+	hclog "github.com/hashicorp/go-hclog"
 	"github.com/raito-io/cli/base"
+	"github.com/raito-io/cli/base/access_provider"
 	"github.com/raito-io/cli/base/info"
 	"github.com/raito-io/cli/base/util/plugin"
 	"github.com/raito-io/cli/base/wrappers"
+
+	"github.com/raito-io/cli-plugin-gcp/gcp"
+	"github.com/raito-io/cli-plugin-gcp/gcp/common"
 )
 
 var version = "0.0.0"
@@ -23,7 +25,8 @@ func main() {
 	err := base.RegisterPlugins(
 		wrappers.IdentityStoreSync(gcp.NewIdentityStoreSyncer()),
 		wrappers.DataSourceSync(gcp.NewDataSourceSyncer()),
-		wrappers.DataAccessSync(gcp.NewDataAccessSyncer()), &info.InfoImpl{
+		wrappers.DataAccessSync(gcp.NewDataAccessSyncer(), access_provider.WithSupportPartialSync()),
+		&info.InfoImpl{
 			Info: &plugin.PluginInfo{
 				Name:    "gcp",
 				Version: plugin.ParseVersion(version),
