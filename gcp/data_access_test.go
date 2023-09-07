@@ -6,14 +6,15 @@ import (
 	"testing"
 
 	"github.com/aws/smithy-go/ptr"
-	"github.com/raito-io/cli-plugin-gcp/gcp/common"
-	"github.com/raito-io/cli-plugin-gcp/gcp/iam"
 	"github.com/raito-io/cli/base/access_provider/sync_to_target"
 	"github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/raito-io/cli/base/wrappers/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/raito-io/cli-plugin-gcp/gcp/common"
+	"github.com/raito-io/cli-plugin-gcp/gcp/iam"
 )
 
 func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
@@ -56,6 +57,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 		iamServiceProvider: func(config *config.ConfigMap) iam.IAMService {
 			return iamServiceMock
 		},
+		getDSMetadata: GetDataSourceMetaData,
 	}
 
 	// When

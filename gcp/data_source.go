@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/raito-io/cli/base/access_provider"
+	ds "github.com/raito-io/cli/base/data_source"
+	"github.com/raito-io/golang-set/set"
+
 	"github.com/raito-io/cli-plugin-gcp/gcp/common"
 	"github.com/raito-io/cli-plugin-gcp/gcp/iam"
 	"github.com/raito-io/cli-plugin-gcp/gcp/org"
-	ds "github.com/raito-io/cli/base/data_source"
-	"github.com/raito-io/golang-set/set"
 
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/raito-io/cli/base/wrappers"
@@ -137,8 +139,9 @@ func GetDataSourceMetaData(ctx context.Context) (*ds.MetaData, error) {
 	folder := strings.ToLower(iam.Folder.String())
 
 	return &ds.MetaData{
-		Type:              "gcp",
-		SupportedFeatures: []string{},
+		Type:                  "gcp",
+		SupportedFeatures:     []string{},
+		SupportsApInheritance: false,
 		DataObjectTypes: []*ds.DataObjectType{
 			{
 				Name:        ds.Datasource,
@@ -163,6 +166,15 @@ func GetDataSourceMetaData(ctx context.Context) (*ds.MetaData, error) {
 				Type:        project,
 				Permissions: managed_permissions,
 				Children:    []string{},
+			},
+		},
+		AccessProviderTypes: []*ds.AccessProviderType{
+			{
+				Type:          access_provider.AclSet,
+				Label:         access_provider.AclSet,
+				CanBeAssumed:  false,
+				CanBeCreated:  true,
+				IsNamedEntity: false,
 			},
 		},
 	}, nil

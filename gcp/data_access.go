@@ -6,10 +6,12 @@ import (
 	"strings"
 
 	"github.com/aws/smithy-go/ptr"
-	"github.com/raito-io/cli-plugin-gcp/gcp/common"
-	"github.com/raito-io/cli-plugin-gcp/gcp/iam"
+	"github.com/raito-io/cli/base/access_provider"
 	"github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/cli/base/wrappers"
+
+	"github.com/raito-io/cli-plugin-gcp/gcp/common"
+	"github.com/raito-io/cli-plugin-gcp/gcp/iam"
 
 	exporter "github.com/raito-io/cli/base/access_provider/sync_from_target"
 	importer "github.com/raito-io/cli/base/access_provider/sync_to_target"
@@ -110,6 +112,7 @@ func (a *AccessSyncer) ConvertBindingsToAccessProviders(ctx context.Context, con
 				NameLocked:        ptr.Bool(false),
 				DeleteLocked:      ptr.Bool(false),
 				ActualName:        apName,
+				Type:              ptr.String(access_provider.AclSet),
 				What: []exporter.WhatItem{
 					{
 						DataObject: &data_source.DataObjectReference{
@@ -231,7 +234,7 @@ func ConvertAccessProviderToBindings(accessProviders *importer.AccessProviderImp
 	for _, ap := range accessProviders.AccessProviders {
 		members := []string{}
 
-		for _, m := range append(ap.Who.Users, ap.Who.UsersInherited...) {
+		for _, m := range ap.Who.Users {
 			if strings.Contains(m, "gserviceaccount.com") {
 				members = append(members, "serviceAccount:"+m)
 			} else {
@@ -246,7 +249,7 @@ func ConvertAccessProviderToBindings(accessProviders *importer.AccessProviderImp
 		delete_members := []string{}
 
 		if ap.DeletedWho != nil {
-			for _, m := range append(ap.DeletedWho.Users, ap.DeletedWho.UsersInherited...) {
+			for _, m := range ap.DeletedWho.Users {
 				if strings.Contains(m, "gserviceaccount.com") {
 					delete_members = append(delete_members, "serviceAccount:"+m)
 				} else {
