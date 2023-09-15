@@ -13,6 +13,8 @@ import (
 )
 
 const ownerRole = "roles/owner"
+const editorRole = "roles/editor"
+const viewerRole = "roles/viewer"
 
 //go:generate go run github.com/vektra/mockery/v2 --name=IAMService --with-expecter --inpackage
 type IAMService interface {
@@ -23,7 +25,7 @@ type IAMService interface {
 	GetIAMPolicyBindings(ctx context.Context, configMap *config.ConfigMap) ([]IamBinding, error)
 	AddIamBinding(ctx context.Context, configMap *config.ConfigMap, binding IamBinding) error
 	RemoveIamBinding(ctx context.Context, configMap *config.ConfigMap, binding IamBinding) error
-	GetProjectOwners(ctx context.Context, configMap *config.ConfigMap, projectId string) (members []string, err error)
+	GetProjectOwners(ctx context.Context, configMap *config.ConfigMap, projectId string) (owner []string, editor []string, viewer []string, err error)
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name=IAMRepository --with-expecter --inpackage
@@ -212,35 +214,47 @@ func (s *iamService) GetIAMPolicyBindings(ctx context.Context, configMap *config
 	return bindings, nil
 }
 
-func (s *iamService) GetProjectOwners(ctx context.Context, configMap *config.ConfigMap, projectId string) (members []string, err error) {
+func (s *iamService) GetProjectOwners(ctx context.Context, configMap *config.ConfigMap, projectId string) (owner []string, editor []string, viewer []string, err error) {
 	repo := s.repos[Project]
 
 	policyContainer, err := repo.GetIamPolicy(ctx, configMap, projectId)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
 
 	if policyContainer.Service != nil {
 		for _, binding := range policyContainer.Service {
 			if binding.Role == ownerRole {
-				members = append(members, binding.Member)
+				owner = append(owner, binding.Member)
+			} else if binding.Role == editorRole {
+				editor = append(editor, binding.Member)
+			} else if binding.Role == viewerRole {
+				viewer = append(viewer, binding.Member)
 			}
 		}
 	} else if policyContainer.V1 != nil {
 		for _, binding := range policyContainer.V1.Bindings {
 			if binding.Role == ownerRole {
-				members = append(members, binding.Members...)
+				owner = append(owner, binding.Members...)
+			} else if binding.Role == editorRole {
+				editor = append(editor, binding.Members...)
+			} else if binding.Role == viewerRole {
+				viewer = append(viewer, binding.Members...)
 			}
 		}
 	} else if policyContainer.V2 != nil {
 		for _, binding := range policyContainer.V2.Bindings {
 			if binding.Role == ownerRole {
-				members = append(members, binding.Members...)
+				owner = append(owner, binding.Members...)
+			} else if binding.Role == editorRole {
+				editor = append(editor, binding.Members...)
+			} else if binding.Role == viewerRole {
+				viewer = append(viewer, binding.Members...)
 			}
 		}
 	}
 
-	return members, nil
+	return owner, editor, viewer, nil
 }
 
 func (s *iamService) AddIamBinding(ctx context.Context, configMap *config.ConfigMap, binding IamBinding) error {

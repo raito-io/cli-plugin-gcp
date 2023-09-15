@@ -69,7 +69,7 @@ func (a *AccessSyncer) ConvertBindingsToAccessProviders(ctx context.Context, con
 	accessProviderMap := make(map[string]*exporter.AccessProvider)
 	specialGroupAccessProviderMap := make(map[string]*exporter.AccessProvider)
 
-	projectOwnersWho, err := a.projectOwnerWhoItem(ctx, configMap)
+	projectOwnersWho, projectEditorWho, projectReaderWho, err := a.projectRolesWhoItem(ctx, configMap)
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +104,7 @@ func (a *AccessSyncer) ConvertBindingsToAccessProviders(ctx context.Context, con
 		}
 
 		if strings.HasPrefix(binding.Member, "special_group:") {
-			a.generateSpecialGroupOwnerAccessProvider(binding, specialGroupAccessProviderMap, projectOwnersWho)
+			a.generateSpecialGroupOwnerAccessProvider(binding, specialGroupAccessProviderMap, projectOwnersWho, projectEditorWho, projectReaderWho)
 		} else {
 			a.generateAccessProvider(binding, accessProviderMap, managed)
 		}
@@ -163,8 +163,32 @@ func (a *AccessSyncer) generateAccessProvider(binding iam.IamBinding, accessProv
 	}
 }
 
-func (a *AccessSyncer) generateSpecialGroupOwnerAccessProvider(binding iam.IamBinding, specialGroupAccessProviderMap map[string]*exporter.AccessProvider, projectOwnersWho *exporter.WhoItem) {
-	apName := fmt.Sprintf("owner_group_%s", strings.ReplaceAll(binding.Role, "/", "_"))
+func (a *AccessSyncer) generateSpecialGroupOwnerAccessProvider(binding iam.IamBinding, specialGroupAccessProviderMap map[string]*exporter.AccessProvider, projectOwnersWho *exporter.WhoItem, projectEditorWho *exporter.WhoItem, projectReaderWho *exporter.WhoItem) {
+	mapping := map[string]struct {
+		whoItem  *exporter.WhoItem
+		roleName string
+	}{
+		"roles/viewer": {
+			whoItem:  projectReaderWho,
+			roleName: "roles/bigquery.dataViewer",
+		},
+		"roles/editor": {
+			whoItem:  projectEditorWho,
+			roleName: "roles/bigquery.dataEditor",
+		},
+		"roles/owner": {
+			whoItem:  projectOwnersWho,
+			roleName: "roles/bigquery.dataOwner",
+		},
+	}
+
+	r, ok := mapping[binding.Role]
+	if !ok {
+		common.Logger.Warn(fmt.Sprintf("Skipping role %s for special group binding %+v", binding.Role, binding))
+		return
+	}
+
+	apName := fmt.Sprintf("project_%s", strings.ReplaceAll(r.roleName, "/", "_"))
 	specialGroupAccessProvider, ok := specialGroupAccessProviderMap[apName]
 
 	if !ok {
@@ -176,7 +200,7 @@ func (a *AccessSyncer) generateSpecialGroupOwnerAccessProvider(binding iam.IamBi
 			Action:            exporter.Grant,
 			ActualName:        apName,
 			Type:              ptr.String(access_provider.AclSet),
-			Who:               projectOwnersWho,
+			Who:               r.whoItem,
 		}
 	}
 
@@ -185,37 +209,49 @@ func (a *AccessSyncer) generateSpecialGroupOwnerAccessProvider(binding iam.IamBi
 			FullName: binding.Resource,
 			Type:     binding.ResourceType,
 		},
-		Permissions: []string{binding.Role},
+		Permissions: []string{r.roleName},
 	})
 
 	specialGroupAccessProviderMap[apName] = specialGroupAccessProvider
 }
 
-func (a *AccessSyncer) projectOwnerWhoItem(ctx context.Context, configMap *config.ConfigMap) (*exporter.WhoItem, error) {
+func (a *AccessSyncer) projectRolesWhoItem(ctx context.Context, configMap *config.ConfigMap) (*exporter.WhoItem, *exporter.WhoItem, *exporter.WhoItem, error) {
 	projectOwnersWho := &exporter.WhoItem{}
+	projectEditorWho := &exporter.WhoItem{}
+	projectViewerWho := &exporter.WhoItem{}
 
 	gcpProject := configMap.GetString(common.GcpProjectId)
 	if gcpProject != "" {
-		projectOwnerIds, err := a.iamServiceProvider(configMap).GetProjectOwners(ctx, configMap, gcpProject)
+		projectOwnerIds, projectEditorIds, projectViewerIDs, err := a.iamServiceProvider(configMap).GetProjectOwners(ctx, configMap, gcpProject)
 
 		if err != nil {
-			return nil, err
+			return nil, nil, nil, err
 		}
 
-		for _, ownerId := range projectOwnerIds {
-			ownerRaitoId := strings.Split(ownerId, ":")[1]
+		projectOwnersWho = a.generateProjectWhoItem(projectOwnerIds)
+		projectEditorWho = a.generateProjectWhoItem(projectEditorIds)
+		projectViewerWho = a.generateProjectWhoItem(projectViewerIDs)
+	}
 
-			if strings.HasPrefix(ownerId, "user:") || strings.HasPrefix(ownerId, "serviceAccount:") {
-				projectOwnersWho.Users = append(projectOwnersWho.Users, ownerRaitoId)
-			} else if strings.HasPrefix(ownerId, "group:") {
-				projectOwnersWho.Groups = append(projectOwnersWho.Groups, ownerRaitoId)
-			} else {
-				common.Logger.Warn("Unknown owner type: " + ownerId)
-			}
+	return projectOwnersWho, projectEditorWho, projectViewerWho, nil
+}
+
+func (a *AccessSyncer) generateProjectWhoItem(projectOwnerIds []string) *exporter.WhoItem {
+	result := &exporter.WhoItem{}
+
+	for _, ownerId := range projectOwnerIds {
+		ownerRaitoId := strings.Split(ownerId, ":")[1]
+
+		if strings.HasPrefix(ownerId, "user:") || strings.HasPrefix(ownerId, "serviceAccount:") {
+			result.Users = append(result.Users, ownerRaitoId)
+		} else if strings.HasPrefix(ownerId, "group:") {
+			result.Groups = append(result.Groups, ownerRaitoId)
+		} else {
+			common.Logger.Warn("Unknown owner type: " + ownerId)
 		}
 	}
 
-	return projectOwnersWho, nil
+	return result
 }
 
 func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessProviders *importer.AccessProviderImport, accessProviderFeedbackHandler wrappers.AccessProviderFeedbackHandler, configMap *config.ConfigMap) error {

@@ -178,12 +178,14 @@ func (_c *MockIAMService_GetIAMPolicyBindings_Call) RunAndReturn(run func(contex
 }
 
 // GetProjectOwners provides a mock function with given fields: ctx, configMap, projectId
-func (_m *MockIAMService) GetProjectOwners(ctx context.Context, configMap *config.ConfigMap, projectId string) ([]string, error) {
+func (_m *MockIAMService) GetProjectOwners(ctx context.Context, configMap *config.ConfigMap, projectId string) ([]string, []string, []string, error) {
 	ret := _m.Called(ctx, configMap, projectId)
 
 	var r0 []string
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *config.ConfigMap, string) ([]string, error)); ok {
+	var r1 []string
+	var r2 []string
+	var r3 error
+	if rf, ok := ret.Get(0).(func(context.Context, *config.ConfigMap, string) ([]string, []string, []string, error)); ok {
 		return rf(ctx, configMap, projectId)
 	}
 	if rf, ok := ret.Get(0).(func(context.Context, *config.ConfigMap, string) []string); ok {
@@ -194,13 +196,29 @@ func (_m *MockIAMService) GetProjectOwners(ctx context.Context, configMap *confi
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *config.ConfigMap, string) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, *config.ConfigMap, string) []string); ok {
 		r1 = rf(ctx, configMap, projectId)
 	} else {
-		r1 = ret.Error(1)
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).([]string)
+		}
 	}
 
-	return r0, r1
+	if rf, ok := ret.Get(2).(func(context.Context, *config.ConfigMap, string) []string); ok {
+		r2 = rf(ctx, configMap, projectId)
+	} else {
+		if ret.Get(2) != nil {
+			r2 = ret.Get(2).([]string)
+		}
+	}
+
+	if rf, ok := ret.Get(3).(func(context.Context, *config.ConfigMap, string) error); ok {
+		r3 = rf(ctx, configMap, projectId)
+	} else {
+		r3 = ret.Error(3)
+	}
+
+	return r0, r1, r2, r3
 }
 
 // MockIAMService_GetProjectOwners_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetProjectOwners'
@@ -223,12 +241,12 @@ func (_c *MockIAMService_GetProjectOwners_Call) Run(run func(ctx context.Context
 	return _c
 }
 
-func (_c *MockIAMService_GetProjectOwners_Call) Return(members []string, err error) *MockIAMService_GetProjectOwners_Call {
-	_c.Call.Return(members, err)
+func (_c *MockIAMService_GetProjectOwners_Call) Return(owner []string, editor []string, viewer []string, err error) *MockIAMService_GetProjectOwners_Call {
+	_c.Call.Return(owner, editor, viewer, err)
 	return _c
 }
 
-func (_c *MockIAMService_GetProjectOwners_Call) RunAndReturn(run func(context.Context, *config.ConfigMap, string) ([]string, error)) *MockIAMService_GetProjectOwners_Call {
+func (_c *MockIAMService_GetProjectOwners_Call) RunAndReturn(run func(context.Context, *config.ConfigMap, string) ([]string, []string, []string, error)) *MockIAMService_GetProjectOwners_Call {
 	_c.Call.Return(run)
 	return _c
 }
