@@ -123,13 +123,13 @@ func (a *AccessSyncer) ConvertBindingsToAccessProviders(ctx context.Context, con
 }
 
 func (a *AccessSyncer) generateAccessProvider(binding iam.IamBinding, accessProviderMap map[string]*exporter.AccessProvider, managed bool) {
-	apName := getApName(fmt.Sprintf("%s_%s_%s", binding.ResourceType, binding.Resource, strings.Replace(binding.Role, "/", "_", -1)))
+	apName := fmt.Sprintf("%s_%s_%s", binding.ResourceType, binding.Resource, strings.Replace(binding.Role, "/", "_", -1))
 
 	if _, f := accessProviderMap[apName]; !f {
 		accessProviderMap[apName] = &exporter.AccessProvider{
 			ExternalId:        apName,
 			Name:              apName,
-			NamingHint:        apName,
+			NamingHint:        generateNamingHint(apName),
 			NotInternalizable: !managed,
 			WhoLocked:         ptr.Bool(false),
 			WhatLocked:        ptr.Bool(true),
@@ -195,7 +195,7 @@ func (a *AccessSyncer) generateSpecialGroupOwnerAccessProvider(binding iam.IamBi
 		specialGroupAccessProvider = &exporter.AccessProvider{
 			ExternalId:        apName,
 			Name:              apName,
-			NamingHint:        apName,
+			NamingHint:        generateNamingHint(apName),
 			NotInternalizable: true,
 			Action:            exporter.Grant,
 			ActualName:        apName,
@@ -409,19 +409,12 @@ func ConvertAccessProviderToBindings(accessProviders *importer.AccessProviderImp
 	return bindingsToAdd, bindingsToDelete
 }
 
-func getApName(name string) string {
-	if len(name) <= 80 {
+func generateNamingHint(name string) string {
+	const maxLength = 128
+
+	if len(name) <= maxLength {
 		return name
 	}
 
-	shortName := ""
-
-	for i := 0; i < len(name); i++ {
-		if i < len(name)-80 {
-			continue
-		}
-		shortName += string(name[i])
-	}
-
-	return shortName
+	return name[len(name)-maxLength:]
 }
