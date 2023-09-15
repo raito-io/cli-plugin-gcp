@@ -67,6 +67,12 @@ func (a *AccessSyncer) SyncAccessProvidersFromTarget(ctx context.Context, access
 
 func (a *AccessSyncer) ConvertBindingsToAccessProviders(ctx context.Context, configMap *config.ConfigMap, bindings []iam.IamBinding) ([]*exporter.AccessProvider, error) {
 	accessProviderMap := make(map[string]*exporter.AccessProvider)
+	specialGroupAccessProviderMap := make(map[string]*exporter.AccessProvider)
+
+	projectOwnersWho, err := a.projectOwnerWhoItem(ctx, configMap)
+	if err != nil {
+		return nil, err
+	}
 
 	for _, binding := range bindings {
 		if strings.EqualFold(binding.ResourceType, iam.Organization.String()) {
@@ -97,61 +103,10 @@ func (a *AccessSyncer) ConvertBindingsToAccessProviders(ctx context.Context, con
 			continue
 		}
 
-		apName := getApName(fmt.Sprintf("%s_%s_%s", binding.ResourceType, binding.Resource, strings.Replace(binding.Role, "/", "_", -1)))
-
-		if _, f := accessProviderMap[apName]; !f {
-			accessProviderMap[apName] = &exporter.AccessProvider{
-				ExternalId:        apName,
-				Name:              apName,
-				NamingHint:        apName,
-				NotInternalizable: !managed,
-				WhoLocked:         ptr.Bool(false),
-				WhatLocked:        ptr.Bool(true),
-				WhatLockedReason:  ptr.String("This Access Provider was imported from GCP and can only cover 1 Data Object. If you want a GCP Access Provider with multiple Data Objects, you can create a new one in Raito"),
-				Action:            exporter.Grant,
-				NameLocked:        ptr.Bool(false),
-				DeleteLocked:      ptr.Bool(false),
-				ActualName:        apName,
-				Type:              ptr.String(access_provider.AclSet),
-				What: []exporter.WhatItem{
-					{
-						DataObject: &data_source.DataObjectReference{
-							FullName: binding.Resource,
-							Type:     binding.ResourceType,
-						},
-						Permissions: []string{binding.Role},
-					},
-				},
-				Who: &exporter.WhoItem{
-					Users:           make([]string, 0),
-					Groups:          make([]string, 0),
-					AccessProviders: make([]string, 0),
-				},
-			}
-		}
-
-		if strings.HasPrefix(binding.Member, "user:") || strings.HasPrefix(binding.Member, "serviceAccount:") {
-			accessProviderMap[apName].Who.Users = append(accessProviderMap[apName].Who.Users, strings.Split(binding.Member, ":")[1])
-		} else if strings.HasPrefix(binding.Member, "group:") {
-			accessProviderMap[apName].Who.Groups = append(accessProviderMap[apName].Who.Groups, strings.Split(binding.Member, ":")[1])
-		} else if strings.HasPrefix(binding.Member, "special_group:") && configMap.GetStringWithDefault(common.GcpProjectId, "") != "" && strings.Contains(binding.Member, "project") {
-			// this is a special IAM construct that creates a removable link between ownership on a service resource and ownership on org level
-			// e.g. owners on a GCP project are owners on BQ datasets. This binding is removable but can not be (re-)created by a user.
-			// we do need to check wether these bindings exist on project level or not.
-			f := false
-			for _, b := range bindings {
-				if b.ResourceType != "datasource" || b.Resource != configMap.GetString(common.GcpProjectId) || b.Role != binding.Role {
-					continue
-				}
-
-				f = true
-
-				break
-			}
-
-			if f {
-				accessProviderMap[apName].Who.AccessProviders = append(accessProviderMap[apName].Who.AccessProviders, getApName(fmt.Sprintf("datasource_%s_%s", configMap.GetString(common.GcpProjectId), strings.Replace(binding.Role, "/", "_", -1))))
-			}
+		if strings.HasPrefix(binding.Member, "special_group:") {
+			a.generateSpecialGroupOwnerAccessProvider(binding, specialGroupAccessProviderMap, projectOwnersWho)
+		} else {
+			a.generateAccessProvider(binding, accessProviderMap, managed)
 		}
 	}
 
@@ -160,7 +115,107 @@ func (a *AccessSyncer) ConvertBindingsToAccessProviders(ctx context.Context, con
 		aps = append(aps, ap)
 	}
 
+	for _, specialGroupAp := range specialGroupAccessProviderMap {
+		aps = append(aps, specialGroupAp)
+	}
+
 	return aps, nil
+}
+
+func (a *AccessSyncer) generateAccessProvider(binding iam.IamBinding, accessProviderMap map[string]*exporter.AccessProvider, managed bool) {
+	apName := getApName(fmt.Sprintf("%s_%s_%s", binding.ResourceType, binding.Resource, strings.Replace(binding.Role, "/", "_", -1)))
+
+	if _, f := accessProviderMap[apName]; !f {
+		accessProviderMap[apName] = &exporter.AccessProvider{
+			ExternalId:        apName,
+			Name:              apName,
+			NamingHint:        apName,
+			NotInternalizable: !managed,
+			WhoLocked:         ptr.Bool(false),
+			WhatLocked:        ptr.Bool(true),
+			WhatLockedReason:  ptr.String("This Access Provider was imported from GCP and can only cover 1 Data Object. If you want a GCP Access Provider with multiple Data Objects, you can create a new one in Raito"),
+			Action:            exporter.Grant,
+			NameLocked:        ptr.Bool(false),
+			DeleteLocked:      ptr.Bool(false),
+			ActualName:        apName,
+			Type:              ptr.String(access_provider.AclSet),
+			What: []exporter.WhatItem{
+				{
+					DataObject: &data_source.DataObjectReference{
+						FullName: binding.Resource,
+						Type:     binding.ResourceType,
+					},
+					Permissions: []string{binding.Role},
+				},
+			},
+			Who: &exporter.WhoItem{
+				Users:           make([]string, 0),
+				Groups:          make([]string, 0),
+				AccessProviders: make([]string, 0),
+			},
+		}
+	}
+
+	if strings.HasPrefix(binding.Member, "user:") || strings.HasPrefix(binding.Member, "serviceAccount:") {
+		accessProviderMap[apName].Who.Users = append(accessProviderMap[apName].Who.Users, strings.Split(binding.Member, ":")[1])
+	} else if strings.HasPrefix(binding.Member, "group:") {
+		accessProviderMap[apName].Who.Groups = append(accessProviderMap[apName].Who.Groups, strings.Split(binding.Member, ":")[1])
+	}
+}
+
+func (a *AccessSyncer) generateSpecialGroupOwnerAccessProvider(binding iam.IamBinding, specialGroupAccessProviderMap map[string]*exporter.AccessProvider, projectOwnersWho *exporter.WhoItem) {
+	apName := fmt.Sprintf("owner_group_%s", strings.ReplaceAll(binding.Role, "/", "_"))
+	specialGroupAccessProvider, ok := specialGroupAccessProviderMap[apName]
+
+	if !ok {
+		specialGroupAccessProvider = &exporter.AccessProvider{
+			ExternalId:        apName,
+			Name:              apName,
+			NamingHint:        apName,
+			NotInternalizable: true,
+			Action:            exporter.Grant,
+			ActualName:        apName,
+			Type:              ptr.String(access_provider.AclSet),
+			Who:               projectOwnersWho,
+		}
+	}
+
+	specialGroupAccessProvider.What = append(specialGroupAccessProvider.What, exporter.WhatItem{
+		DataObject: &data_source.DataObjectReference{
+			FullName: binding.Resource,
+			Type:     binding.ResourceType,
+		},
+		Permissions: []string{binding.Role},
+	})
+
+	specialGroupAccessProviderMap[apName] = specialGroupAccessProvider
+}
+
+func (a *AccessSyncer) projectOwnerWhoItem(ctx context.Context, configMap *config.ConfigMap) (*exporter.WhoItem, error) {
+	projectOwnersWho := &exporter.WhoItem{}
+
+	gcpProject := configMap.GetString(common.GcpProjectId)
+	if gcpProject != "" {
+		projectOwnerIds, err := a.iamServiceProvider(configMap).GetProjectOwners(ctx, configMap, gcpProject)
+
+		if err != nil {
+			return nil, err
+		}
+
+		for _, ownerId := range projectOwnerIds {
+			ownerRaitoId := strings.Split(ownerId, ":")[1]
+
+			if strings.HasPrefix(ownerId, "user:") || strings.HasPrefix(ownerId, "serviceAccount:") {
+				projectOwnersWho.Users = append(projectOwnersWho.Users, ownerRaitoId)
+			} else if strings.HasPrefix(ownerId, "group:") {
+				projectOwnersWho.Groups = append(projectOwnersWho.Groups, ownerRaitoId)
+			} else {
+				common.Logger.Warn("Unknown owner type: " + ownerId)
+			}
+		}
+	}
+
+	return projectOwnersWho, nil
 }
 
 func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessProviders *importer.AccessProviderImport, accessProviderFeedbackHandler wrappers.AccessProviderFeedbackHandler, configMap *config.ConfigMap) error {
