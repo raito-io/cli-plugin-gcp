@@ -156,6 +156,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTargetIgnoreRaitoBindings(t *testin
 		iamServiceProvider: func(config *config.ConfigMap) iam.IAMService {
 			return iamServiceMock
 		},
+		getDSMetadata: GetDataSourceMetaData,
 		raitoManagedBindings: []iam.IamBinding{
 			{
 				Member:       "group:g1@example.com",
@@ -208,6 +209,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTargetIgnoreNonApplicablePermission
 		iamServiceProvider: func(config *config.ConfigMap) iam.IAMService {
 			return iamServiceMock
 		},
+		getDSMetadata: GetDataSourceMetaData,
 	}
 
 	// When
