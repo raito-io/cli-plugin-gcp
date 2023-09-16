@@ -2,6 +2,8 @@ package gcp
 
 import (
 	"context"
+	"fmt"
+	"github.com/raito-io/golang-set/set"
 
 	"github.com/raito-io/cli-plugin-gcp/gcp/common"
 	"github.com/raito-io/cli-plugin-gcp/gcp/iam"
@@ -40,7 +42,7 @@ func (s *IdentityStoreSyncer) WithIAMServiceProvider(provider func(configMap *co
 
 func (s *IdentityStoreSyncer) SyncIdentityStore(ctx context.Context, identityHandler wrappers.IdentityStoreIdentityHandler, configMap *config.ConfigMap) error {
 	// get groups and make a membership map key: ID of user/group, value array of Group IDs it is member of
-	groupMembership := make(map[string][]string)
+	groupMembership := make(map[string]set.Set[string])
 
 	groups, err := s.iamServiceProvider(configMap).GetGroups(ctx, configMap)
 
@@ -50,21 +52,32 @@ func (s *IdentityStoreSyncer) SyncIdentityStore(ctx context.Context, identityHan
 
 	groupList := make([]*is.Group, 0)
 
+	handledGroups := set.NewSet[string]()
+
 	for _, g := range groups {
+		// Make sure to always handle the members for all the found groups.
 		for _, m := range g.Members {
 			if _, f := groupMembership[m]; !f {
-				groupMembership[m] = []string{g.ExternalId}
+				groupMembership[m] = set.NewSet[string](g.ExternalId)
 			} else {
-				groupMembership[m] = append(groupMembership[m], g.ExternalId)
+				groupMembership[m].Add(g.ExternalId)
 			}
 		}
+
+		// No need to handle the group multiple times.
+		if handledGroups.Contains(g.ExternalId) {
+			common.Logger.Info(fmt.Sprintf("skipping group with external id %s as it was already encountered before", g.ExternalId))
+			continue
+		}
+
+		handledGroups.Add(g.ExternalId)
 
 		groupList = append(groupList, &is.Group{ExternalId: g.ExternalId, Name: g.Email, DisplayName: g.Email})
 	}
 
 	for i, g := range groupList {
 		if _, f := groupMembership[g.ExternalId]; f {
-			groupList[i].ParentGroupExternalIds = groupMembership[g.ExternalId]
+			groupList[i].ParentGroupExternalIds = groupMembership[g.ExternalId].Slice()
 		}
 	}
 
@@ -83,9 +96,18 @@ func (s *IdentityStoreSyncer) SyncIdentityStore(ctx context.Context, identityHan
 		return err
 	}
 
+	handledUsers := set.NewSet[string]()
+
 	for _, u := range users {
+		if handledUsers.Contains(u.ExternalId) {
+			common.Logger.Info(fmt.Sprintf("skipping user with external id %s as it was already encountered before", u.ExternalId))
+			continue
+		}
+
+		handledUsers.Add(u.ExternalId)
+
 		if _, f := groupMembership[u.ExternalId]; f {
-			err2 := identityHandler.AddUsers(&is.User{ExternalId: u.ExternalId, UserName: u.Email, Email: u.Email, Name: u.Name, GroupExternalIds: groupMembership[u.ExternalId]})
+			err2 := identityHandler.AddUsers(&is.User{ExternalId: u.ExternalId, UserName: u.Email, Email: u.Email, Name: u.Name, GroupExternalIds: groupMembership[u.ExternalId].Slice()})
 
 			if err2 != nil {
 				return err2
