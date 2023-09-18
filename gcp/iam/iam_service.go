@@ -101,7 +101,7 @@ func (s *iamService) GetUsers(ctx context.Context, configMap *config.ConfigMap) 
 			}
 
 			for _, item := range items {
-				if !ids.Contains(item.ExternalId) || t == GSuite {
+				if !ids.Contains(item.ExternalId) {
 					ids.Add(item.ExternalId)
 					users = append(users, item)
 				}
@@ -132,7 +132,7 @@ func (s *iamService) GetGroups(ctx context.Context, configMap *config.ConfigMap)
 			}
 
 			for _, item := range items {
-				if !ids.Contains(item.ExternalId) || t == GSuite {
+				if !ids.Contains(item.ExternalId) {
 					ids.Add(item.ExternalId)
 					groups = append(groups, item)
 				}
@@ -148,6 +148,8 @@ func (s *iamService) GetServiceAccounts(ctx context.Context, configMap *config.C
 
 	typeToIdsMap, err := s.getIdsByRepoType(ctx, configMap)
 
+	ids := set.NewSet[string]()
+
 	if err != nil {
 		return serviceAccounts, err
 	}
@@ -160,7 +162,12 @@ func (s *iamService) GetServiceAccounts(ctx context.Context, configMap *config.C
 				return nil, err2
 			}
 
-			serviceAccounts = append(serviceAccounts, u...)
+			for _, item := range u {
+				if !ids.Contains(item.ExternalId) {
+					ids.Add(item.ExternalId)
+					serviceAccounts = append(serviceAccounts, item)
+				}
+			}
 		}
 	}
 

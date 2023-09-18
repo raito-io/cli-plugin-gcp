@@ -2,14 +2,14 @@ package gcp
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/raito-io/golang-set/set"
 
-	"github.com/raito-io/cli-plugin-gcp/gcp/common"
-	"github.com/raito-io/cli-plugin-gcp/gcp/iam"
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/raito-io/cli/base/wrappers"
+
+	"github.com/raito-io/cli-plugin-gcp/gcp/common"
+	"github.com/raito-io/cli-plugin-gcp/gcp/iam"
 
 	is "github.com/raito-io/cli/base/identity_store"
 )
@@ -53,8 +53,6 @@ func (s *IdentityStoreSyncer) SyncIdentityStore(ctx context.Context, identityHan
 
 	groupList := make([]*is.Group, 0)
 
-	handledGroups := set.NewSet[string]()
-
 	for _, g := range groups {
 		// Make sure to always handle the members for all the found groups.
 		for _, m := range g.Members {
@@ -64,14 +62,6 @@ func (s *IdentityStoreSyncer) SyncIdentityStore(ctx context.Context, identityHan
 				groupMembership[m].Add(g.ExternalId)
 			}
 		}
-
-		// No need to handle the group multiple times.
-		if handledGroups.Contains(g.ExternalId) {
-			common.Logger.Info(fmt.Sprintf("skipping group with external id %s as it was already encountered before", g.ExternalId))
-			continue
-		}
-
-		handledGroups.Add(g.ExternalId)
 
 		groupList = append(groupList, &is.Group{ExternalId: g.ExternalId, Name: g.Email, DisplayName: g.Email})
 	}
@@ -97,16 +87,7 @@ func (s *IdentityStoreSyncer) SyncIdentityStore(ctx context.Context, identityHan
 		return err
 	}
 
-	handledUsers := set.NewSet[string]()
-
 	for _, u := range users {
-		if handledUsers.Contains(u.ExternalId) {
-			common.Logger.Info(fmt.Sprintf("skipping user with external id %s as it was already encountered before", u.ExternalId))
-			continue
-		}
-
-		handledUsers.Add(u.ExternalId)
-
 		if _, f := groupMembership[u.ExternalId]; f {
 			err2 := identityHandler.AddUsers(&is.User{ExternalId: u.ExternalId, UserName: u.Email, Email: u.Email, Name: u.Name, GroupExternalIds: groupMembership[u.ExternalId].Slice()})
 
