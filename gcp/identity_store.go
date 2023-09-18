@@ -3,10 +3,13 @@ package gcp
 import (
 	"context"
 
-	"github.com/raito-io/cli-plugin-gcp/gcp/common"
-	"github.com/raito-io/cli-plugin-gcp/gcp/iam"
+	"github.com/raito-io/golang-set/set"
+
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/raito-io/cli/base/wrappers"
+
+	"github.com/raito-io/cli-plugin-gcp/gcp/common"
+	"github.com/raito-io/cli-plugin-gcp/gcp/iam"
 
 	is "github.com/raito-io/cli/base/identity_store"
 )
@@ -40,7 +43,7 @@ func (s *IdentityStoreSyncer) WithIAMServiceProvider(provider func(configMap *co
 
 func (s *IdentityStoreSyncer) SyncIdentityStore(ctx context.Context, identityHandler wrappers.IdentityStoreIdentityHandler, configMap *config.ConfigMap) error {
 	// get groups and make a membership map key: ID of user/group, value array of Group IDs it is member of
-	groupMembership := make(map[string][]string)
+	groupMembership := make(map[string]set.Set[string])
 
 	groups, err := s.iamServiceProvider(configMap).GetGroups(ctx, configMap)
 
@@ -51,11 +54,12 @@ func (s *IdentityStoreSyncer) SyncIdentityStore(ctx context.Context, identityHan
 	groupList := make([]*is.Group, 0)
 
 	for _, g := range groups {
+		// Make sure to always handle the members for all the found groups.
 		for _, m := range g.Members {
 			if _, f := groupMembership[m]; !f {
-				groupMembership[m] = []string{g.ExternalId}
+				groupMembership[m] = set.NewSet[string](g.ExternalId)
 			} else {
-				groupMembership[m] = append(groupMembership[m], g.ExternalId)
+				groupMembership[m].Add(g.ExternalId)
 			}
 		}
 
@@ -64,7 +68,7 @@ func (s *IdentityStoreSyncer) SyncIdentityStore(ctx context.Context, identityHan
 
 	for i, g := range groupList {
 		if _, f := groupMembership[g.ExternalId]; f {
-			groupList[i].ParentGroupExternalIds = groupMembership[g.ExternalId]
+			groupList[i].ParentGroupExternalIds = groupMembership[g.ExternalId].Slice()
 		}
 	}
 
@@ -85,7 +89,7 @@ func (s *IdentityStoreSyncer) SyncIdentityStore(ctx context.Context, identityHan
 
 	for _, u := range users {
 		if _, f := groupMembership[u.ExternalId]; f {
-			err2 := identityHandler.AddUsers(&is.User{ExternalId: u.ExternalId, UserName: u.Email, Email: u.Email, Name: u.Name, GroupExternalIds: groupMembership[u.ExternalId]})
+			err2 := identityHandler.AddUsers(&is.User{ExternalId: u.ExternalId, UserName: u.Email, Email: u.Email, Name: u.Name, GroupExternalIds: groupMembership[u.ExternalId].Slice()})
 
 			if err2 != nil {
 				return err2

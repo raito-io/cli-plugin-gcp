@@ -27,6 +27,12 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 		{
 			ExternalId: "g2",
 			Email:      "g2@example.com",
+			Members:    []string{},
+		},
+		// Test out a duplicate group (now with the members)
+		{
+			ExternalId: "g2",
+			Email:      "g2@example.com",
 			Members:    []string{"user2"},
 		},
 	}, nil).Once()
@@ -40,6 +46,12 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 			ExternalId: "user2",
 			Name:       "user2",
 			Email:      "user2@example.com",
+		},
+		// Testing out a duplicate user
+		{
+			ExternalId: "user1",
+			Name:       "user1",
+			Email:      "user1@example.com",
 		},
 	}, nil).Once()
 	iamServiceMock.EXPECT().GetServiceAccounts(mock.Anything, mock.Anything).Return([]iam.UserEntity{
