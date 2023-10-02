@@ -27,7 +27,7 @@ This Raito CLI plugin implements the integration with Google Cloud Platform. It 
  - Synchronize the users and groups in GSuite
  - Synchronize the users, groups and service accounts bound in GCP Projects and Folders
  - Synchronize the GCP organizational structure (folders, projects) to a data source in Raito Cloud along with the access controls in place.
- - Synchronize the access providers from Raito Cloud (or from a file in case of the [access-as-code flow](http://docs.raito.io/docs/guide/access)) into IAM permissions
+ - Synchronize the access controls from Raito Cloud (or from a file in case of the [access-as-code flow](http://docs.raito.io/docs/guide/access)) into IAM permissions
 
 
 ## Prerequisites

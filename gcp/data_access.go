@@ -3,6 +3,7 @@ package gcp
 import (
 	"context"
 	"fmt"
+	"github.com/raito-io/golang-set/set"
 	"strings"
 
 	"github.com/aws/smithy-go/ptr"
@@ -66,8 +67,18 @@ func (a *AccessSyncer) SyncAccessProvidersFromTarget(ctx context.Context, access
 }
 
 func (a *AccessSyncer) ConvertBindingsToAccessProviders(ctx context.Context, configMap *config.ConfigMap, bindings []iam.IamBinding) ([]*exporter.AccessProvider, error) {
+	rolesToGroupByIdentity := set.NewSet[string]()
+
+	toGroupConfig := configMap.GetString(common.GcpRolesToGroupByIdentity)
+	if toGroupConfig != "" {
+		for _, role := range strings.Split(toGroupConfig, ",") {
+			rolesToGroupByIdentity.Add(role)
+		}
+	}
+
 	accessProviderMap := make(map[string]*exporter.AccessProvider)
 	specialGroupAccessProviderMap := make(map[string]*exporter.AccessProvider)
+	groupedByIdentityAccesProviderMap := make(map[string]*exporter.AccessProvider)
 
 	projectOwnersWho, projectEditorWho, projectReaderWho, err := a.projectRolesWhoItem(ctx, configMap)
 	if err != nil {
@@ -105,6 +116,8 @@ func (a *AccessSyncer) ConvertBindingsToAccessProviders(ctx context.Context, con
 
 		if strings.HasPrefix(binding.Member, "special_group:") {
 			a.generateSpecialGroupOwnerAccessProvider(binding, specialGroupAccessProviderMap, projectOwnersWho, projectEditorWho, projectReaderWho)
+		} else if rolesToGroupByIdentity.Contains(binding.Role) {
+			a.generateGroupedByIdentityAcccessProvider(binding, groupedByIdentityAccesProviderMap)
 		} else {
 			a.generateAccessProvider(binding, accessProviderMap, managed)
 		}
@@ -117,6 +130,10 @@ func (a *AccessSyncer) ConvertBindingsToAccessProviders(ctx context.Context, con
 
 	for _, specialGroupAp := range specialGroupAccessProviderMap {
 		aps = append(aps, specialGroupAp)
+	}
+
+	for _, groupedByIdentityAp := range groupedByIdentityAccesProviderMap {
+		aps = append(aps, groupedByIdentityAp)
 	}
 
 	return aps, nil
@@ -133,7 +150,7 @@ func (a *AccessSyncer) generateAccessProvider(binding iam.IamBinding, accessProv
 			NotInternalizable: !managed,
 			WhoLocked:         ptr.Bool(false),
 			WhatLocked:        ptr.Bool(true),
-			WhatLockedReason:  ptr.String("This Access Provider was imported from GCP and can only cover 1 Data Object. If you want a GCP Access Provider with multiple Data Objects, you can create a new one in Raito"),
+			WhatLockedReason:  ptr.String("This Access Control was imported from GCP and can only cover 1 Data Object. If you want a GCP Access Control with multiple Data Objects, you can create a new one in Raito"),
 			Action:            exporter.Grant,
 			NameLocked:        ptr.Bool(false),
 			DeleteLocked:      ptr.Bool(false),
@@ -156,29 +173,70 @@ func (a *AccessSyncer) generateAccessProvider(binding iam.IamBinding, accessProv
 		}
 	}
 
-	if strings.HasPrefix(binding.Member, "user:") || strings.HasPrefix(binding.Member, "serviceAccount:") {
-		accessProviderMap[apName].Who.Users = append(accessProviderMap[apName].Who.Users, strings.Split(binding.Member, ":")[1])
-	} else if strings.HasPrefix(binding.Member, "group:") {
-		accessProviderMap[apName].Who.Groups = append(accessProviderMap[apName].Who.Groups, strings.Split(binding.Member, ":")[1])
+	a.addBindingMemberToAccessProvider(binding.Member, accessProviderMap[apName])
+}
+
+func (s *AccessSyncer) addBindingMemberToAccessProvider(bindingMember string, accessProvider *exporter.AccessProvider) {
+	if strings.HasPrefix(bindingMember, "user:") || strings.HasPrefix(bindingMember, "serviceAccount:") {
+		accessProvider.Who.Users = append(accessProvider.Who.Users, strings.Split(bindingMember, ":")[1])
+	} else if strings.HasPrefix(bindingMember, "group:") {
+		accessProvider.Who.Groups = append(accessProvider.Who.Groups, strings.Split(bindingMember, ":")[1])
 	}
 }
 
-func (a *AccessSyncer) generateSpecialGroupOwnerAccessProvider(binding iam.IamBinding, specialGroupAccessProviderMap map[string]*exporter.AccessProvider, projectOwnersWho *exporter.WhoItem, projectEditorWho *exporter.WhoItem, projectReaderWho *exporter.WhoItem) {
+func (a *AccessSyncer) generateGroupedByIdentityAcccessProvider(binding iam.IamBinding, groupedByIdentityAccesProviderMap map[string]*exporter.AccessProvider) {
+	member := binding.Member
+
+	memberName := member
+	if strings.Contains(memberName, ":") {
+		memberName = strings.Replace(memberName, ":", " ", -1)
+	}
+	apName := fmt.Sprintf("Grouped permissions for %s", memberName)
+
+	groupedByIdentityAccesProvider, ok := groupedByIdentityAccesProviderMap[apName]
+
+	if !ok {
+		groupedByIdentityAccesProvider = &exporter.AccessProvider{
+			ExternalId:        apName,
+			Name:              apName,
+			NamingHint:        generateNamingHint(apName),
+			NotInternalizable: true,
+			Action:            exporter.Grant,
+			ActualName:        apName,
+			Type:              ptr.String(access_provider.AclSet),
+			Who:               &exporter.WhoItem{},
+		}
+
+		a.addBindingMemberToAccessProvider(binding.Member, groupedByIdentityAccesProvider)
+	}
+
+	groupedByIdentityAccesProvider.What = append(groupedByIdentityAccesProvider.What, exporter.WhatItem{
+		DataObject: &data_source.DataObjectReference{
+			FullName: binding.Resource,
+			Type:     binding.ResourceType,
+		},
+		Permissions: []string{binding.Role},
+	})
+
+	groupedByIdentityAccesProviderMap[apName] = groupedByIdentityAccesProvider
+}
+
+func (a *AccessSyncer) generateSpecialGroupOwnerAccessProvider(binding iam.IamBinding, specialGroupAccessProviderMap map[string]*exporter.AccessProvider, projectOwnersWho *exporter.WhoItem, projectEditorsWho *exporter.WhoItem, projectReadersWho *exporter.WhoItem) {
 	mapping := map[string]struct {
 		whoItem  *exporter.WhoItem
 		roleName string
 	}{
-		"roles/viewer": {
-			whoItem:  projectReaderWho,
-			roleName: "roles/bigquery.dataViewer",
+		"roles/bigquery.dataViewer": {
+			whoItem:  projectReadersWho,
+			roleName: "Viewer",
 		},
-		"roles/editor": {
-			whoItem:  projectEditorWho,
-			roleName: "roles/bigquery.dataEditor",
+		"roles/bigquery.dataEditor": {
+			whoItem:  projectEditorsWho,
+			roleName: "Editor",
 		},
-		"roles/owner": {
+		"roles/bigquery.dataOwner": {
 			whoItem:  projectOwnersWho,
-			roleName: "roles/bigquery.dataOwner",
+			roleName: "Owner",
 		},
 	}
 
@@ -188,7 +246,7 @@ func (a *AccessSyncer) generateSpecialGroupOwnerAccessProvider(binding iam.IamBi
 		return
 	}
 
-	apName := fmt.Sprintf("project_%s", strings.ReplaceAll(r.roleName, "/", "_"))
+	apName := fmt.Sprintf("Project %s Mapping", r.roleName)
 	specialGroupAccessProvider, ok := specialGroupAccessProviderMap[apName]
 
 	if !ok {
@@ -209,7 +267,7 @@ func (a *AccessSyncer) generateSpecialGroupOwnerAccessProvider(binding iam.IamBi
 			FullName: binding.Resource,
 			Type:     binding.ResourceType,
 		},
-		Permissions: []string{r.roleName},
+		Permissions: []string{binding.Role},
 	})
 
 	specialGroupAccessProviderMap[apName] = specialGroupAccessProvider

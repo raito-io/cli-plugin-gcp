@@ -8,4 +8,5 @@ const (
 	GsuiteImpersonateSubject       = "gsuite-impersonate-subject"
 	GsuiteCustomerId               = "gsuite-customer-id"
 	ExcludeNonAplicablePermissions = "skip-non-applicable-permissions"
+	GcpRolesToGroupByIdentity      = "gcp-roles-to-group-by-identity"
 )
