@@ -3,8 +3,9 @@ package gcp
 import (
 	"context"
 	"fmt"
-	"github.com/raito-io/golang-set/set"
 	"strings"
+
+	"github.com/raito-io/golang-set/set"
 
 	"github.com/aws/smithy-go/ptr"
 	"github.com/raito-io/cli/base/access_provider"
@@ -176,7 +177,7 @@ func (a *AccessSyncer) generateAccessProvider(binding iam.IamBinding, accessProv
 	a.addBindingMemberToAccessProvider(binding.Member, accessProviderMap[apName])
 }
 
-func (s *AccessSyncer) addBindingMemberToAccessProvider(bindingMember string, accessProvider *exporter.AccessProvider) {
+func (a *AccessSyncer) addBindingMemberToAccessProvider(bindingMember string, accessProvider *exporter.AccessProvider) {
 	if strings.HasPrefix(bindingMember, "user:") || strings.HasPrefix(bindingMember, "serviceAccount:") {
 		accessProvider.Who.Users = append(accessProvider.Who.Users, strings.Split(bindingMember, ":")[1])
 	} else if strings.HasPrefix(bindingMember, "group:") {
@@ -187,10 +188,7 @@ func (s *AccessSyncer) addBindingMemberToAccessProvider(bindingMember string, ac
 func (a *AccessSyncer) generateGroupedByIdentityAcccessProvider(binding iam.IamBinding, groupedByIdentityAccesProviderMap map[string]*exporter.AccessProvider) {
 	member := binding.Member
 
-	memberName := member
-	if strings.Contains(memberName, ":") {
-		memberName = strings.Replace(memberName, ":", " ", -1)
-	}
+	memberName := strings.Replace(member, ":", " ", -1)
 	apName := fmt.Sprintf("Grouped permissions for %s", memberName)
 
 	groupedByIdentityAccesProvider, ok := groupedByIdentityAccesProviderMap[apName]
