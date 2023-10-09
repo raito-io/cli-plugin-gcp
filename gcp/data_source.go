@@ -106,11 +106,11 @@ func handleGcpOrgEntities(entities []org.GcpOrgEntity, configMap *config.ConfigM
 	return dos
 }
 
-func (s *DataSourceSyncer) GetDataSourceMetaData(ctx context.Context) (*ds.MetaData, error) {
-	return GetDataSourceMetaData(ctx)
+func (s *DataSourceSyncer) GetDataSourceMetaData(ctx context.Context, configParams *config.ConfigMap) (*ds.MetaData, error) {
+	return GetDataSourceMetaData(ctx, configParams)
 }
 
-func GetDataSourceMetaData(ctx context.Context) (*ds.MetaData, error) {
+func GetDataSourceMetaData(_ context.Context, _ *config.ConfigMap) (*ds.MetaData, error) {
 	common.Logger.Debug("Returning meta data for the GCP data source")
 
 	managed_permissions := []*ds.DataObjectTypePermission{

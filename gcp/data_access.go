@@ -3,8 +3,9 @@ package gcp
 import (
 	"context"
 	"fmt"
-	"github.com/raito-io/golang-set/set"
 	"strings"
+
+	"github.com/raito-io/golang-set/set"
 
 	"github.com/aws/smithy-go/ptr"
 	"github.com/raito-io/cli/base/access_provider"
@@ -22,7 +23,7 @@ import (
 type AccessSyncer struct {
 	iamServiceProvider   func(configMap *config.ConfigMap) iam.IAMService
 	raitoManagedBindings []iam.IamBinding
-	getDSMetadata        func(ctx context.Context) (*data_source.MetaData, error)
+	getDSMetadata        func(ctx context.Context, configMap *config.ConfigMap) (*data_source.MetaData, error)
 }
 
 func NewDataAccessSyncer() *AccessSyncer {
@@ -32,7 +33,7 @@ func NewDataAccessSyncer() *AccessSyncer {
 	}
 }
 
-func (a *AccessSyncer) WithDataSourceMetadataFetcher(getDSMetadata func(ctx context.Context) (*data_source.MetaData, error)) *AccessSyncer {
+func (a *AccessSyncer) WithDataSourceMetadataFetcher(getDSMetadata func(ctx context.Context, configMap *config.ConfigMap) (*data_source.MetaData, error)) *AccessSyncer {
 	a.getDSMetadata = getDSMetadata
 	return a
 }
@@ -90,7 +91,7 @@ func (a *AccessSyncer) ConvertBindingsToAccessProviders(ctx context.Context, con
 			binding.Resource = GetOrgDataObjectName(configMap)
 		}
 
-		managed, err2 := a.isRaitoManagedBinding(ctx, binding)
+		managed, err2 := a.isRaitoManagedBinding(ctx, configMap, binding)
 
 		if err2 != nil {
 			return nil, err2
@@ -356,8 +357,8 @@ func (a *AccessSyncer) SyncAccessAsCodeToTarget(ctx context.Context, accessProvi
 	return fmt.Errorf("access as code is not yet supported by this plugin")
 }
 
-func (a *AccessSyncer) isRaitoManagedBinding(ctx context.Context, binding iam.IamBinding) (bool, error) {
-	meta, err := a.getDSMetadata(ctx)
+func (a *AccessSyncer) isRaitoManagedBinding(ctx context.Context, configMap *config.ConfigMap, binding iam.IamBinding) (bool, error) {
+	meta, err := a.getDSMetadata(ctx, configMap)
 
 	if err != nil {
 		return false, err

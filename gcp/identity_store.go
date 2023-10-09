@@ -22,7 +22,7 @@ func NewIdentityStoreSyncer() *IdentityStoreSyncer {
 	return &IdentityStoreSyncer{iamServiceProvider: newIamServiceProvider}
 }
 
-func (s *IdentityStoreSyncer) GetIdentityStoreMetaData(ctx context.Context) (*is.MetaData, error) {
+func (s *IdentityStoreSyncer) GetIdentityStoreMetaData(_ context.Context, _ *config.ConfigMap) (*is.MetaData, error) {
 	common.Logger.Debug("Returning meta data for GCP organization identity store")
 
 	return &is.MetaData{
