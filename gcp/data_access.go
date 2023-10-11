@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/go-multierror"
+
 	"github.com/raito-io/golang-set/set"
 
 	"github.com/aws/smithy-go/ptr"
@@ -339,11 +341,16 @@ func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessPro
 		a.raitoManagedBindings = append(a.raitoManagedBindings, b)
 	}
 
+	var merr error
+
 	for _, apsf := range apFeedback {
-		accessProviderFeedbackHandler.AddAccessProviderFeedback(*apsf)
+		err := accessProviderFeedbackHandler.AddAccessProviderFeedback(*apsf)
+		if err != nil {
+			merr = multierror.Append(merr, err)
+		}
 	}
 
-	return nil
+	return merr
 }
 
 func (a *AccessSyncer) handleErrors(err error, apFeedback map[string]*importer.AccessProviderSyncFeedback, aps []*importer.AccessProvider) {
