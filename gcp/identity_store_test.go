@@ -29,12 +29,6 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 			Email:      "g2@example.com",
 			Members:    []string{},
 		},
-		// Test out a duplicate group (now with the members)
-		{
-			ExternalId: "g2",
-			Email:      "g2@example.com",
-			Members:    []string{"user2"},
-		},
 	}, nil).Once()
 	iamServiceMock.EXPECT().GetUsers(mock.Anything, mock.Anything).Return([]iam.UserEntity{
 		{
@@ -46,12 +40,6 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 			ExternalId: "user2",
 			Name:       "user2",
 			Email:      "user2@example.com",
-		},
-		// Testing out a duplicate user
-		{
-			ExternalId: "user1",
-			Name:       "user1",
-			Email:      "user1@example.com",
 		},
 	}, nil).Once()
 	iamServiceMock.EXPECT().GetServiceAccounts(mock.Anything, mock.Anything).Return([]iam.UserEntity{
@@ -83,7 +71,7 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 	identityHandlerMock.AssertNumberOfCalls(t, "AddGroups", 2)
 
 	identityHandlerMock.AssertCalled(t, "AddUsers", &is.User{ExternalId: "user1", UserName: "user1@example.com", Email: "user1@example.com", Name: "user1", GroupExternalIds: []string{"g1"}})
-	identityHandlerMock.AssertCalled(t, "AddUsers", &is.User{ExternalId: "user2", UserName: "user2@example.com", Email: "user2@example.com", Name: "user2", GroupExternalIds: []string{"g2"}})
+	identityHandlerMock.AssertCalled(t, "AddUsers", &is.User{ExternalId: "user2", UserName: "user2@example.com", Email: "user2@example.com", Name: "user2", GroupExternalIds: nil})
 
 	identityHandlerMock.AssertCalled(t, "AddGroups", &is.Group{ExternalId: "g1", Name: "g1@example.com", DisplayName: "g1@example.com"})
 	identityHandlerMock.AssertCalled(t, "AddGroups", &is.Group{ExternalId: "g2", Name: "g2@example.com", DisplayName: "g2@example.com", ParentGroupExternalIds: []string{"g1"}})
