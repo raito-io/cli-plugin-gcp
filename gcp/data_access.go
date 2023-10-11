@@ -311,7 +311,11 @@ func (a *AccessSyncer) generateProjectWhoItem(projectOwnerIds []string) *exporte
 }
 
 func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessProviders *importer.AccessProviderImport, accessProviderFeedbackHandler wrappers.AccessProviderFeedbackHandler, configMap *config.ConfigMap) error {
+	common.Logger.Info(fmt.Sprintf("Start converting %d access providers to bindings", len(accessProviders.AccessProviders)))
+
 	bindingsToAdd, bindingsToDelete := ConvertAccessProviderToBindings(accessProviders)
+
+	common.Logger.Info(fmt.Sprintf("Done converting access providers to bindings: %d bindings to add, %d bindings to remove", len(bindingsToAdd), len(bindingsToDelete)))
 
 	for _, ap := range accessProviders.AccessProviders {
 		// record feedback
@@ -442,7 +446,7 @@ func ConvertAccessProviderToBindings(accessProviders *importer.AccessProviderImp
 			}
 		}
 
-		// process the Deled WhatItems
+		// process the Deleted WhatItems
 		if ap.DeleteWhat != nil {
 			for _, w := range ap.DeleteWhat {
 				for _, p := range w.Permissions {

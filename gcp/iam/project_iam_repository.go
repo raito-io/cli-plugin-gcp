@@ -152,6 +152,8 @@ func (r *projectIamRepository) GetIamPolicy(ctx context.Context, configMap *conf
 
 //nolint:dupl
 func (r *projectIamRepository) AddBinding(ctx context.Context, configMap *config.ConfigMap, id, member, role string) error {
+	common.Logger.Debug(fmt.Sprintf("Adding IAM binding for the GCP project %s", id))
+
 	policy, err := r.GetIamPolicy(ctx, configMap, id)
 
 	if err != nil {
