@@ -328,25 +328,13 @@ func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessPro
 	for b, aps := range bindingsToDelete {
 		common.Logger.Info(fmt.Sprintf("Revoking binding %+v", b))
 
-		err := iamService.RemoveIamBinding(ctx, configMap, b)
-
-		if err != nil {
-			for _, ap := range aps {
-				apFeedback[ap.Id].Errors = append(apFeedback[ap.Id].Errors, err.Error())
-			}
-		}
+		a.handleErrors(iamService.RemoveIamBinding(ctx, configMap, b), apFeedback, aps)
 	}
 
 	for b, aps := range bindingsToAdd {
 		common.Logger.Info(fmt.Sprintf("Granting binding %+v", b))
 
-		err := iamService.AddIamBinding(ctx, configMap, b)
-
-		if err != nil {
-			for _, ap := range aps {
-				apFeedback[ap.Id].Errors = append(apFeedback[ap.Id].Errors, err.Error())
-			}
-		}
+		a.handleErrors(iamService.AddIamBinding(ctx, configMap, b), apFeedback, aps)
 
 		a.raitoManagedBindings = append(a.raitoManagedBindings, b)
 	}
@@ -356,6 +344,14 @@ func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessPro
 	}
 
 	return nil
+}
+
+func (a *AccessSyncer) handleErrors(err error, apFeedback map[string]*importer.AccessProviderSyncFeedback, aps []*importer.AccessProvider) {
+	if err != nil {
+		for _, ap := range aps {
+			apFeedback[ap.Id].Errors = append(apFeedback[ap.Id].Errors, err.Error())
+		}
+	}
 }
 
 func (a *AccessSyncer) SyncAccessAsCodeToTarget(ctx context.Context, accessProviders *importer.AccessProviderImport, prefix string, configMap *config.ConfigMap) error {
