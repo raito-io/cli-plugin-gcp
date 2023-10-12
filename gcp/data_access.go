@@ -355,6 +355,8 @@ func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessPro
 
 func (a *AccessSyncer) handleErrors(err error, apFeedback map[string]*importer.AccessProviderSyncFeedback, aps []*importer.AccessProvider) {
 	if err != nil {
+		common.Logger.Error("error while updating bindings: %s", err.Error())
+
 		for _, ap := range aps {
 			apFeedback[ap.Id].Errors = append(apFeedback[ap.Id].Errors, err.Error())
 		}
