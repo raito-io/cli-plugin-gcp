@@ -157,6 +157,8 @@ func (r *folderIamRepository) GetIamPolicy(ctx context.Context, configMap *confi
 
 //nolint:dupl
 func (r *folderIamRepository) AddBinding(ctx context.Context, configMap *config.ConfigMap, id, member, role string) error {
+	common.Logger.Debug(fmt.Sprintf("Adding IAM binding for the GCP folder %s", id))
+
 	policy, err := r.GetIamPolicy(ctx, configMap, id)
 
 	if err != nil {

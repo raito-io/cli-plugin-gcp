@@ -238,7 +238,7 @@ func TestAccessSyncer_SyncAccessProvidersToTarget(t *testing.T) {
 		Parameters: map[string]string{"key": "value"},
 	}
 
-	fileCreator := mocks.NewSimpleAccessProviderFeedbackHandler(t, 1)
+	fileCreator := mocks.NewSimpleAccessProviderFeedbackHandler(t)
 	iamServiceMock := iam.NewMockIAMService(t)
 
 	iamServiceMock.EXPECT().AddIamBinding(mock.Anything, mock.Anything, iam.IamBinding{

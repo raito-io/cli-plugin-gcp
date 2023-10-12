@@ -19,7 +19,7 @@ func TestDataSourceSyncer_GetMetaData(t *testing.T) {
 	}}
 
 	//When
-	result, err := syncer.GetDataSourceMetaData(context.Background())
+	result, err := syncer.GetDataSourceMetaData(context.Background(), nil)
 
 	//Then
 	assert.NoError(t, err)

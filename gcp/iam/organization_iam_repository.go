@@ -131,21 +131,20 @@ func (r *organizationIamRepository) GetIamPolicy(ctx context.Context, configMap 
 	}
 
 	common.Logger.Info(fmt.Sprintf("Fetching the IAM policy for the GCP organization %s", id))
-
 	crmService, err := common.CrmService(ctx, configMap)
 
 	if err != nil {
-		return IAMPolicyContainer{}, err
+		return IAMPolicyContainer{}, fmt.Errorf("error fetching organization service: %s", err.Error())
 	}
 
 	policy, err := crmService.Organizations.GetIamPolicy(id, new(cloudresourcemanager.GetIamPolicyRequest)).Do()
 
 	if err != nil {
 		if strings.Contains(err.Error(), "403") {
-			common.Logger.Warn(fmt.Sprintf("Failed to fetch the IAM policyfor organization %s: %s", id, err.Error()))
+			common.Logger.Warn(fmt.Sprintf("Failed to fetch the IAM policy for organization %s: %s", id, err.Error()))
 			return IAMPolicyContainer{V1: &cloudresourcemanager.Policy{}}, nil
 		} else {
-			return IAMPolicyContainer{}, err
+			return IAMPolicyContainer{}, fmt.Errorf("error getting IAM Policy from organization: %s", err.Error())
 		}
 	} else {
 		organizationIamPolicyCache[id] = policy
@@ -156,6 +155,8 @@ func (r *organizationIamRepository) GetIamPolicy(ctx context.Context, configMap 
 
 //nolint:dupl
 func (r *organizationIamRepository) AddBinding(ctx context.Context, configMap *config.ConfigMap, id, member, role string) error {
+	common.Logger.Debug(fmt.Sprintf("Adding IAM binding for the GCP organization %s", id))
+
 	policy, err := r.GetIamPolicy(ctx, configMap, id)
 
 	if err != nil {
