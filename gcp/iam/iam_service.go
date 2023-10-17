@@ -113,14 +113,12 @@ func (s *iamService) GetUsers(ctx context.Context, configMap *config.ConfigMap) 
 }
 
 func (s *iamService) GetGroups(ctx context.Context, configMap *config.ConfigMap) ([]GroupEntity, error) {
-	groups := make([]GroupEntity, 0)
-
-	ids := set.NewSet[string]()
+	groupMap := make(map[string]GroupEntity, 0)
 
 	typeToIdsMap, err := s.getIdsByRepoType(ctx, configMap)
 
 	if err != nil {
-		return groups, err
+		return []GroupEntity{}, err
 	}
 
 	for t, repo := range s.repos {
@@ -132,12 +130,20 @@ func (s *iamService) GetGroups(ctx context.Context, configMap *config.ConfigMap)
 			}
 
 			for _, item := range items {
-				if !ids.Contains(item.ExternalId) {
-					ids.Add(item.ExternalId)
-					groups = append(groups, item)
+				_, f := groupMap[item.ExternalId]
+
+				// Add the group entity to the map if it's not in there yet OR if this version has members filled in (should be only one of them per external id)
+				if !f || len(item.Members) > 0 {
+					groupMap[item.ExternalId] = item
 				}
 			}
 		}
+	}
+
+	groups := make([]GroupEntity, 0, len(groupMap))
+
+	for _, v := range groupMap {
+		groups = append(groups, v)
 	}
 
 	return groups, nil
