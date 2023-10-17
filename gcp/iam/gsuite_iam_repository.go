@@ -111,15 +111,20 @@ func (r *gsuiteIamRepository) GetGroups(ctx context.Context, configMap *config.C
 		groups, err2 := groupsCall.Do()
 
 		if err2 != nil {
+			common.Logger.Error(fmt.Sprintf("Error while listing groups: %s", err2.Error()))
 			return nil, err2
 		}
 
 		for _, g := range groups.Groups {
+			common.Logger.Debug(fmt.Sprintf("Found group %q in gsuite", g.Email))
+
 			members, err3 := r.groupMembers(ctx, configMap, g.Id)
 
 			if err3 != nil {
 				return nil, err3
 			}
+
+			common.Logger.Debug(fmt.Sprintf("Found the following members for group %q: %v", g.Email, members))
 
 			res = append(res, GroupEntity{ExternalId: fmt.Sprintf("group:%s", g.Email), Email: g.Email, Members: members})
 		}
@@ -155,6 +160,7 @@ func (r *gsuiteIamRepository) groupMembers(ctx context.Context, configMap *confi
 		members, err2 := membersCall.Do()
 
 		if err2 != nil {
+			common.Logger.Error(fmt.Sprintf("error while fetching members for group %s: %s", groupId, err2.Error()))
 			return nil, err2
 		}
 
@@ -163,6 +169,8 @@ func (r *gsuiteIamRepository) groupMembers(ctx context.Context, configMap *confi
 				res = append(res, fmt.Sprintf("user:%s", m.Email))
 			} else if strings.EqualFold(m.Type, "group") {
 				res = append(res, fmt.Sprintf("group:%s", m.Email))
+			} else {
+				common.Logger.Warn(fmt.Sprintf("Found unknown member type %s for group %s (id: %s; email: %s)", m.Type, groupId, m.Id, m.Email))
 			}
 		}
 
