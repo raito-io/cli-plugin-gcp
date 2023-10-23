@@ -315,7 +315,9 @@ func (a *AccessSyncer) generateProjectWhoItem(projectOwnerIds []string) *exporte
 func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessProviders *importer.AccessProviderImport, accessProviderFeedbackHandler wrappers.AccessProviderFeedbackHandler, configMap *config.ConfigMap) error {
 	common.Logger.Info(fmt.Sprintf("Start converting %d access providers to bindings", len(accessProviders.AccessProviders)))
 
-	bindingsToAdd, bindingsToDelete := ConvertAccessProviderToBindings(accessProviders)
+	iamService := a.iamServiceProvider(configMap)
+
+	bindingsToAdd, bindingsToDelete := ConvertAccessProviderToBindings(accessProviders, iamService.AccessProviderBindingHooks()...)
 
 	common.Logger.Info(fmt.Sprintf("Done converting access providers to bindings: %d bindings to add, %d bindings to remove", len(bindingsToAdd), len(bindingsToDelete)))
 
@@ -324,8 +326,6 @@ func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessPro
 	for _, ap := range accessProviders.AccessProviders {
 		apFeedback[ap.Id] = &importer.AccessProviderSyncFeedback{AccessProvider: ap.Id, ActualName: ap.Id, Type: ptr.String(access_provider.AclSet)}
 	}
-
-	iamService := a.iamServiceProvider(configMap)
 
 	for b, aps := range bindingsToDelete {
 		common.Logger.Info(fmt.Sprintf("Revoking binding %+v", b))
@@ -387,7 +387,7 @@ func (a *AccessSyncer) isRaitoManagedBinding(ctx context.Context, configMap *con
 	return false, nil
 }
 
-func ConvertAccessProviderToBindings(accessProviders *importer.AccessProviderImport) (map[iam.IamBinding][]*importer.AccessProvider, map[iam.IamBinding][]*importer.AccessProvider) {
+func ConvertAccessProviderToBindings(accessProviders *importer.AccessProviderImport, hooks ...iam.AccessProviderBindingHook) (map[iam.IamBinding][]*importer.AccessProvider, map[iam.IamBinding][]*importer.AccessProvider) {
 	bindingsToAdd := make(map[iam.IamBinding][]*importer.AccessProvider)
 	bindingsToDelete := make(map[iam.IamBinding][]*importer.AccessProvider)
 
@@ -452,6 +452,17 @@ func ConvertAccessProviderToBindings(accessProviders *importer.AccessProviderImp
 					}
 
 					bindingsToDelete[binding] = append(bindingsToDelete[binding], ap)
+				}
+			}
+
+			for _, hook := range hooks {
+				bindingsToAddFromHook, bindingsToRemoveFromHook := hook(ap, members, deleteMembers, w)
+				for _, b := range bindingsToAddFromHook {
+					bindingsToAdd[b] = append(bindingsToAdd[b], ap)
+				}
+
+				for _, b := range bindingsToRemoveFromHook {
+					bindingsToDelete[b] = append(bindingsToDelete[b], ap)
 				}
 			}
 		}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/raito-io/cli/base/access_provider/sync_to_target"
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/raito-io/golang-set/set"
 
@@ -16,9 +17,16 @@ const ownerRole = "roles/owner"
 const editorRole = "roles/editor"
 const viewerRole = "roles/viewer"
 
+// AccessProviderBindingHook can be used to add or remove additional bindings when converting an access provider to bindings
+type AccessProviderBindingHook func(accessProvider *sync_to_target.AccessProvider, members, deletedMembers []string, what sync_to_target.WhatItem) ([]IamBinding, []IamBinding)
+
 //go:generate go run github.com/vektra/mockery/v2 --name=IAMService --with-expecter --inpackage
 type IAMService interface {
 	WithServiceIamRepo(resourceTypes []string, localRepo IAMRepository, ids func(ctx context.Context, configMap *config.ConfigMap) ([]string, error)) IAMService
+
+	// WithBindingHook adds AccessProviderBindingHook to IAMServer and will call the hooks during converting of Access Provider to bindings
+	WithBindingHook(hooks ...AccessProviderBindingHook) IAMService
+
 	GetUsers(ctx context.Context, configMap *config.ConfigMap) ([]UserEntity, error)
 	GetGroups(ctx context.Context, configMap *config.ConfigMap) ([]GroupEntity, error)
 	GetServiceAccounts(ctx context.Context, configMap *config.ConfigMap) ([]UserEntity, error)
@@ -26,6 +34,7 @@ type IAMService interface {
 	AddIamBinding(ctx context.Context, configMap *config.ConfigMap, binding IamBinding) error
 	RemoveIamBinding(ctx context.Context, configMap *config.ConfigMap, binding IamBinding) error
 	GetProjectOwners(ctx context.Context, configMap *config.ConfigMap, projectId string) (owner []string, editor []string, viewer []string, err error)
+	AccessProviderBindingHooks() []AccessProviderBindingHook
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name=IAMRepository --with-expecter --inpackage
@@ -48,6 +57,7 @@ type iamService struct {
 	gcpRepo          dataSourceRepository
 	serviceRepoIds   func(ctx context.Context, configMap *config.ConfigMap) ([]string, error)
 	serviceRepoTypes set.Set[string]
+	hooks            []AccessProviderBindingHook
 }
 
 func NewIAMService(configMap *config.ConfigMap) *iamService {
@@ -360,4 +370,13 @@ func (s *iamService) getIdsByRepoType(ctx context.Context, configMap *config.Con
 	}
 
 	return out, nil
+}
+
+func (s *iamService) AccessProviderBindingHooks() []AccessProviderBindingHook {
+	return s.hooks
+}
+
+func (s *iamService) WithBindingHook(hooks ...AccessProviderBindingHook) IAMService {
+	s.hooks = append(s.hooks, hooks...)
+	return s
 }

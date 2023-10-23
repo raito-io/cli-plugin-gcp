@@ -248,6 +248,8 @@ func TestAccessSyncer_SyncAccessProvidersToTarget(t *testing.T) {
 		ResourceType: "project",
 	}).Return(nil).Once()
 
+	iamServiceMock.EXPECT().AccessProviderBindingHooks().Return(nil)
+
 	iamServiceMock.EXPECT().AddIamBinding(mock.Anything, mock.Anything, iam.IamBinding{
 		Member:       "group:group1@example.com",
 		Role:         "role/owner",
