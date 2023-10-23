@@ -17,12 +17,16 @@ const ownerRole = "roles/owner"
 const editorRole = "roles/editor"
 const viewerRole = "roles/viewer"
 
+// AccessProviderBindingHook can be used to add or remove additional bindings when converting an access provider to bindings
 type AccessProviderBindingHook func(accessProvider *sync_to_target.AccessProvider, members, deletedMembers []string, what sync_to_target.WhatItem) ([]IamBinding, []IamBinding)
 
 //go:generate go run github.com/vektra/mockery/v2 --name=IAMService --with-expecter --inpackage
 type IAMService interface {
 	WithServiceIamRepo(resourceTypes []string, localRepo IAMRepository, ids func(ctx context.Context, configMap *config.ConfigMap) ([]string, error)) IAMService
+
+	// WithBindingHook adds AccessProviderBindingHook to IAMServer and will call the hooks during converting of Access Provider to bindings
 	WithBindingHook(hooks ...AccessProviderBindingHook) IAMService
+	
 	GetUsers(ctx context.Context, configMap *config.ConfigMap) ([]UserEntity, error)
 	GetGroups(ctx context.Context, configMap *config.ConfigMap) ([]GroupEntity, error)
 	GetServiceAccounts(ctx context.Context, configMap *config.ConfigMap) ([]UserEntity, error)
