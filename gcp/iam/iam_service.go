@@ -26,7 +26,7 @@ type IAMService interface {
 
 	// WithBindingHook adds AccessProviderBindingHook to IAMServer and will call the hooks during converting of Access Provider to bindings
 	WithBindingHook(hooks ...AccessProviderBindingHook) IAMService
-	
+
 	GetUsers(ctx context.Context, configMap *config.ConfigMap) ([]UserEntity, error)
 	GetGroups(ctx context.Context, configMap *config.ConfigMap) ([]GroupEntity, error)
 	GetServiceAccounts(ctx context.Context, configMap *config.ConfigMap) ([]UserEntity, error)
