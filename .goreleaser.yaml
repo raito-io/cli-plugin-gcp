@@ -5,7 +5,6 @@ before:
     - go mod tidy
 builds:
   - id: "gcp"
-    binary: "gcp"
     tags:
       - "gcp"
     env:
@@ -16,7 +15,6 @@ builds:
     ldflags:
       - -X main.version={{.Version}}
   - id: "bigquery"
-    binary: "bigquery"
     tags:
       - "bigquery"
     env:
