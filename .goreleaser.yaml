@@ -5,6 +5,7 @@ before:
     - go mod tidy
 builds:
   - id: "gcp"
+    binary: "gcp"
     env:
       - CGO_ENABLED=0
     goos:
@@ -14,6 +15,7 @@ builds:
       - -X main.version={{.Version}}
     main: './main_gcp.go'
   - id: "bigquery"
+    binary: "bigquery"
     env:
       - CGO_ENABLED=0
     goos:
