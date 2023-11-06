@@ -38,12 +38,14 @@ changelog:
       - '^docs:'
       - '^test:'
 archives:
-  - builds:
+  - id: "default"
+    builds:
       - "gcp"
       - "bigquery"
     format: 'tar.gz'
     name_template: '{{ .ProjectName }}-{{ .Binary }}-{{ .Version }}-{{ .Os }}_{{ .Arch }}'
-  - builds:
+  - id: "backwards-compatible-gcp"
+    builds:
     - "gcp"
     format: 'tar.gz'
     name_template: '{{ .ProjectName }}-{{ .Version }}-{{ .Os }}_{{ .Arch }}'
