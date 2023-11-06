@@ -15,7 +15,6 @@ builds:
       - darwin
     ldflags:
       - -X main.version={{.Version}}
-    main: './main_gcp.go'
   - id: "bigquery"
     binary: "bigquery"
     tags:
@@ -27,7 +26,6 @@ builds:
       - darwin
     ldflags:
       - -X main.version={{.Version}}
-    main: './main_bigquery.go'
 
 checksum:
   name_template: 'checksums.txt'
