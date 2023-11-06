@@ -6,6 +6,8 @@ before:
 builds:
   - id: "gcp"
     binary: "gcp"
+    tags:
+      - "gcp"
     env:
       - CGO_ENABLED=0
     goos:
@@ -16,6 +18,8 @@ builds:
     main: './main_gcp.go'
   - id: "bigquery"
     binary: "bigquery"
+    tags:
+      - "bigquery"
     env:
       - CGO_ENABLED=0
     goos:
