@@ -36,9 +36,13 @@ changelog:
       - '^docs:'
       - '^test:'
 archives:
-  - id: "default"
+  - id: "gcp"
     builds:
       - "gcp"
+    format: 'tar.gz'
+    name_template: '{{ .ProjectName }}-{{ .Binary }}-{{ .Version }}-{{ .Os }}_{{ .Arch }}'
+  - id: "bigquery"
+    builds:
       - "bigquery"
     format: 'tar.gz'
     name_template: '{{ .ProjectName }}-{{ .Binary }}-{{ .Version }}-{{ .Os }}_{{ .Arch }}'
