@@ -38,12 +38,12 @@ archives:
     builds:
       - "gcp"
     format: 'tar.gz'
-    name_template: '{{ .ProjectName }}-{{ .Binary }}-{{ .Version }}-{{ .Os }}_{{ .Arch }}'
+    name_template: '{{ .ProjectName }}-gcp-{{ .Version }}-{{ .Os }}_{{ .Arch }}'
   - id: "bigquery"
     builds:
       - "bigquery"
     format: 'tar.gz'
-    name_template: '{{ .ProjectName }}-{{ .Binary }}-{{ .Version }}-{{ .Os }}_{{ .Arch }}'
+    name_template: '{{ .ProjectName }}-bigquery-{{ .Version }}-{{ .Os }}_{{ .Arch }}'
   - id: "backwards-compatible-gcp"
     builds:
     - "gcp"
