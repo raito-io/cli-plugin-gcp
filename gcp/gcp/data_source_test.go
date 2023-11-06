@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/raito-io/cli-plugin-gcp/gcp/org"
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/raito-io/cli/base/wrappers/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/raito-io/cli-plugin-gcp/gcp/org"
 )
 
 func TestDataSourceSyncer_GetMetaData(t *testing.T) {

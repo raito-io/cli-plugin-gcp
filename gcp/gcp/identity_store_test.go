@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/raito-io/cli-plugin-gcp/gcp/iam"
 	is "github.com/raito-io/cli/base/identity_store"
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/raito-io/cli/base/wrappers/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/raito-io/cli-plugin-gcp/gcp/iam"
 )
 
 func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
