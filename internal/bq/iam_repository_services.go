@@ -5,7 +5,7 @@ import (
 
 	"github.com/raito-io/cli/base/util/config"
 
-	"github.com/raito-io/cli-plugin-gcp/gcp/iam"
+	"github.com/raito-io/cli-plugin-gcp/internal/iam"
 )
 
 var _ iam.IAMRepository = (*IamRepositories)(nil)

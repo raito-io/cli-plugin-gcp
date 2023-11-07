@@ -13,7 +13,7 @@ import (
 	admin "google.golang.org/api/admin/directory/v1"
 	"google.golang.org/api/option"
 
-	"github.com/raito-io/cli-plugin-gcp/gcp/common"
+	"github.com/raito-io/cli-plugin-gcp/internal/common"
 )
 
 var logger hclog.Logger

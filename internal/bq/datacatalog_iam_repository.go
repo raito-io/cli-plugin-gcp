@@ -14,7 +14,6 @@ import (
 	"cloud.google.com/go/datacatalog/apiv1/datacatalogpb"
 	"cloud.google.com/go/iam/apiv1/iampb"
 	gonanoid "github.com/matoous/go-nanoid/v2"
-	"github.com/raito-io/cli-plugin-gcp/gcp/common"
 	"github.com/raito-io/cli/base/access_provider/sync_to_target"
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/raito-io/golang-set/set"
@@ -22,6 +21,8 @@ import (
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
+
+	"github.com/raito-io/cli-plugin-gcp/internal/common"
 )
 
 const (

@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/raito-io/cli-plugin-gcp/gcp/common"
 	"github.com/raito-io/cli/base/util/config"
+
+	"github.com/raito-io/cli-plugin-gcp/internal/common"
 )
 
 type GCPRepository struct {

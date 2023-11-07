@@ -1,23 +1,22 @@
-//go:build gcp
-
 package main
 
 import (
 	"fmt"
 
-	hclog "github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/go-hclog"
 	"github.com/raito-io/cli/base"
 	"github.com/raito-io/cli/base/access_provider"
 	"github.com/raito-io/cli/base/info"
 	"github.com/raito-io/cli/base/util/plugin"
 	"github.com/raito-io/cli/base/wrappers"
 
-	"github.com/raito-io/cli-plugin-gcp/gcp/common"
-	"github.com/raito-io/cli-plugin-gcp/gcp/gcp"
+	"github.com/raito-io/cli-plugin-gcp/internal/common"
+	"github.com/raito-io/cli-plugin-gcp/internal/gcp"
+	"github.com/raito-io/cli-plugin-gcp/version"
 )
 
 func main() {
-	logger = base.Logger()
+	logger := base.Logger()
 	logger.SetLevel(hclog.Debug)
 
 	err := base.RegisterPlugins(
@@ -27,7 +26,7 @@ func main() {
 		&info.InfoImpl{
 			Info: &plugin.PluginInfo{
 				Name:    "gcp",
-				Version: plugin.ParseVersion(version),
+				Version: plugin.ParseVersion(version.Version),
 				Parameters: []*plugin.ParameterInfo{
 					{Name: common.GcpSAFileLocation, Description: "The location of the GCP Service Account Key JSON (if not set GOOGLE_APPLICATION_CREDENTIALS env var is used)", Mandatory: false},
 					{Name: common.GcpOrgId, Description: "The ID of the GCP Organization to synchronise", Mandatory: true},
@@ -42,4 +41,5 @@ func main() {
 	if err != nil {
 		logger.Error(fmt.Sprintf("error while registering plugins: %s", err.Error()))
 	}
+
 }

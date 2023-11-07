@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/raito-io/cli-plugin-gcp/gcp/iam"
+	"github.com/raito-io/cli-plugin-gcp/internal/iam"
 )
 
 func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {

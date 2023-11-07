@@ -5,25 +5,23 @@ before:
     - go mod tidy
 builds:
   - id: "gcp"
-    tags:
-      - "gcp"
+    main: ./cmd/gcp/main.go
     env:
       - CGO_ENABLED=0
     goos:
       - linux
       - darwin
     ldflags:
-      - -X main.version={{.Version}}
+      - -X version.Version={{.Version}}
   - id: "bigquery"
-    tags:
-      - "bigquery"
+    main: ./cmd/bq/main.go
     env:
       - CGO_ENABLED=0
     goos:
       - linux
       - darwin
     ldflags:
-      - -X main.version={{.Version}}
+      - -X version.Version={{.Version}}
 
 checksum:
   name_template: 'checksums.txt'

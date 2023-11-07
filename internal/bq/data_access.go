@@ -13,8 +13,8 @@ import (
 	ds "github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/cli/base/wrappers"
 
-	"github.com/raito-io/cli-plugin-gcp/gcp/gcp"
-	"github.com/raito-io/cli-plugin-gcp/gcp/iam"
+	"github.com/raito-io/cli-plugin-gcp/internal/gcp"
+	"github.com/raito-io/cli-plugin-gcp/internal/iam"
 
 	importer "github.com/raito-io/cli/base/access_provider/sync_to_target"
 	"github.com/raito-io/cli/base/util/config"

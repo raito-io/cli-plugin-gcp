@@ -14,8 +14,8 @@ import (
 	"github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/cli/base/wrappers"
 
-	"github.com/raito-io/cli-plugin-gcp/gcp/common"
-	"github.com/raito-io/cli-plugin-gcp/gcp/iam"
+	"github.com/raito-io/cli-plugin-gcp/internal/common"
+	"github.com/raito-io/cli-plugin-gcp/internal/iam"
 
 	exporter "github.com/raito-io/cli/base/access_provider/sync_from_target"
 	importer "github.com/raito-io/cli/base/access_provider/sync_to_target"

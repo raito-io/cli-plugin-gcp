@@ -9,8 +9,8 @@ import (
 	gcp_iam "cloud.google.com/go/iam"
 	"github.com/raito-io/cli/base/util/config"
 
-	"github.com/raito-io/cli-plugin-gcp/gcp/common"
-	"github.com/raito-io/cli-plugin-gcp/gcp/iam"
+	"github.com/raito-io/cli-plugin-gcp/internal/common"
+	"github.com/raito-io/cli-plugin-gcp/internal/iam"
 )
 
 const (

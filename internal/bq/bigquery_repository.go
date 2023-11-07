@@ -12,7 +12,7 @@ import (
 	"github.com/raito-io/cli/base/util/config"
 	"google.golang.org/api/iterator"
 
-	"github.com/raito-io/cli-plugin-gcp/gcp/common"
+	"github.com/raito-io/cli-plugin-gcp/internal/common"
 )
 
 type BigQueryRepository struct {

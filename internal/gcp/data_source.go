@@ -9,10 +9,10 @@ import (
 	ds "github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/golang-set/set"
 
-	"github.com/raito-io/cli-plugin-gcp/gcp/common"
-	"github.com/raito-io/cli-plugin-gcp/gcp/common/roles"
-	"github.com/raito-io/cli-plugin-gcp/gcp/iam"
-	"github.com/raito-io/cli-plugin-gcp/gcp/org"
+	"github.com/raito-io/cli-plugin-gcp/internal/common"
+	"github.com/raito-io/cli-plugin-gcp/internal/common/roles"
+	"github.com/raito-io/cli-plugin-gcp/internal/iam"
+	"github.com/raito-io/cli-plugin-gcp/internal/org"
 
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/raito-io/cli/base/wrappers"

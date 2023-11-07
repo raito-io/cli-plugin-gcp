@@ -8,16 +8,16 @@ import (
 	"github.com/raito-io/cli/base/util/config"
 	cloudresourcemanager "google.golang.org/api/cloudresourcemanager/v1"
 
-	"github.com/raito-io/cli-plugin-gcp/gcp/common"
+	"github.com/raito-io/cli-plugin-gcp/internal/common"
 )
 
-var organizationIamPolicyCache map[string]*cloudresourcemanager.Policy = make(map[string]*cloudresourcemanager.Policy)
+var projectIamPolicyCache map[string]*cloudresourcemanager.Policy = make(map[string]*cloudresourcemanager.Policy)
 
-type organizationIamRepository struct {
+type projectIamRepository struct {
 }
 
 //nolint:dupl
-func (r *organizationIamRepository) GetUsers(ctx context.Context, configMap *config.ConfigMap, id string) ([]UserEntity, error) {
+func (r *projectIamRepository) GetUsers(ctx context.Context, configMap *config.ConfigMap, id string) ([]UserEntity, error) {
 	policy, err := r.GetIamPolicy(ctx, configMap, id)
 
 	if err != nil {
@@ -25,7 +25,7 @@ func (r *organizationIamRepository) GetUsers(ctx context.Context, configMap *con
 	}
 
 	if policy.V1 == nil {
-		common.Logger.Warn(fmt.Sprintf("getUsers: Could not retrieve IAM policy for organization %s", id))
+		common.Logger.Warn(fmt.Sprintf("getUsers: Could not retrieve IAM policy for project %s", id))
 		return []UserEntity{}, nil
 	}
 
@@ -51,7 +51,7 @@ func (r *organizationIamRepository) GetUsers(ctx context.Context, configMap *con
 
 	return users, nil
 }
-func (r *organizationIamRepository) GetGroups(ctx context.Context, configMap *config.ConfigMap, id string) ([]GroupEntity, error) {
+func (r *projectIamRepository) GetGroups(ctx context.Context, configMap *config.ConfigMap, id string) ([]GroupEntity, error) {
 	policy, err := r.GetIamPolicy(ctx, configMap, id)
 
 	if err != nil {
@@ -59,7 +59,7 @@ func (r *organizationIamRepository) GetGroups(ctx context.Context, configMap *co
 	}
 
 	if policy.V1 == nil {
-		common.Logger.Warn(fmt.Sprintf("getGroups: Could not retrieve IAM policy for organization %s", id))
+		common.Logger.Warn(fmt.Sprintf("getGroups: Could not retrieve IAM policy for project %s", id))
 		return []GroupEntity{}, nil
 	}
 
@@ -86,7 +86,7 @@ func (r *organizationIamRepository) GetGroups(ctx context.Context, configMap *co
 }
 
 //nolint:dupl
-func (r *organizationIamRepository) GetServiceAccounts(ctx context.Context, configMap *config.ConfigMap, id string) ([]UserEntity, error) {
+func (r *projectIamRepository) GetServiceAccounts(ctx context.Context, configMap *config.ConfigMap, id string) ([]UserEntity, error) {
 	policy, err := r.GetIamPolicy(ctx, configMap, id)
 
 	if err != nil {
@@ -121,41 +121,38 @@ func (r *organizationIamRepository) GetServiceAccounts(ctx context.Context, conf
 	return users, nil
 }
 
-func (r *organizationIamRepository) GetIamPolicy(ctx context.Context, configMap *config.ConfigMap, id string) (IAMPolicyContainer, error) {
-	if !strings.HasPrefix(id, "organizations/") {
-		id = fmt.Sprintf("organizations/%s", id)
+func (r *projectIamRepository) GetIamPolicy(ctx context.Context, configMap *config.ConfigMap, id string) (IAMPolicyContainer, error) {
+	if _, f := projectIamPolicyCache[id]; f {
+		return IAMPolicyContainer{V1: projectIamPolicyCache[id]}, nil
 	}
 
-	if _, f := organizationIamPolicyCache[id]; f {
-		return IAMPolicyContainer{V1: organizationIamPolicyCache[id]}, nil
-	}
+	common.Logger.Info(fmt.Sprintf("Fetching the IAM policy for project %s", id))
 
-	common.Logger.Info(fmt.Sprintf("Fetching the IAM policy for the GCP organization %s", id))
 	crmService, err := common.CrmService(ctx, configMap)
 
 	if err != nil {
-		return IAMPolicyContainer{}, fmt.Errorf("error fetching organization service: %s", err.Error())
+		return IAMPolicyContainer{}, err
 	}
 
-	policy, err := crmService.Organizations.GetIamPolicy(id, new(cloudresourcemanager.GetIamPolicyRequest)).Do()
+	policy, err := crmService.Projects.GetIamPolicy(id, new(cloudresourcemanager.GetIamPolicyRequest)).Do()
 
 	if err != nil {
 		if strings.Contains(err.Error(), "403") {
-			common.Logger.Warn(fmt.Sprintf("Failed to fetch the IAM policy for organization %s: %s", id, err.Error()))
-			return IAMPolicyContainer{V1: &cloudresourcemanager.Policy{}}, nil
+			common.Logger.Warn(fmt.Sprintf("Failed to fetch the IAM policyfor project %s: %s", id, err.Error()))
+			return IAMPolicyContainer{}, nil
 		} else {
-			return IAMPolicyContainer{}, fmt.Errorf("error getting IAM Policy from organization: %s", err.Error())
+			return IAMPolicyContainer{}, err
 		}
 	} else {
-		organizationIamPolicyCache[id] = policy
+		projectIamPolicyCache[id] = policy
 	}
 
-	return IAMPolicyContainer{V1: organizationIamPolicyCache[id]}, nil
+	return IAMPolicyContainer{V1: projectIamPolicyCache[id]}, nil
 }
 
 //nolint:dupl
-func (r *organizationIamRepository) AddBinding(ctx context.Context, configMap *config.ConfigMap, id, member, role string) error {
-	common.Logger.Debug(fmt.Sprintf("Adding IAM binding for the GCP organization %s", id))
+func (r *projectIamRepository) AddBinding(ctx context.Context, configMap *config.ConfigMap, id, member, role string) error {
+	common.Logger.Debug(fmt.Sprintf("Adding IAM binding for the GCP project %s", id))
 
 	policy, err := r.GetIamPolicy(ctx, configMap, id)
 
@@ -192,12 +189,12 @@ func (r *organizationIamRepository) AddBinding(ctx context.Context, configMap *c
 		policy.V1.Bindings = append(policy.V1.Bindings, binding)
 	}
 
-	common.Logger.Info(fmt.Sprintf("Adding GCP Organization %s Iam Policy Binding: role %q member %q", id, member, role))
+	common.Logger.Info(fmt.Sprintf("Adding GCP Project %s Iam Policy Binding: role %q member %q", id, member, role))
 
 	return r.setPolicy(ctx, configMap, id, policy.V1)
 }
 
-func (r *organizationIamRepository) RemoveBinding(ctx context.Context, configMap *config.ConfigMap, id, member, role string) error {
+func (r *projectIamRepository) RemoveBinding(ctx context.Context, configMap *config.ConfigMap, id, member, role string) error {
 	policy, err := r.GetIamPolicy(ctx, configMap, id)
 
 	if err != nil {
@@ -218,7 +215,7 @@ func (r *organizationIamRepository) RemoveBinding(ctx context.Context, configMap
 	}
 
 	if binding == nil {
-		common.Logger.Warn(fmt.Sprintf("Did not find binding for removal; GCP Organization %s Iam Policy Binding: role %q member %q", id, member, role))
+		common.Logger.Warn(fmt.Sprintf("Did not find binding for removal; Removing GCP Project %s Iam Policy Binding: role %q member %q", id, member, role))
 		return nil
 	}
 
@@ -242,18 +239,14 @@ func (r *organizationIamRepository) RemoveBinding(ctx context.Context, configMap
 		binding.Members = binding.Members[:last]
 	}
 
-	common.Logger.Info(fmt.Sprintf("Removing GCP Organization %s Iam Policy Binding: role %q member %q", id, member, role))
+	common.Logger.Info(fmt.Sprintf("Removing GCP Project %s Iam Policy Binding: role %q member %q", id, member, role))
 
 	return r.setPolicy(ctx, configMap, id, policy.V1)
 }
 
-func (r *organizationIamRepository) setPolicy(ctx context.Context, configMap *config.ConfigMap, id string, policy *cloudresourcemanager.Policy) error {
+func (r *projectIamRepository) setPolicy(ctx context.Context, configMap *config.ConfigMap, id string, policy *cloudresourcemanager.Policy) error {
 	request := new(cloudresourcemanager.SetIamPolicyRequest)
 	request.Policy = policy
-
-	if !strings.HasPrefix(id, "organizations/") {
-		id = fmt.Sprintf("organizations/%s", id)
-	}
 
 	crmService, err := common.CrmService(ctx, configMap)
 
@@ -264,8 +257,8 @@ func (r *organizationIamRepository) setPolicy(ctx context.Context, configMap *co
 	policy, err = crmService.Projects.SetIamPolicy(id, request).Do()
 
 	// if no error update IAM policy in cache
-	if _, f := organizationIamPolicyCache[id]; f && err == nil {
-		organizationIamPolicyCache[id] = policy
+	if _, f := projectIamPolicyCache[id]; f && err == nil {
+		projectIamPolicyCache[id] = policy
 	}
 
 	return err

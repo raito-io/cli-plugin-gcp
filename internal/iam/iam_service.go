@@ -9,8 +9,8 @@ import (
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/raito-io/golang-set/set"
 
-	"github.com/raito-io/cli-plugin-gcp/gcp/common"
-	"github.com/raito-io/cli-plugin-gcp/gcp/org"
+	"github.com/raito-io/cli-plugin-gcp/internal/common"
+	"github.com/raito-io/cli-plugin-gcp/internal/org"
 )
 
 const ownerRole = "roles/owner"

@@ -6,11 +6,12 @@ import (
 	"os"
 	"strings"
 
-	"github.com/raito-io/cli-plugin-gcp/gcp/common"
 	"github.com/raito-io/cli/base/util/config"
 	"golang.org/x/oauth2/google"
 	admin "google.golang.org/api/admin/directory/v1"
 	"google.golang.org/api/option"
+
+	"github.com/raito-io/cli-plugin-gcp/internal/common"
 )
 
 const MAX_PAGE_ITEMS = 100

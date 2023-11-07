@@ -1,5 +1,3 @@
-//go:build bigquery
-
 package main
 
 import (
@@ -11,12 +9,13 @@ import (
 	"github.com/raito-io/cli/base/util/plugin"
 	"github.com/raito-io/cli/base/wrappers"
 
-	bigquery "github.com/raito-io/cli-plugin-gcp/gcp/bq"
-	"github.com/raito-io/cli-plugin-gcp/gcp/common"
+	bigquery "github.com/raito-io/cli-plugin-gcp/internal/bq"
+	"github.com/raito-io/cli-plugin-gcp/internal/common"
+	"github.com/raito-io/cli-plugin-gcp/version"
 )
 
 func main() {
-	logger = base.Logger()
+	logger := base.Logger()
 	logger.SetLevel(hclog.Debug)
 
 	err := base.RegisterPlugins(
@@ -26,7 +25,7 @@ func main() {
 		wrappers.DataUsageSync(bigquery.NewDataUsageSyncer()), &info.InfoImpl{
 			Info: &plugin.PluginInfo{
 				Name:    "BigQuery",
-				Version: plugin.ParseVersion(version),
+				Version: plugin.ParseVersion(version.Version),
 				Parameters: []*plugin.ParameterInfo{
 					{Name: common.GcpSAFileLocation, Description: "The location of the GCP Service Account Key JSON (if not set GOOGLE_APPLICATION_CREDENTIALS env var is used)", Mandatory: false},
 					{Name: common.GcpProjectId, Description: "The ID of the Google Cloud Platform Project", Mandatory: true},
@@ -44,4 +43,5 @@ func main() {
 	if err != nil {
 		logger.Error(fmt.Sprintf("error while registering plugins: %s", err.Error()))
 	}
+
 }

@@ -6,33 +6,33 @@ import (
 	"strings"
 
 	"github.com/raito-io/cli/base/util/config"
-	cloudresourcemanager "google.golang.org/api/cloudresourcemanager/v1"
+	cloudresourcemanager "google.golang.org/api/cloudresourcemanager/v2"
 
-	"github.com/raito-io/cli-plugin-gcp/gcp/common"
+	"github.com/raito-io/cli-plugin-gcp/internal/common"
 )
 
-var projectIamPolicyCache map[string]*cloudresourcemanager.Policy = make(map[string]*cloudresourcemanager.Policy)
+var folderIamPolicyCache map[string]*cloudresourcemanager.Policy = make(map[string]*cloudresourcemanager.Policy)
 
-type projectIamRepository struct {
+type folderIamRepository struct {
 }
 
 //nolint:dupl
-func (r *projectIamRepository) GetUsers(ctx context.Context, configMap *config.ConfigMap, id string) ([]UserEntity, error) {
+func (r *folderIamRepository) GetUsers(ctx context.Context, configMap *config.ConfigMap, id string) ([]UserEntity, error) {
 	policy, err := r.GetIamPolicy(ctx, configMap, id)
 
 	if err != nil {
 		return nil, err
 	}
 
-	if policy.V1 == nil {
-		common.Logger.Warn(fmt.Sprintf("getUsers: Could not retrieve IAM policy for project %s", id))
+	if policy.V2 == nil {
+		common.Logger.Warn(fmt.Sprintf("getUsers: Could not retrieve IAM policy for folder %s", id))
 		return []UserEntity{}, nil
 	}
 
 	users := make([]UserEntity, 0)
 	externalIdList := map[string]struct{}{}
 
-	for _, binding := range policy.V1.Bindings {
+	for _, binding := range policy.V2.Bindings {
 		for _, member := range binding.Members {
 			if _, f := externalIdList[member]; f || !strings.HasPrefix(member, "user:") {
 				continue
@@ -51,22 +51,23 @@ func (r *projectIamRepository) GetUsers(ctx context.Context, configMap *config.C
 
 	return users, nil
 }
-func (r *projectIamRepository) GetGroups(ctx context.Context, configMap *config.ConfigMap, id string) ([]GroupEntity, error) {
+
+func (r *folderIamRepository) GetGroups(ctx context.Context, configMap *config.ConfigMap, id string) ([]GroupEntity, error) {
 	policy, err := r.GetIamPolicy(ctx, configMap, id)
 
 	if err != nil {
 		return nil, err
 	}
 
-	if policy.V1 == nil {
-		common.Logger.Warn(fmt.Sprintf("getGroups: Could not retrieve IAM policy for project %s", id))
+	if policy.V2 == nil {
+		common.Logger.Warn(fmt.Sprintf("getGroups: Could not retrieve IAM policy for folder %s", id))
 		return []GroupEntity{}, nil
 	}
 
 	groups := make([]GroupEntity, 0)
 	externalIdList := map[string]struct{}{}
 
-	for _, binding := range policy.V1.Bindings {
+	for _, binding := range policy.V2.Bindings {
 		for _, member := range binding.Members {
 			if _, f := externalIdList[member]; f || !strings.HasPrefix(member, "group:") {
 				continue
@@ -86,22 +87,22 @@ func (r *projectIamRepository) GetGroups(ctx context.Context, configMap *config.
 }
 
 //nolint:dupl
-func (r *projectIamRepository) GetServiceAccounts(ctx context.Context, configMap *config.ConfigMap, id string) ([]UserEntity, error) {
+func (r *folderIamRepository) GetServiceAccounts(ctx context.Context, configMap *config.ConfigMap, id string) ([]UserEntity, error) {
 	policy, err := r.GetIamPolicy(ctx, configMap, id)
 
 	if err != nil {
 		return nil, err
 	}
 
-	if policy.V1 == nil {
-		common.Logger.Warn(fmt.Sprintf("getServiceAccounts: Could not retrieve IAM policy for project %s", id))
+	if policy.V2 == nil {
+		common.Logger.Warn(fmt.Sprintf("getServiceAccounts: Could not retrieve IAM policy for folder %s", id))
 		return []UserEntity{}, nil
 	}
 
 	users := make([]UserEntity, 0)
 	externalIdList := map[string]struct{}{}
 
-	for _, binding := range policy.V1.Bindings {
+	for _, binding := range policy.V2.Bindings {
 		for _, member := range binding.Members {
 			if _, f := externalIdList[member]; f || !strings.HasPrefix(member, "serviceAccount:") {
 				continue
@@ -121,38 +122,42 @@ func (r *projectIamRepository) GetServiceAccounts(ctx context.Context, configMap
 	return users, nil
 }
 
-func (r *projectIamRepository) GetIamPolicy(ctx context.Context, configMap *config.ConfigMap, id string) (IAMPolicyContainer, error) {
-	if _, f := projectIamPolicyCache[id]; f {
-		return IAMPolicyContainer{V1: projectIamPolicyCache[id]}, nil
+func (r *folderIamRepository) GetIamPolicy(ctx context.Context, configMap *config.ConfigMap, id string) (IAMPolicyContainer, error) {
+	if !strings.HasPrefix(id, "folders/") {
+		id = fmt.Sprintf("folders/%s", id)
 	}
 
-	common.Logger.Info(fmt.Sprintf("Fetching the IAM policy for project %s", id))
+	if _, f := folderIamPolicyCache[id]; f {
+		return IAMPolicyContainer{V2: folderIamPolicyCache[id]}, nil
+	}
 
-	crmService, err := common.CrmService(ctx, configMap)
+	common.Logger.Info(fmt.Sprintf("Fetching the IAM policy for folder %s", id))
+
+	crmService, err := common.CrmServiceV2(ctx, configMap)
 
 	if err != nil {
-		return IAMPolicyContainer{}, err
+		return IAMPolicyContainer{}, nil
 	}
 
-	policy, err := crmService.Projects.GetIamPolicy(id, new(cloudresourcemanager.GetIamPolicyRequest)).Do()
+	policy, err := crmService.Folders.GetIamPolicy(id, new(cloudresourcemanager.GetIamPolicyRequest)).Do()
 
 	if err != nil {
 		if strings.Contains(err.Error(), "403") {
-			common.Logger.Warn(fmt.Sprintf("Failed to fetch the IAM policyfor project %s: %s", id, err.Error()))
-			return IAMPolicyContainer{}, nil
+			common.Logger.Warn(fmt.Sprintf("Failed to fetch the IAM policyfor folder %s: %s", id, err.Error()))
+			return IAMPolicyContainer{V2: &cloudresourcemanager.Policy{}}, nil
 		} else {
 			return IAMPolicyContainer{}, err
 		}
 	} else {
-		projectIamPolicyCache[id] = policy
+		folderIamPolicyCache[id] = policy
 	}
 
-	return IAMPolicyContainer{V1: projectIamPolicyCache[id]}, nil
+	return IAMPolicyContainer{V2: folderIamPolicyCache[id]}, nil
 }
 
 //nolint:dupl
-func (r *projectIamRepository) AddBinding(ctx context.Context, configMap *config.ConfigMap, id, member, role string) error {
-	common.Logger.Debug(fmt.Sprintf("Adding IAM binding for the GCP project %s", id))
+func (r *folderIamRepository) AddBinding(ctx context.Context, configMap *config.ConfigMap, id, member, role string) error {
+	common.Logger.Debug(fmt.Sprintf("Adding IAM binding for the GCP folder %s", id))
 
 	policy, err := r.GetIamPolicy(ctx, configMap, id)
 
@@ -163,7 +168,7 @@ func (r *projectIamRepository) AddBinding(ctx context.Context, configMap *config
 	// Find the policy binding for role. Only one binding can have the role.
 	var binding *cloudresourcemanager.Binding
 
-	for _, b := range policy.V1.Bindings {
+	for _, b := range policy.V2.Bindings {
 		if b.Role == role {
 			binding = b
 			break
@@ -186,15 +191,15 @@ func (r *projectIamRepository) AddBinding(ctx context.Context, configMap *config
 			Members: []string{member},
 		}
 
-		policy.V1.Bindings = append(policy.V1.Bindings, binding)
+		policy.V2.Bindings = append(policy.V2.Bindings, binding)
 	}
 
-	common.Logger.Info(fmt.Sprintf("Adding GCP Project %s Iam Policy Binding: role %q member %q", id, member, role))
+	common.Logger.Info(fmt.Sprintf("Adding GCP Folder %s Iam Policy Binding: role %q member %q", id, member, role))
 
-	return r.setPolicy(ctx, configMap, id, policy.V1)
+	return r.setPolicy(ctx, configMap, id, policy.V2)
 }
 
-func (r *projectIamRepository) RemoveBinding(ctx context.Context, configMap *config.ConfigMap, id, member, role string) error {
+func (r *folderIamRepository) RemoveBinding(ctx context.Context, configMap *config.ConfigMap, id, member, role string) error {
 	policy, err := r.GetIamPolicy(ctx, configMap, id)
 
 	if err != nil {
@@ -205,7 +210,7 @@ func (r *projectIamRepository) RemoveBinding(ctx context.Context, configMap *con
 	var binding *cloudresourcemanager.Binding
 	var bindingIndex int
 
-	for i, b := range policy.V1.Bindings {
+	for i, b := range policy.V2.Bindings {
 		if b.Role == role {
 			binding = b
 			bindingIndex = i
@@ -215,7 +220,7 @@ func (r *projectIamRepository) RemoveBinding(ctx context.Context, configMap *con
 	}
 
 	if binding == nil {
-		common.Logger.Warn(fmt.Sprintf("Did not find binding for removal; Removing GCP Project %s Iam Policy Binding: role %q member %q", id, member, role))
+		common.Logger.Warn(fmt.Sprintf("Did not find binding for removal; GCP Folder %s Iam Policy Binding: role %q member %q", id, member, role))
 		return nil
 	}
 
@@ -223,9 +228,9 @@ func (r *projectIamRepository) RemoveBinding(ctx context.Context, configMap *con
 	// into the removed spot and shrink the slice.
 	if len(binding.Members) == 1 {
 		// If the member is the only member in the binding, removes the binding
-		last := len(policy.V1.Bindings) - 1
-		policy.V1.Bindings[bindingIndex] = policy.V1.Bindings[last]
-		policy.V1.Bindings = policy.V1.Bindings[:last]
+		last := len(policy.V2.Bindings) - 1
+		policy.V2.Bindings[bindingIndex] = policy.V2.Bindings[last]
+		policy.V2.Bindings = policy.V2.Bindings[:last]
 	} else {
 		// If there is more than one member in the binding, removes the member
 		var memberIndex int
@@ -234,31 +239,35 @@ func (r *projectIamRepository) RemoveBinding(ctx context.Context, configMap *con
 				memberIndex = i
 			}
 		}
-		last := len(policy.V1.Bindings[bindingIndex].Members) - 1
+		last := len(policy.V2.Bindings[bindingIndex].Members) - 1
 		binding.Members[memberIndex] = binding.Members[last]
 		binding.Members = binding.Members[:last]
 	}
 
-	common.Logger.Info(fmt.Sprintf("Removing GCP Project %s Iam Policy Binding: role %q member %q", id, member, role))
+	common.Logger.Info(fmt.Sprintf("Removing GCP Folder %s Iam Policy Binding: role %q member %q", id, member, role))
 
-	return r.setPolicy(ctx, configMap, id, policy.V1)
+	return r.setPolicy(ctx, configMap, id, policy.V2)
 }
 
-func (r *projectIamRepository) setPolicy(ctx context.Context, configMap *config.ConfigMap, id string, policy *cloudresourcemanager.Policy) error {
+func (r *folderIamRepository) setPolicy(ctx context.Context, configMap *config.ConfigMap, id string, policy *cloudresourcemanager.Policy) error {
 	request := new(cloudresourcemanager.SetIamPolicyRequest)
 	request.Policy = policy
 
-	crmService, err := common.CrmService(ctx, configMap)
+	crmService, err := common.CrmServiceV2(ctx, configMap)
 
 	if err != nil {
 		return err
 	}
 
-	policy, err = crmService.Projects.SetIamPolicy(id, request).Do()
+	if !strings.HasPrefix(id, "folders/") {
+		id = fmt.Sprintf("folders/%s", id)
+	}
+
+	policy, err = crmService.Folders.SetIamPolicy(id, request).Do()
 
 	// if no error update IAM policy in cache
-	if _, f := projectIamPolicyCache[id]; f && err == nil {
-		projectIamPolicyCache[id] = policy
+	if _, f := folderIamPolicyCache[id]; f && err == nil {
+		folderIamPolicyCache[id] = policy
 	}
 
 	return err
