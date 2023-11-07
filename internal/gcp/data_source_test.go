@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/raito-io/cli-plugin-gcp/gcp/org"
+	"github.com/raito-io/cli-plugin-gcp/internal/org"
 )
 
 func TestDataSourceSyncer_GetMetaData(t *testing.T) {
