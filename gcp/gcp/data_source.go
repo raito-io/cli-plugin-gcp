@@ -10,6 +10,7 @@ import (
 	"github.com/raito-io/golang-set/set"
 
 	"github.com/raito-io/cli-plugin-gcp/gcp/common"
+	"github.com/raito-io/cli-plugin-gcp/gcp/common/roles"
 	"github.com/raito-io/cli-plugin-gcp/gcp/iam"
 	"github.com/raito-io/cli-plugin-gcp/gcp/org"
 
@@ -114,24 +115,26 @@ func GetDataSourceMetaData(_ context.Context, _ *config.ConfigMap) (*ds.MetaData
 	common.Logger.Debug("Returning meta data for the GCP data source")
 
 	managed_permissions := []*ds.DataObjectTypePermission{
-		{
-			Permission:             "roles/owner",
-			Description:            "Full access to most Google Cloud resources. See the list of included permissions.",
-			UsageGlobalPermissions: []string{ds.Read, ds.Write, ds.Admin},
-			GlobalPermissions:      []string{ds.Admin},
-		},
-		{
-			Permission:             "roles/editor",
-			Description:            "View, create, update, and delete most Google Cloud resources. See the list of included permissions.",
-			UsageGlobalPermissions: []string{ds.Read, ds.Write},
-			GlobalPermissions:      []string{ds.Write},
-		},
-		{
-			Permission:             "roles/viewer",
-			Description:            "View most Google Cloud resources. See the list of included permissions.",
-			UsageGlobalPermissions: []string{ds.Read},
-			GlobalPermissions:      []string{ds.Read},
-		},
+		roles.RolesOwner.ToDataObjectTypePermission(roles.ServiceGcp),
+		roles.RolesEditor.ToDataObjectTypePermission(roles.ServiceGcp),
+		roles.RolesViewer.ToDataObjectTypePermission(roles.ServiceGcp),
+		roles.RolesBigQueryAdmin.ToDataObjectTypePermission(roles.ServiceGcp),
+		roles.RolesBigQueryConnectionAdmin.ToDataObjectTypePermission(roles.ServiceGcp),
+		roles.RolesBigQueryConnectionUser.ToDataObjectTypePermission(roles.ServiceGcp),
+		roles.RolesBigQueryEditor.ToDataObjectTypePermission(roles.ServiceGcp),
+		roles.RolesBigQueryDataOwner.ToDataObjectTypePermission(roles.ServiceGcp),
+		roles.RolesBigQueryDataViewer.ToDataObjectTypePermission(roles.ServiceGcp),
+		roles.RolesBigQueryFilteredDataViewer.ToDataObjectTypePermission(roles.ServiceGcp),
+		roles.RolesBigQueryJobUser.ToDataObjectTypePermission(roles.ServiceGcp),
+		roles.RolesBigQueryMetadataViewer.ToDataObjectTypePermission(roles.ServiceGcp),
+		roles.RolesBigQueryReadSessionUser.ToDataObjectTypePermission(roles.ServiceGcp),
+		roles.RolesBigQueryResourceAdmin.ToDataObjectTypePermission(roles.ServiceGcp),
+		roles.RolesBigQueryResourceEditor.ToDataObjectTypePermission(roles.ServiceGcp),
+		roles.RolesBigQueryResourceViewer.ToDataObjectTypePermission(roles.ServiceGcp),
+		roles.RolesBigQueryUser.ToDataObjectTypePermission(roles.ServiceGcp),
+		roles.RolesBigQueryMaskedReader.ToDataObjectTypePermission(roles.ServiceGcp),
+		roles.RolesBigQueryCatalogPolicyTagAdmin.ToDataObjectTypePermission(roles.ServiceGcp),
+		roles.RolesBigQueryCatalogFineGrainedAccess.ToDataObjectTypePermission(roles.ServiceGcp),
 	}
 
 	org := strings.ToLower(iam.Organization.String())

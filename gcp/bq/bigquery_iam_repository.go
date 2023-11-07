@@ -7,9 +7,17 @@ import (
 
 	"cloud.google.com/go/bigquery"
 	gcp_iam "cloud.google.com/go/iam"
+	"github.com/raito-io/cli/base/util/config"
+
 	"github.com/raito-io/cli-plugin-gcp/gcp/common"
 	"github.com/raito-io/cli-plugin-gcp/gcp/iam"
-	"github.com/raito-io/cli/base/util/config"
+)
+
+const (
+	userPrefix           = "user:"
+	serviceAccountPrefix = "serviceAccount:"
+	groupPrefix          = "group:"
+	specialGroupPrefix   = "special_group:"
 )
 
 var bqPolicyCache = make(map[string]iam.IAMPolicyContainer)
@@ -63,9 +71,9 @@ func (r *bigQueryIamRepository) getUserEntities(ctx context.Context, configMap *
 		return users, err
 	}
 
-	prefix := "user:"
+	prefix := userPrefix
 	if sa {
-		prefix = "serviceAccount:"
+		prefix = serviceAccountPrefix
 	}
 
 	for _, b := range iamPolicy.Service {
@@ -99,7 +107,7 @@ func (r *bigQueryIamRepository) GetGroups(ctx context.Context, configMap *config
 		return groups, err
 	}
 
-	prefix := "group:"
+	prefix := groupPrefix
 
 	for _, b := range iamPolicy.Service {
 		if !strings.HasPrefix(b.Member, prefix) {
@@ -175,14 +183,14 @@ func (r *bigQueryIamRepository) getDataSetIamPolicy(ctx context.Context, configM
 
 	for _, a := range dsMeta.Access {
 		if a.EntityType == bigquery.UserEmailEntity || a.EntityType == bigquery.GroupEmailEntity || a.EntityType == bigquery.SpecialGroupEntity {
-			prefix := "user:"
+			prefix := userPrefix
 
 			if a.EntityType == bigquery.GroupEmailEntity {
-				prefix = "group:"
+				prefix = groupPrefix
 			} else if a.EntityType == bigquery.SpecialGroupEntity {
-				prefix = "special_group:"
+				prefix = specialGroupPrefix
 			} else if strings.Contains(a.Entity, "gserviceaccount") {
-				prefix = "serviceAccount:"
+				prefix = serviceAccountPrefix
 			}
 
 			bindings = append(bindings, iam.IamBinding{
