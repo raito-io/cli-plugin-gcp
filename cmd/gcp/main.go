@@ -41,5 +41,4 @@ func main() {
 	if err != nil {
 		logger.Error(fmt.Sprintf("error while registering plugins: %s", err.Error()))
 	}
-
 }
