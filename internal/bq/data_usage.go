@@ -67,7 +67,7 @@ func (s *DataUsageSyncer) SyncDataUsage(ctx context.Context, fileCreator wrapper
 					FullName: fmt.Sprintf("%s.%s.%s", rt.Project, rt.Dataset, rt.Table),
 					Type:     data_source.Table,
 				},
-				Permissions: []string{du.Statement},
+				Permissions: []string{du.StatementType},
 			})
 		}
 
