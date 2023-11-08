@@ -32,6 +32,7 @@ type BQInformationSchemaEntity struct {
 	CachedQuery bool                `bigquery:"cache_hit"`
 	User        string              `bigquery:"user_email"`
 	Query       string              `bigquery:"query"`
+	Statement   string              `bigquery:"statement_type"`
 	Tables      []BQReferencedTable `bigquery:"referenced_tables"`
 	StartTime   int64               `bigquery:"start_time"`
 	EndTime     int64               `bigquery:"end_time"`

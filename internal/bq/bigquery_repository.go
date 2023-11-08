@@ -298,6 +298,7 @@ func getDataUsage(ctx context.Context, configMap *config.ConfigMap, region strin
 				CASE WHEN cache_hit IS NOT NULL THEN cache_hit ELSE FALSE END AS cache_hit,
 				user_email,
 				REGEXP_REPLACE(query, r"[lL][iI][mM][iI][tT]\s+\d+.*", "") AS query,
+				statement_type,
 				referenced_tables,
 				UNIX_SECONDS(start_time) AS start_time,
 				UNIX_SECONDS(end_time) AS end_time
@@ -305,10 +306,10 @@ func getDataUsage(ctx context.Context, configMap *config.ConfigMap, region strin
 				%[1]s.INFORMATION_SCHEMA.JOBS AS cache_hits
 			WHERE
 				state = "DONE"
-				AND statement_type="SELECT"
+				AND statement_type in ("SELECT", "INSERT", "UPDATE", "DELETE", "MERGE", "TRUNCATE_TABLE")"
 				AND NOT CONTAINS_SUBSTR(query,"INFORMATION_SCHEMA")
 		), cache_hits as (
-			SELECT cache_hit,user_email,query,start_time,end_time from hits WHERE %[2]s AND cache_hit
+			SELECT cache_hit,user_email,query,statement_type,start_time,end_time from hits WHERE %[2]s AND cache_hit
 		),non_cache_hits as (
 			SELECT * from hits WHERE %[2]s AND NOT cache_hit
 		),  query_lookup_distinct as (
@@ -317,7 +318,7 @@ func getDataUsage(ctx context.Context, configMap *config.ConfigMap, region strin
 			SELECT query, ARRAY_AGG(struct(project_id as project_id,dataset_id as dataset_id,table_id as table_id)) as referenced_tables from query_lookup_distinct GROUP by query
 		)
 		
-		SELECT cache_hit,user_email,cache_hits.query,referenced_tables,start_time,end_time FROM cache_hits LEFT JOIN query_lookup ON cache_hits.query = query_lookup.query 
+		SELECT cache_hit,user_email,cache_hits.query,statement_type,referenced_tables,start_time,end_time FROM cache_hits LEFT JOIN query_lookup ON cache_hits.query = query_lookup.query 
 		UNION ALL SELECT * FROM non_cache_hits
 		ORDER BY
 			end_time ASC`, fmt.Sprintf("`region-%s`", region), timeQueryFragment))
@@ -373,7 +374,7 @@ func getDataUsage(ctx context.Context, configMap *config.ConfigMap, region strin
 	return entities, nil
 }
 
-func GetDataUsageStartDate(ctx context.Context, configMap *config.ConfigMap) (time.Time, *time.Time, *time.Time) {
+func GetDataUsageStartDate(_ context.Context, configMap *config.ConfigMap) (time.Time, *time.Time, *time.Time) {
 	numberOfDays := configMap.GetIntWithDefault(BqDataUsageWindow, 90)
 	if numberOfDays > 90 {
 		logger.Info(fmt.Sprintf("Capping data usage window to 90 days (from %d days)", numberOfDays))

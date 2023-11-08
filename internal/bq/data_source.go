@@ -210,7 +210,11 @@ func GetDataSourceMetaData(_ context.Context, configParams *config.ConfigMap) (*
 							GlobalActions: []string{ds.Write},
 						},
 						{
-							Action:        "TRUNCATE",
+							Action:        "MERGE",
+							GlobalActions: []string{ds.Write},
+						},
+						{
+							Action:        "TRUNCATE_TABLE",
 							GlobalActions: []string{ds.Write},
 						},
 					},
