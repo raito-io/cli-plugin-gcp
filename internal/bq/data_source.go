@@ -138,7 +138,7 @@ func GetDataSourceMetaData(_ context.Context, configParams *config.ConfigMap) (*
 					},
 					Children: []string{ds.Table, ds.View},
 				},
-				{ //nolint:dupl
+				{
 					Name: ds.Table,
 					Type: ds.Table,
 					Permissions: []*ds.DataObjectTypePermission{
@@ -177,7 +177,7 @@ func GetDataSourceMetaData(_ context.Context, configParams *config.ConfigMap) (*
 					},
 					Children: []string{ds.Column},
 				},
-				{ //nolint:dupl
+				{
 					Name: ds.View,
 					Type: ds.View,
 					Permissions: []*ds.DataObjectTypePermission{
@@ -210,7 +210,11 @@ func GetDataSourceMetaData(_ context.Context, configParams *config.ConfigMap) (*
 							GlobalActions: []string{ds.Write},
 						},
 						{
-							Action:        "TRUNCATE",
+							Action:        "MERGE",
+							GlobalActions: []string{ds.Write},
+						},
+						{
+							Action:        "TRUNCATE_TABLE",
 							GlobalActions: []string{ds.Write},
 						},
 					},
