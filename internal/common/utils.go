@@ -25,7 +25,7 @@ func init() {
 	Logger = base.Logger()
 }
 
-func getConfig(configMap *config.ConfigMap, scopes ...string) (*jwt.Config, error) {
+func GetConfig(configMap *config.ConfigMap, scopes ...string) (*jwt.Config, error) {
 	key := configMap.GetString(GcpSAFileLocation)
 
 	if key == "" {
@@ -44,7 +44,7 @@ func CrmService(ctx context.Context, configMap *config.ConfigMap) (*crmV1.Servic
 	ctx, cancel := context.WithTimeout(ctx, CONTEXT_TIMEOUT)
 	defer cancel()
 
-	config, err := getConfig(configMap, admin.CloudPlatformScope)
+	config, err := GetConfig(configMap, admin.CloudPlatformScope)
 
 	if err != nil {
 		return nil, err
@@ -57,7 +57,7 @@ func CrmServiceV2(ctx context.Context, configMap *config.ConfigMap) (*crmV2.Serv
 	ctx, cancel := context.WithTimeout(ctx, CONTEXT_TIMEOUT)
 	defer cancel()
 
-	config, err := getConfig(configMap, admin.CloudPlatformScope)
+	config, err := GetConfig(configMap, admin.CloudPlatformScope)
 
 	if err != nil {
 		return nil, err
@@ -70,7 +70,7 @@ func CrmServiceV3(ctx context.Context, configMap *config.ConfigMap) (*crmV3.Serv
 	ctx, cancel := context.WithTimeout(ctx, CONTEXT_TIMEOUT)
 	defer cancel()
 
-	config, err := getConfig(configMap, admin.CloudPlatformScope)
+	config, err := GetConfig(configMap, admin.CloudPlatformScope)
 
 	if err != nil {
 		return nil, err

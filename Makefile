@@ -6,7 +6,10 @@ generate:
 	go get github.com/raito-io/enumer
 	go generate ./...
 
-build: generate
+wire:
+	go run github.com/google/wire/cmd/wire ./...
+
+build: generate wire
 	go build ./...
 
 unit-test:

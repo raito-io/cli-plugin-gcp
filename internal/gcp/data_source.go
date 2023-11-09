@@ -18,22 +18,18 @@ import (
 	"github.com/raito-io/cli/base/wrappers"
 )
 
-//go:generate go run github.com/vektra/mockery/v2 --name=dataSourceRepository --with-expecter --inpackage
-type dataSourceRepository interface {
-	GetProjects(ctx context.Context, configMap *config.ConfigMap) ([]org.GcpOrgEntity, error)
-	GetFolders(ctx context.Context, configMap *config.ConfigMap) ([]org.GcpOrgEntity, error)
+//go:generate go run github.com/vektra/mockery/v2 --name=DataSourceRepository --with-expecter --inpackage
+type DataSourceRepository interface {
+	GetProjects(ctx context.Context, parentName string, parent *org.GcpOrgEntity, fn func(ctx context.Context, project *org.GcpOrgEntity) error) error
+	GetFolders(ctx context.Context, parentName string, parent *org.GcpOrgEntity, fn func(ctx context.Context, folder *org.GcpOrgEntity) error) error
 }
 
 type DataSourceSyncer struct {
-	repoProvider func() dataSourceRepository
+	repoProvider DataSourceRepository
 }
 
-func NewDataSourceSyncer() *DataSourceSyncer {
-	return &DataSourceSyncer{repoProvider: newDsRepoProvider}
-}
-
-func newDsRepoProvider() dataSourceRepository {
-	return org.NewGCPRepository()
+func NewDataSourceSyncer(repository DataSourceRepository) *DataSourceSyncer {
+	return &DataSourceSyncer{repoProvider: repository}
 }
 
 func GetOrgDataObjectName(configmap *config.ConfigMap) string {
@@ -52,62 +48,95 @@ func (s *DataSourceSyncer) SyncDataSource(ctx context.Context, dataSourceHandler
 		return err
 	}
 
-	folders, err := s.repoProvider().GetFolders(ctx, configMap)
-
+	//sync projects that are childs of the organization
+	err = s.syncProjects(ctx, dataSourceHandler, configMap, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("project syncs of organisation: %w", err)
 	}
 
-	err = dataSourceHandler.AddDataObjects(handleGcpOrgEntities(folders, configMap)...)
-
+	// sync folders (and child projects)
+	err = s.syncFolders(ctx, dataSourceHandler, configMap, nil)
 	if err != nil {
-		return err
-	}
-
-	projects, err := s.repoProvider().GetProjects(ctx, configMap)
-
-	if err != nil {
-		return err
-	}
-
-	err = dataSourceHandler.AddDataObjects(handleGcpOrgEntities(projects, configMap)...)
-
-	if err != nil {
-		return err
+		return fmt.Errorf("folder syncs of organisation: %w", err)
 	}
 
 	return nil
 }
 
-var externalIds = set.NewSet[string]()
-
-func handleGcpOrgEntities(entities []org.GcpOrgEntity, configMap *config.ConfigMap) []*ds.DataObject {
-	dos := make([]*ds.DataObject, len(entities))
-
-	for i, p := range entities {
-		externalIds.Add(p.Id)
-
-		parent := GetOrgDataObjectName(configMap)
-
-		if p.Parent != nil && !strings.EqualFold(p.Parent.Type, iam.Organization.String()) {
-			if _, f := externalIds[p.Parent.Id]; f {
-				parent = p.Parent.Id
-			}
+func (s *DataSourceSyncer) syncFolders(ctx context.Context, dataSourceHandler wrappers.DataSourceObjectHandler, configMap *config.ConfigMap, parent *org.GcpOrgEntity) error {
+	syncFunc := func(ctx context.Context, folder *org.GcpOrgEntity) error {
+		err := dataSourceHandler.AddDataObjects(handleGcpOrgEntities(folder, configMap))
+		if err != nil {
+			return fmt.Errorf("add data object %q to data object file: %w", folder.Id, err)
 		}
 
-		dos[i] = &ds.DataObject{
-			Name:             p.Name,
-			Type:             p.Type,
-			FullName:         p.Id,
-			ExternalId:       p.Id,
-			ParentExternalId: parent,
+		// Search for projects in folder
+		err = s.syncProjects(ctx, dataSourceHandler, configMap, folder)
+		if err != nil {
+			return fmt.Errorf("sync projects of folder %q: %w", folder.Id, err)
+		}
+
+		// Search for sub folders
+		err = s.syncFolders(ctx, dataSourceHandler, configMap, folder)
+		if err != nil {
+			return fmt.Errorf("sync folders of folder %q: %w", folder.Id, err)
+		}
+
+		return nil
+	}
+
+	parentName := fmt.Sprintf("organizations/%s", configMap.GetString(common.GcpOrgId))
+
+	if parent != nil {
+		parentName = parent.EntryName
+	}
+
+	return s.repoProvider.GetFolders(ctx, parentName, parent, syncFunc)
+}
+
+func (s *DataSourceSyncer) syncProjects(ctx context.Context, dataSourceHandler wrappers.DataSourceObjectHandler, configMap *config.ConfigMap, parent *org.GcpOrgEntity) error {
+	syncFunc := func(ctx context.Context, project *org.GcpOrgEntity) error {
+		err := dataSourceHandler.AddDataObjects(handleGcpOrgEntities(project, configMap))
+		if err != nil {
+			return fmt.Errorf("add data object %q to data object file: %w", project.Id, err)
+		}
+
+		return nil
+	}
+
+	parentName := fmt.Sprintf("organizations/%s", configMap.GetString(common.GcpOrgId))
+
+	if parent != nil {
+		parentName = parent.EntryName
+	}
+
+	return s.repoProvider.GetProjects(ctx, parentName, parent, syncFunc)
+}
+
+var externalIds = set.NewSet[string]()
+
+func handleGcpOrgEntities(entity *org.GcpOrgEntity, configMap *config.ConfigMap) *ds.DataObject {
+	externalIds.Add(entity.Id)
+
+	parent := GetOrgDataObjectName(configMap)
+
+	if entity.Parent != nil && !strings.EqualFold(entity.Parent.Type, iam.Organization.String()) {
+		if _, f := externalIds[entity.Parent.Id]; f {
+			parent = entity.Parent.Id
 		}
 	}
 
-	return dos
+	return &ds.DataObject{
+		Name:             entity.Name,
+		Type:             entity.Type,
+		FullName:         entity.Id,
+		ExternalId:       entity.Id,
+		ParentExternalId: parent,
+	}
 }
 
 func (s *DataSourceSyncer) GetDataSourceMetaData(ctx context.Context, configParams *config.ConfigMap) (*ds.MetaData, error) {
+	common.Logger.Info("DataSource meta data sync")
 	return GetDataSourceMetaData(ctx, configParams)
 }
 

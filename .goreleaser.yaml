@@ -3,6 +3,7 @@ project_name: cli-plugin-gcp
 before:
   hooks:
     - go mod tidy
+    - make wire
 builds:
   - id: "gcp"
     main: ./cmd/gcp/main.go

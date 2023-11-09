@@ -6,9 +6,12 @@ require (
 	cloud.google.com/go/bigquery v1.53.0
 	cloud.google.com/go/datacatalog v1.16.0
 	cloud.google.com/go/iam v1.1.1
+	cloud.google.com/go/resourcemanager v1.9.1
 	github.com/aws/smithy-go v1.16.0
 	github.com/gogo/protobuf v1.3.2
 	github.com/google/uuid v1.3.1
+	github.com/google/wire v0.5.0
+	github.com/googleapis/gax-go/v2 v2.12.0
 	github.com/hashicorp/go-hclog v1.5.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/matoous/go-nanoid/v2 v2.0.0
@@ -52,8 +55,8 @@ require (
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/flatbuffers v2.0.8+incompatible // indirect
 	github.com/google/s2a-go v0.1.7 // indirect
+	github.com/google/subcommands v1.0.1 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.1 // indirect
-	github.com/googleapis/gax-go/v2 v2.12.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-plugin v1.5.2 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect

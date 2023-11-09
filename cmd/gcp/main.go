@@ -21,7 +21,7 @@ func main() {
 
 	err := base.RegisterPlugins(
 		wrappers.IdentityStoreSync(gcp.NewIdentityStoreSyncer()),
-		wrappers.DataSourceSync(gcp.NewDataSourceSyncer()),
+		wrappers.DataSourceSyncFactory(InitializeDataSourceSyncer),
 		wrappers.DataAccessSync(gcp.NewDataAccessSyncer(), access_provider.WithSupportPartialSync()),
 		&info.InfoImpl{
 			Info: &plugin.PluginInfo{
