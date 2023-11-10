@@ -6,6 +6,7 @@ import (
 	"github.com/raito-io/cli/base/util/config"
 
 	"github.com/raito-io/cli-plugin-gcp/internal/iam"
+	"github.com/raito-io/cli-plugin-gcp/internal/iam/types"
 )
 
 var _ iam.IAMRepository = (*IamRepositories)(nil)
@@ -14,8 +15,8 @@ type IamRepositories struct {
 	services map[string]iam.IAMRepository
 }
 
-func (i IamRepositories) GetUsers(ctx context.Context, configMap *config.ConfigMap, id string) ([]iam.UserEntity, error) {
-	var result []iam.UserEntity
+func (i IamRepositories) GetUsers(ctx context.Context, configMap *config.ConfigMap, id string) ([]types.UserEntity, error) {
+	var result []types.UserEntity
 
 	for _, service := range i.services {
 		serviceResult, err := service.GetUsers(ctx, configMap, id)
@@ -29,8 +30,8 @@ func (i IamRepositories) GetUsers(ctx context.Context, configMap *config.ConfigM
 	return result, nil
 }
 
-func (i IamRepositories) GetGroups(ctx context.Context, configMap *config.ConfigMap, id string) ([]iam.GroupEntity, error) {
-	var result []iam.GroupEntity
+func (i IamRepositories) GetGroups(ctx context.Context, configMap *config.ConfigMap, id string) ([]types.GroupEntity, error) {
+	var result []types.GroupEntity
 
 	for _, service := range i.services {
 		serviceResult, err := service.GetGroups(ctx, configMap, id)
@@ -44,8 +45,8 @@ func (i IamRepositories) GetGroups(ctx context.Context, configMap *config.Config
 	return result, nil
 }
 
-func (i IamRepositories) GetServiceAccounts(ctx context.Context, configMap *config.ConfigMap, id string) ([]iam.UserEntity, error) {
-	var result []iam.UserEntity
+func (i IamRepositories) GetServiceAccounts(ctx context.Context, configMap *config.ConfigMap, id string) ([]types.UserEntity, error) {
+	var result []types.UserEntity
 
 	for _, service := range i.services {
 		serviceResult, err := service.GetServiceAccounts(ctx, configMap, id)
@@ -59,7 +60,7 @@ func (i IamRepositories) GetServiceAccounts(ctx context.Context, configMap *conf
 	return result, nil
 }
 
-func (i IamRepositories) GetIamPolicy(ctx context.Context, configMap *config.ConfigMap, id string) (iam.IAMPolicyContainer, error) {
+func (i IamRepositories) GetIamPolicy(ctx context.Context, configMap *config.ConfigMap, id string) (types.IAMPolicyContainer, error) {
 	//TODO implement me
 	panic("implement me")
 }

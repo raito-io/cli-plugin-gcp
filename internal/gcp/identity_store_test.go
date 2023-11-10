@@ -2,189 +2,286 @@ package gcp
 
 import (
 	"context"
-	"fmt"
+	"errors"
+	"sort"
 	"testing"
 
-	is "github.com/raito-io/cli/base/identity_store"
+	"github.com/raito-io/cli/base/identity_store"
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/raito-io/cli/base/wrappers/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/raito-io/cli-plugin-gcp/internal/iam"
+	"github.com/raito-io/cli-plugin-gcp/internal/iam/types"
 )
 
 func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
-
-	identityHandlerMock := mocks.NewSimpleIdentityStoreIdentityHandler(t, 1)
-
-	iamServiceMock := iam.NewMockIAMService(t)
-	iamServiceMock.EXPECT().GetGroups(mock.Anything, mock.Anything).Return([]iam.GroupEntity{
-		{
-			ExternalId: "g1",
-			Email:      "g1@example.com",
-			Members:    []string{"user1", "g2"},
-		},
-		{
-			ExternalId: "g2",
-			Email:      "g2@example.com",
-			Members:    []string{},
-		},
-	}, nil).Once()
-	iamServiceMock.EXPECT().GetUsers(mock.Anything, mock.Anything).Return([]iam.UserEntity{
-		{
-			ExternalId: "user1",
-			Name:       "user1",
-			Email:      "user1@example.com",
-		},
-		{
-			ExternalId: "user2",
-			Name:       "user2",
-			Email:      "user2@example.com",
-		},
-	}, nil).Once()
-	iamServiceMock.EXPECT().GetServiceAccounts(mock.Anything, mock.Anything).Return([]iam.UserEntity{
-		{
-			ExternalId: "sa1",
-			Name:       "sa1",
-			Email:      "sa1@example.com",
-		},
-	}, nil).Once()
-
-	// Given
-	configMap := &config.ConfigMap{
-		Parameters: map[string]string{},
+	type fields struct {
+		mockSetup func(adminRepoMock *MockAdminRepository, doRepoMock *MockDataObjectRepository)
 	}
+	type args struct {
+		ctx       context.Context
+		configMap *config.ConfigMap
+	}
+	type expected struct {
+		groups []identity_store.Group
+		users  []identity_store.User
+	}
+	tests := []struct {
+		name     string
+		fields   fields
+		args     args
+		expected expected
+		wantErr  assert.ErrorAssertionFunc
+	}{
+		{
+			name: "No users and groups",
+			fields: fields{mockSetup: func(adminRepoMock *MockAdminRepository, doRepoMock *MockDataObjectRepository) {
+				adminRepoMock.EXPECT().GetGroups(mock.Anything, mock.Anything).Return(nil)
+				adminRepoMock.EXPECT().GetUsers(mock.Anything, mock.Anything).Return(nil)
+				doRepoMock.EXPECT().UserAndGroups(mock.Anything, mock.Anything, mock.Anything).Return(nil)
+			}},
+			args: args{
+				ctx:       context.Background(),
+				configMap: &config.ConfigMap{},
+			},
+			expected: expected{groups: []identity_store.Group{}, users: []identity_store.User{}},
+			wantErr:  assert.NoError,
+		},
+		{
+			name: "Users in gcp and bindings",
+			fields: fields{mockSetup: func(adminRepoMock *MockAdminRepository, doRepoMock *MockDataObjectRepository) {
+				adminRepoMock.EXPECT().GetGroups(mock.Anything, mock.Anything).Return(nil)
+				adminRepoMock.EXPECT().GetUsers(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, fn func(context.Context, *types.UserEntity) error) error {
+					err := fn(ctx, &types.UserEntity{ExternalId: "user:dieter@raitio.io", Email: "dieter@raito.io", Name: "Dieter Wachters"})
+					if err != nil {
+						return err
+					}
 
-	syncer := IdentityStoreSyncer{
-		iamServiceProvider: func(config *config.ConfigMap) iam.IAMService {
-			return iamServiceMock
+					return fn(ctx, &types.UserEntity{ExternalId: "user:ruben@raitio.io", Email: "ruben@raito.io", Name: "Ruben Mennes"})
+				})
+
+				doRepoMock.EXPECT().UserAndGroups(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, userFn func(context.Context, string) error, groupFn func(context.Context, string) error) error {
+					err := userFn(ctx, "user:dieter@raitio.io")
+					if err != nil {
+						return err
+					}
+
+					err = userFn(ctx, "user:bart@raitio.io")
+					if err != nil {
+						return err
+					}
+
+					return userFn(ctx, "serviceAccount:serviceAccount123@raito.io")
+				})
+			}},
+			args: args{
+				ctx:       context.Background(),
+				configMap: &config.ConfigMap{},
+			},
+			expected: expected{
+				groups: []identity_store.Group{},
+				users: []identity_store.User{
+					{
+						ExternalId: "user:dieter@raitio.io",
+						Email:      "dieter@raito.io",
+						Name:       "Dieter Wachters",
+						UserName:   "dieter@raito.io",
+					},
+					{
+						ExternalId: "user:ruben@raitio.io",
+						Email:      "ruben@raito.io",
+						Name:       "Ruben Mennes",
+						UserName:   "ruben@raito.io",
+					},
+					{
+						ExternalId: "user:bart@raitio.io",
+						Name:       "bart@raitio.io",
+						UserName:   "bart@raitio.io",
+						Email:      "bart@raitio.io",
+					},
+					{
+						ExternalId: "serviceAccount:serviceAccount123@raito.io",
+						Name:       "serviceAccount123@raito.io",
+						UserName:   "serviceAccount123@raito.io",
+						Email:      "serviceAccount123@raito.io",
+					},
+				},
+			},
+			wantErr: assert.NoError,
+		},
+		{
+			name: "Groups and users in gcp and bindings",
+			fields: fields{mockSetup: func(adminRepoMock *MockAdminRepository, doRepoMock *MockDataObjectRepository) {
+				adminRepoMock.EXPECT().GetGroups(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, fn func(context.Context, *types.GroupEntity) error) error {
+					err := fn(ctx, &types.GroupEntity{ExternalId: "group:admin@raito.io", Email: "administrators@raito.io", Members: []string{"user:dieter@raito.io", "serviceAccount:sa@raito.io"}})
+					if err != nil {
+						return err
+					}
+
+					return fn(ctx, &types.GroupEntity{ExternalId: "group:engineers@raito.io", Email: "engineers@raito.io", Members: []string{"user:ruben@raito.io", "group:admin@raito.io", "user:dieter@raito.io"}})
+				})
+				adminRepoMock.EXPECT().GetUsers(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, fn func(context.Context, *types.UserEntity) error) error {
+					err := fn(ctx, &types.UserEntity{ExternalId: "user:dieter@raito.io", Email: "dieter@raito.io", Name: "Dieter Wachters"})
+					if err != nil {
+						return err
+					}
+
+					err = fn(ctx, &types.UserEntity{ExternalId: "serviceAccount:sa@raito.io", Email: "sa@raito.io", Name: "sa@raito.io"})
+					if err != nil {
+						return err
+					}
+
+					return fn(ctx, &types.UserEntity{ExternalId: "user:ruben@raito.io", Email: "ruben@raito.io", Name: "Ruben Mennes"})
+				})
+
+				doRepoMock.EXPECT().UserAndGroups(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, userFn func(context.Context, string) error, groupFn func(context.Context, string) error) error {
+					err := userFn(ctx, "user:dieter@raito.io")
+					if err != nil {
+						return err
+					}
+
+					err = userFn(ctx, "user:bart@raito.io")
+					if err != nil {
+						return err
+					}
+
+					return userFn(ctx, "serviceAccount:serviceAccount123@raito.io")
+				})
+			}},
+			args: args{
+				ctx:       context.Background(),
+				configMap: &config.ConfigMap{},
+			},
+			expected: expected{
+				groups: []identity_store.Group{
+					{
+						ExternalId:  "group:engineers@raito.io",
+						Name:        "engineers@raito.io",
+						DisplayName: "engineers@raito.io",
+					},
+					{
+						ExternalId:             "group:admin@raito.io",
+						Name:                   "administrators@raito.io",
+						DisplayName:            "administrators@raito.io",
+						ParentGroupExternalIds: []string{"group:engineers@raito.io"},
+					},
+				},
+				users: []identity_store.User{
+					{
+						ExternalId:       "user:dieter@raito.io",
+						Email:            "dieter@raito.io",
+						Name:             "Dieter Wachters",
+						UserName:         "dieter@raito.io",
+						GroupExternalIds: []string{"group:admin@raito.io", "group:engineers@raito.io"},
+					},
+					{
+						ExternalId:       "user:ruben@raito.io",
+						Email:            "ruben@raito.io",
+						Name:             "Ruben Mennes",
+						UserName:         "ruben@raito.io",
+						GroupExternalIds: []string{"group:engineers@raito.io"},
+					},
+					{
+						ExternalId: "user:bart@raito.io",
+						Name:       "bart@raito.io",
+						UserName:   "bart@raito.io",
+						Email:      "bart@raito.io",
+					},
+					{
+						ExternalId: "serviceAccount:serviceAccount123@raito.io",
+						Name:       "serviceAccount123@raito.io",
+						UserName:   "serviceAccount123@raito.io",
+						Email:      "serviceAccount123@raito.io",
+					},
+					{
+						ExternalId:       "serviceAccount:sa@raito.io",
+						Name:             "sa@raito.io",
+						UserName:         "sa@raito.io",
+						Email:            "sa@raito.io",
+						GroupExternalIds: []string{"group:admin@raito.io"},
+					},
+				},
+			},
+			wantErr: assert.NoError,
+		},
+		{
+			name: "Error during processing",
+			fields: fields{mockSetup: func(adminRepoMock *MockAdminRepository, doRepoMock *MockDataObjectRepository) {
+				adminRepoMock.EXPECT().GetGroups(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, fn func(context.Context, *types.GroupEntity) error) error {
+					err := fn(ctx, &types.GroupEntity{ExternalId: "group:admin@raito.io", Email: "administrators@raito.io", Members: []string{"user:dieter@raito.io", "serviceAccount:sa@raito.io"}})
+					if err != nil {
+						return err
+					}
+
+					return fn(ctx, &types.GroupEntity{ExternalId: "group:engineers@raito.io", Email: "engineers@raito.io", Members: []string{"user:ruben@raito.io", "group:admin@raito.io", "user:dieter@raito.io"}})
+				})
+				adminRepoMock.EXPECT().GetUsers(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, fn func(context.Context, *types.UserEntity) error) error {
+					err := fn(ctx, &types.UserEntity{ExternalId: "user:dieter@raito.io", Email: "dieter@raito.io", Name: "Dieter Wachters"})
+					if err != nil {
+						return err
+					}
+
+					return errors.New("boom")
+				})
+			}},
+			args: args{
+				ctx:       context.Background(),
+				configMap: &config.ConfigMap{},
+			},
+			expected: expected{
+				groups: []identity_store.Group{
+					{
+						ExternalId:  "group:engineers@raito.io",
+						Name:        "engineers@raito.io",
+						DisplayName: "engineers@raito.io",
+					},
+					{
+						ExternalId:             "group:admin@raito.io",
+						Name:                   "administrators@raito.io",
+						DisplayName:            "administrators@raito.io",
+						ParentGroupExternalIds: []string{"group:engineers@raito.io"},
+					},
+				},
+				users: []identity_store.User{
+					{
+						ExternalId:       "user:dieter@raito.io",
+						Email:            "dieter@raito.io",
+						Name:             "Dieter Wachters",
+						UserName:         "dieter@raito.io",
+						GroupExternalIds: []string{"group:admin@raito.io", "group:engineers@raito.io"},
+					},
+				},
+			},
+			wantErr: assert.Error,
 		},
 	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s, adminRepoMock, doRepoMock := createIdentityStoreSyncer(t)
+			tt.fields.mockSetup(adminRepoMock, doRepoMock)
 
-	// When
-	err := syncer.SyncIdentityStore(context.Background(), identityHandlerMock, configMap)
+			isHandlerMock := mocks.NewSimpleIdentityStoreIdentityHandler(t, 1)
 
-	// Then
-	assert.NoError(t, err)
+			tt.wantErr(t, s.SyncIdentityStore(tt.args.ctx, isHandlerMock, tt.args.configMap))
+			assert.ElementsMatch(t, tt.expected.groups, isHandlerMock.Groups)
 
-	identityHandlerMock.AssertNumberOfCalls(t, "AddUsers", 3)
-	identityHandlerMock.AssertNumberOfCalls(t, "AddGroups", 2)
+			for i := range isHandlerMock.Users {
+				sort.Slice(isHandlerMock.Users[i].GroupExternalIds, func(j, k int) bool {
+					return isHandlerMock.Users[i].GroupExternalIds[j] < isHandlerMock.Users[i].GroupExternalIds[k]
+				})
+			}
 
-	identityHandlerMock.AssertCalled(t, "AddUsers", &is.User{ExternalId: "user1", UserName: "user1@example.com", Email: "user1@example.com", Name: "user1", GroupExternalIds: []string{"g1"}})
-	identityHandlerMock.AssertCalled(t, "AddUsers", &is.User{ExternalId: "user2", UserName: "user2@example.com", Email: "user2@example.com", Name: "user2", GroupExternalIds: nil})
-
-	identityHandlerMock.AssertCalled(t, "AddGroups", &is.Group{ExternalId: "g1", Name: "g1@example.com", DisplayName: "g1@example.com"})
-	identityHandlerMock.AssertCalled(t, "AddGroups", &is.Group{ExternalId: "g2", Name: "g2@example.com", DisplayName: "g2@example.com", ParentGroupExternalIds: []string{"g1"}})
+			assert.ElementsMatch(t, tt.expected.users, isHandlerMock.Users)
+		})
+	}
 }
 
-func TestIdentityStoreSyncer_SAError(t *testing.T) {
+func createIdentityStoreSyncer(t *testing.T) (*IdentityStoreSyncer, *MockAdminRepository, *MockDataObjectRepository) {
+	t.Helper()
 
-	identityHandlerMock := mocks.NewSimpleIdentityStoreIdentityHandler(t, 1)
+	adminRepoMock := NewMockAdminRepository(t)
+	dataObjectRepoMock := NewMockDataObjectRepository(t)
 
-	iamServiceMock := iam.NewMockIAMService(t)
-	iamServiceMock.EXPECT().GetGroups(mock.Anything, mock.Anything).Return([]iam.GroupEntity{
-		{
-			ExternalId: "g1",
-			Email:      "g1@example.com",
-			Members:    []string{"user1", "g2"},
-		},
-		{
-			ExternalId: "g2",
-			Email:      "g2@example.com",
-			Members:    []string{"user2"},
-		},
-	}, nil).Once()
-	iamServiceMock.EXPECT().GetUsers(mock.Anything, mock.Anything).Return([]iam.UserEntity{
-		{
-			ExternalId: "user1",
-			Name:       "user1",
-			Email:      "user1@example.com",
-		},
-		{
-			ExternalId: "user2",
-			Name:       "user2",
-			Email:      "user2@example.com",
-		},
-	}, nil).Once()
-	iamServiceMock.EXPECT().GetServiceAccounts(mock.Anything, mock.Anything).Return(nil, fmt.Errorf("error!")).Once()
-
-	// Given
-	configMap := &config.ConfigMap{
-		Parameters: map[string]string{},
-	}
-
-	syncer := IdentityStoreSyncer{
-		iamServiceProvider: func(config *config.ConfigMap) iam.IAMService {
-			return iamServiceMock
-		},
-	}
-
-	// When
-	err := syncer.SyncIdentityStore(context.Background(), identityHandlerMock, configMap)
-
-	// Then
-	assert.Error(t, err)
-}
-
-func TestIdentityStoreSyncer_UserError(t *testing.T) {
-
-	identityHandlerMock := mocks.NewSimpleIdentityStoreIdentityHandler(t, 1)
-
-	iamServiceMock := iam.NewMockIAMService(t)
-	iamServiceMock.EXPECT().GetGroups(mock.Anything, mock.Anything).Return([]iam.GroupEntity{
-		{
-			ExternalId: "g1",
-			Email:      "g1@example.com",
-			Members:    []string{"user1", "g2"},
-		},
-		{
-			ExternalId: "g2",
-			Email:      "g2@example.com",
-			Members:    []string{"user2"},
-		},
-	}, nil).Once()
-	iamServiceMock.EXPECT().GetUsers(mock.Anything, mock.Anything).Return(nil, fmt.Errorf("error!")).Once()
-
-	// Given
-	configMap := &config.ConfigMap{
-		Parameters: map[string]string{},
-	}
-
-	syncer := IdentityStoreSyncer{
-		iamServiceProvider: func(config *config.ConfigMap) iam.IAMService {
-			return iamServiceMock
-		},
-	}
-
-	// When
-	err := syncer.SyncIdentityStore(context.Background(), identityHandlerMock, configMap)
-
-	// Then
-	assert.Error(t, err)
-}
-
-func TestIdentityStoreSyncer_GroupError(t *testing.T) {
-
-	identityHandlerMock := mocks.NewSimpleIdentityStoreIdentityHandler(t, 1)
-
-	iamServiceMock := iam.NewMockIAMService(t)
-	iamServiceMock.EXPECT().GetGroups(mock.Anything, mock.Anything).Return(nil, fmt.Errorf("error!")).Once()
-
-	// Given
-	configMap := &config.ConfigMap{
-		Parameters: map[string]string{},
-	}
-
-	syncer := IdentityStoreSyncer{
-		iamServiceProvider: func(config *config.ConfigMap) iam.IAMService {
-			return iamServiceMock
-		},
-	}
-
-	// When
-	err := syncer.SyncIdentityStore(context.Background(), identityHandlerMock, configMap)
-
-	// Then
-	assert.Error(t, err)
+	return NewIdentityStoreSyncer(adminRepoMock, dataObjectRepoMock), adminRepoMock, dataObjectRepoMock
 }

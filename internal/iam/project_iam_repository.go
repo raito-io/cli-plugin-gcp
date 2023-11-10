@@ -9,6 +9,7 @@ import (
 	cloudresourcemanager "google.golang.org/api/cloudresourcemanager/v1"
 
 	"github.com/raito-io/cli-plugin-gcp/internal/common"
+	"github.com/raito-io/cli-plugin-gcp/internal/iam/types"
 )
 
 var projectIamPolicyCache map[string]*cloudresourcemanager.Policy = make(map[string]*cloudresourcemanager.Policy)
@@ -17,7 +18,7 @@ type projectIamRepository struct {
 }
 
 //nolint:dupl
-func (r *projectIamRepository) GetUsers(ctx context.Context, configMap *config.ConfigMap, id string) ([]UserEntity, error) {
+func (r *projectIamRepository) GetUsers(ctx context.Context, configMap *config.ConfigMap, id string) ([]types.UserEntity, error) {
 	policy, err := r.GetIamPolicy(ctx, configMap, id)
 
 	if err != nil {
@@ -26,10 +27,10 @@ func (r *projectIamRepository) GetUsers(ctx context.Context, configMap *config.C
 
 	if policy.V1 == nil {
 		common.Logger.Warn(fmt.Sprintf("getUsers: Could not retrieve IAM policy for project %s", id))
-		return []UserEntity{}, nil
+		return []types.UserEntity{}, nil
 	}
 
-	users := make([]UserEntity, 0)
+	users := make([]types.UserEntity, 0)
 	externalIdList := map[string]struct{}{}
 
 	for _, binding := range policy.V1.Bindings {
@@ -38,7 +39,7 @@ func (r *projectIamRepository) GetUsers(ctx context.Context, configMap *config.C
 				continue
 			}
 
-			user := UserEntity{
+			user := types.UserEntity{
 				ExternalId: member,
 				Name:       strings.Replace(member, "user:", "", 1),
 				Email:      strings.Split(member, ":")[1],
@@ -51,7 +52,7 @@ func (r *projectIamRepository) GetUsers(ctx context.Context, configMap *config.C
 
 	return users, nil
 }
-func (r *projectIamRepository) GetGroups(ctx context.Context, configMap *config.ConfigMap, id string) ([]GroupEntity, error) {
+func (r *projectIamRepository) GetGroups(ctx context.Context, configMap *config.ConfigMap, id string) ([]types.GroupEntity, error) {
 	policy, err := r.GetIamPolicy(ctx, configMap, id)
 
 	if err != nil {
@@ -60,10 +61,10 @@ func (r *projectIamRepository) GetGroups(ctx context.Context, configMap *config.
 
 	if policy.V1 == nil {
 		common.Logger.Warn(fmt.Sprintf("getGroups: Could not retrieve IAM policy for project %s", id))
-		return []GroupEntity{}, nil
+		return []types.GroupEntity{}, nil
 	}
 
-	groups := make([]GroupEntity, 0)
+	groups := make([]types.GroupEntity, 0)
 	externalIdList := map[string]struct{}{}
 
 	for _, binding := range policy.V1.Bindings {
@@ -72,7 +73,7 @@ func (r *projectIamRepository) GetGroups(ctx context.Context, configMap *config.
 				continue
 			}
 
-			group := GroupEntity{
+			group := types.GroupEntity{
 				ExternalId: member,
 				Email:      strings.Split(member, ":")[1],
 			}
@@ -86,7 +87,7 @@ func (r *projectIamRepository) GetGroups(ctx context.Context, configMap *config.
 }
 
 //nolint:dupl
-func (r *projectIamRepository) GetServiceAccounts(ctx context.Context, configMap *config.ConfigMap, id string) ([]UserEntity, error) {
+func (r *projectIamRepository) GetServiceAccounts(ctx context.Context, configMap *config.ConfigMap, id string) ([]types.UserEntity, error) {
 	policy, err := r.GetIamPolicy(ctx, configMap, id)
 
 	if err != nil {
@@ -95,10 +96,10 @@ func (r *projectIamRepository) GetServiceAccounts(ctx context.Context, configMap
 
 	if policy.V1 == nil {
 		common.Logger.Warn(fmt.Sprintf("getServiceAccounts: Could not retrieve IAM policy for project %s", id))
-		return []UserEntity{}, nil
+		return []types.UserEntity{}, nil
 	}
 
-	users := make([]UserEntity, 0)
+	users := make([]types.UserEntity, 0)
 	externalIdList := map[string]struct{}{}
 
 	for _, binding := range policy.V1.Bindings {
@@ -107,7 +108,7 @@ func (r *projectIamRepository) GetServiceAccounts(ctx context.Context, configMap
 				continue
 			}
 
-			user := UserEntity{
+			user := types.UserEntity{
 				ExternalId: member,
 				Name:       strings.Replace(member, "serviceAccount:", "", 1),
 				Email:      strings.Split(member, ":")[1],
@@ -121,9 +122,9 @@ func (r *projectIamRepository) GetServiceAccounts(ctx context.Context, configMap
 	return users, nil
 }
 
-func (r *projectIamRepository) GetIamPolicy(ctx context.Context, configMap *config.ConfigMap, id string) (IAMPolicyContainer, error) {
+func (r *projectIamRepository) GetIamPolicy(ctx context.Context, configMap *config.ConfigMap, id string) (types.IAMPolicyContainer, error) {
 	if _, f := projectIamPolicyCache[id]; f {
-		return IAMPolicyContainer{V1: projectIamPolicyCache[id]}, nil
+		return types.IAMPolicyContainer{V1: projectIamPolicyCache[id]}, nil
 	}
 
 	common.Logger.Info(fmt.Sprintf("Fetching the IAM policy for project %s", id))
@@ -131,7 +132,7 @@ func (r *projectIamRepository) GetIamPolicy(ctx context.Context, configMap *conf
 	crmService, err := common.CrmService(ctx, configMap)
 
 	if err != nil {
-		return IAMPolicyContainer{}, err
+		return types.IAMPolicyContainer{}, err
 	}
 
 	policy, err := crmService.Projects.GetIamPolicy(id, new(cloudresourcemanager.GetIamPolicyRequest)).Do()
@@ -139,15 +140,15 @@ func (r *projectIamRepository) GetIamPolicy(ctx context.Context, configMap *conf
 	if err != nil {
 		if strings.Contains(err.Error(), "403") {
 			common.Logger.Warn(fmt.Sprintf("Failed to fetch the IAM policyfor project %s: %s", id, err.Error()))
-			return IAMPolicyContainer{}, nil
+			return types.IAMPolicyContainer{}, nil
 		} else {
-			return IAMPolicyContainer{}, err
+			return types.IAMPolicyContainer{}, err
 		}
 	} else {
 		projectIamPolicyCache[id] = policy
 	}
 
-	return IAMPolicyContainer{V1: projectIamPolicyCache[id]}, nil
+	return types.IAMPolicyContainer{V1: projectIamPolicyCache[id]}, nil
 }
 
 //nolint:dupl

@@ -12,6 +12,7 @@ import (
 	"google.golang.org/api/option"
 
 	"github.com/raito-io/cli-plugin-gcp/internal/common"
+	"github.com/raito-io/cli-plugin-gcp/internal/iam/types"
 )
 
 const MAX_PAGE_ITEMS = 100
@@ -49,8 +50,8 @@ func (r *gsuiteIamRepository) client(ctx context.Context, configMap *config.Conf
 	return admin.NewService(ctx, option.WithHTTPClient(config.Client(ctx)))
 }
 
-func (r *gsuiteIamRepository) GetUsers(ctx context.Context, configMap *config.ConfigMap, id string) ([]UserEntity, error) {
-	res := make([]UserEntity, 0)
+func (r *gsuiteIamRepository) GetUsers(ctx context.Context, configMap *config.ConfigMap, id string) ([]types.UserEntity, error) {
+	res := make([]types.UserEntity, 0)
 
 	client, err := r.client(ctx, configMap, admin.AdminDirectoryUserReadonlyScope)
 
@@ -78,7 +79,7 @@ func (r *gsuiteIamRepository) GetUsers(ctx context.Context, configMap *config.Co
 				continue
 			}
 
-			res = append(res, UserEntity{ExternalId: fmt.Sprintf("user:%s", u.PrimaryEmail), Name: u.Name.FullName, Email: u.PrimaryEmail})
+			res = append(res, types.UserEntity{ExternalId: fmt.Sprintf("user:%s", u.PrimaryEmail), Name: u.Name.FullName, Email: u.PrimaryEmail})
 		}
 
 		if users.NextPageToken != "" {
@@ -91,8 +92,8 @@ func (r *gsuiteIamRepository) GetUsers(ctx context.Context, configMap *config.Co
 	return res, nil
 }
 
-func (r *gsuiteIamRepository) GetGroups(ctx context.Context, configMap *config.ConfigMap, id string) ([]GroupEntity, error) {
-	res := make([]GroupEntity, 0)
+func (r *gsuiteIamRepository) GetGroups(ctx context.Context, configMap *config.ConfigMap, id string) ([]types.GroupEntity, error) {
+	res := make([]types.GroupEntity, 0)
 
 	client, err := r.client(ctx, configMap, admin.AdminDirectoryGroupReadonlyScope)
 
@@ -127,7 +128,7 @@ func (r *gsuiteIamRepository) GetGroups(ctx context.Context, configMap *config.C
 
 			common.Logger.Debug(fmt.Sprintf("Found the following members for group %q: %v", g.Email, members))
 
-			res = append(res, GroupEntity{ExternalId: fmt.Sprintf("group:%s", g.Email), Email: g.Email, Members: members})
+			res = append(res, types.GroupEntity{ExternalId: fmt.Sprintf("group:%s", g.Email), Email: g.Email, Members: members})
 		}
 
 		if groups.NextPageToken != "" {
@@ -186,12 +187,12 @@ func (r *gsuiteIamRepository) groupMembers(ctx context.Context, configMap *confi
 }
 
 // below interface methods do not apply to GSuite so they return nil and/or no error
-func (r *gsuiteIamRepository) GetServiceAccounts(ctx context.Context, configMap *config.ConfigMap, id string) ([]UserEntity, error) {
+func (r *gsuiteIamRepository) GetServiceAccounts(ctx context.Context, configMap *config.ConfigMap, id string) ([]types.UserEntity, error) {
 	return nil, nil
 }
 
-func (r *gsuiteIamRepository) GetIamPolicy(ctx context.Context, configMap *config.ConfigMap, id string) (IAMPolicyContainer, error) {
-	return IAMPolicyContainer{}, nil
+func (r *gsuiteIamRepository) GetIamPolicy(ctx context.Context, configMap *config.ConfigMap, id string) (types.IAMPolicyContainer, error) {
+	return types.IAMPolicyContainer{}, nil
 }
 
 func (r *gsuiteIamRepository) AddBinding(ctx context.Context, configMap *config.ConfigMap, id, member, role string) error {

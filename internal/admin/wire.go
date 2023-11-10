@@ -1,13 +1,14 @@
 //go:build wireinject
 // +build wireinject
 
-package gcp
+package admin
 
 import (
 	"github.com/google/wire"
 )
 
 var Wired = wire.NewSet(
-	NewDataSourceSyncer,
-	NewIdentityStoreSyncer,
+	NewAdminRepository,
+
+	NewGcpAdminService,
 )

@@ -10,7 +10,7 @@ import (
 	"github.com/raito-io/cli/base/util/config"
 
 	"github.com/raito-io/cli-plugin-gcp/internal/common"
-	"github.com/raito-io/cli-plugin-gcp/internal/iam"
+	"github.com/raito-io/cli-plugin-gcp/internal/iam/types"
 )
 
 const (
@@ -20,7 +20,7 @@ const (
 	specialGroupPrefix   = "special_group:"
 )
 
-var bqPolicyCache = make(map[string]iam.IAMPolicyContainer)
+var bqPolicyCache = make(map[string]types.IAMPolicyContainer)
 var resourceIds []string = nil
 
 type bigQueryIamRepository struct {
@@ -63,8 +63,8 @@ func GetResourceIds(ctx context.Context, configMap *config.ConfigMap) ([]string,
 	return ids, err
 }
 
-func (r *bigQueryIamRepository) getUserEntities(ctx context.Context, configMap *config.ConfigMap, id string, sa bool) ([]iam.UserEntity, error) {
-	users := []iam.UserEntity{}
+func (r *bigQueryIamRepository) getUserEntities(ctx context.Context, configMap *config.ConfigMap, id string, sa bool) ([]types.UserEntity, error) {
+	users := []types.UserEntity{}
 	iamPolicy, err := r.GetIamPolicy(ctx, configMap, id)
 
 	if err != nil {
@@ -81,7 +81,7 @@ func (r *bigQueryIamRepository) getUserEntities(ctx context.Context, configMap *
 			continue
 		}
 
-		users = append(users, iam.UserEntity{
+		users = append(users, types.UserEntity{
 			Email:      strings.Replace(b.Member, prefix, "", 1),
 			Name:       strings.Replace(b.Member, prefix, "", 1),
 			ExternalId: b.Member,
@@ -91,16 +91,16 @@ func (r *bigQueryIamRepository) getUserEntities(ctx context.Context, configMap *
 	return users, nil
 }
 
-func (r *bigQueryIamRepository) GetUsers(ctx context.Context, configMap *config.ConfigMap, id string) ([]iam.UserEntity, error) {
+func (r *bigQueryIamRepository) GetUsers(ctx context.Context, configMap *config.ConfigMap, id string) ([]types.UserEntity, error) {
 	return r.getUserEntities(ctx, configMap, id, false)
 }
 
-func (r *bigQueryIamRepository) GetServiceAccounts(ctx context.Context, configMap *config.ConfigMap, id string) ([]iam.UserEntity, error) {
+func (r *bigQueryIamRepository) GetServiceAccounts(ctx context.Context, configMap *config.ConfigMap, id string) ([]types.UserEntity, error) {
 	return r.getUserEntities(ctx, configMap, id, true)
 }
 
-func (r *bigQueryIamRepository) GetGroups(ctx context.Context, configMap *config.ConfigMap, id string) ([]iam.GroupEntity, error) {
-	groups := []iam.GroupEntity{}
+func (r *bigQueryIamRepository) GetGroups(ctx context.Context, configMap *config.ConfigMap, id string) ([]types.GroupEntity, error) {
+	groups := []types.GroupEntity{}
 	iamPolicy, err := r.GetIamPolicy(ctx, configMap, id)
 
 	if err != nil {
@@ -114,7 +114,7 @@ func (r *bigQueryIamRepository) GetGroups(ctx context.Context, configMap *config
 			continue
 		}
 
-		groups = append(groups, iam.GroupEntity{
+		groups = append(groups, types.GroupEntity{
 			Email:      strings.Replace(b.Member, prefix, "", 1),
 			ExternalId: b.Member,
 		})
@@ -123,7 +123,7 @@ func (r *bigQueryIamRepository) GetGroups(ctx context.Context, configMap *config
 	return groups, nil
 }
 
-func (r *bigQueryIamRepository) GetIamPolicy(ctx context.Context, configMap *config.ConfigMap, id string) (iam.IAMPolicyContainer, error) {
+func (r *bigQueryIamRepository) GetIamPolicy(ctx context.Context, configMap *config.ConfigMap, id string) (types.IAMPolicyContainer, error) {
 	if policy, f := bqPolicyCache[id]; f {
 		return policy, nil
 	}
@@ -131,7 +131,7 @@ func (r *bigQueryIamRepository) GetIamPolicy(ctx context.Context, configMap *con
 	common.Logger.Info(fmt.Sprintf("Fetching BigQuery IAM Policy for %s", id))
 	parts := strings.Split(id, ".")
 
-	policy := iam.IAMPolicyContainer{}
+	policy := types.IAMPolicyContainer{}
 	var err error = nil
 
 	if len(parts) == 1 { // dataset
@@ -159,27 +159,27 @@ func (r *bigQueryIamRepository) RemoveBinding(ctx context.Context, configMap *co
 	return r.updateIamPolicy(ctx, configMap, member, role, id, true)
 }
 
-func (r *bigQueryIamRepository) getDataSetIamPolicy(ctx context.Context, configMap *config.ConfigMap, id string) (iam.IAMPolicyContainer, error) {
+func (r *bigQueryIamRepository) getDataSetIamPolicy(ctx context.Context, configMap *config.ConfigMap, id string) (types.IAMPolicyContainer, error) {
 	conn, err := ConnectToBigQuery(configMap, ctx)
 
 	if err != nil {
-		return iam.IAMPolicyContainer{Service: nil}, err
+		return types.IAMPolicyContainer{Service: nil}, err
 	}
 	defer conn.Close()
 
 	ds := conn.Dataset(id)
 
 	if ds == nil {
-		return iam.IAMPolicyContainer{Service: nil}, err
+		return types.IAMPolicyContainer{Service: nil}, err
 	}
 
 	dsMeta, err := ds.Metadata(ctx)
 
 	if err != nil {
-		return iam.IAMPolicyContainer{Service: nil}, err
+		return types.IAMPolicyContainer{Service: nil}, err
 	}
 
-	bindings := []iam.IamBinding{}
+	bindings := []types.IamBinding{}
 
 	for _, a := range dsMeta.Access {
 		if a.EntityType == bigquery.UserEmailEntity || a.EntityType == bigquery.GroupEmailEntity || a.EntityType == bigquery.SpecialGroupEntity {
@@ -193,7 +193,7 @@ func (r *bigQueryIamRepository) getDataSetIamPolicy(ctx context.Context, configM
 				prefix = serviceAccountPrefix
 			}
 
-			bindings = append(bindings, iam.IamBinding{
+			bindings = append(bindings, types.IamBinding{
 				Role:         getRoleForBQEntity(a.Role),
 				Member:       prefix + a.Entity,
 				Resource:     fmt.Sprintf("%s.%s", configMap.GetString(common.GcpProjectId), ds.DatasetID),
@@ -202,20 +202,20 @@ func (r *bigQueryIamRepository) getDataSetIamPolicy(ctx context.Context, configM
 		}
 	}
 
-	return iam.IAMPolicyContainer{Service: bindings}, nil
+	return types.IAMPolicyContainer{Service: bindings}, nil
 }
 
-func (r *bigQueryIamRepository) getTableIamPolicy(ctx context.Context, configMap *config.ConfigMap, id string) (iam.IAMPolicyContainer, error) {
+func (r *bigQueryIamRepository) getTableIamPolicy(ctx context.Context, configMap *config.ConfigMap, id string) (types.IAMPolicyContainer, error) {
 	parts := strings.Split(id, ".")
 
 	if len(parts) != 2 {
-		return iam.IAMPolicyContainer{Service: nil}, fmt.Errorf("invalid table id: %s", id)
+		return types.IAMPolicyContainer{Service: nil}, fmt.Errorf("invalid table id: %s", id)
 	}
 
 	conn, err := ConnectToBigQuery(configMap, ctx)
 
 	if err != nil {
-		return iam.IAMPolicyContainer{Service: nil}, err
+		return types.IAMPolicyContainer{Service: nil}, err
 	}
 	defer conn.Close()
 
@@ -224,14 +224,14 @@ func (r *bigQueryIamRepository) getTableIamPolicy(ctx context.Context, configMap
 	policy, err := t.IAM().Policy(ctx)
 
 	if err != nil {
-		return iam.IAMPolicyContainer{Service: nil}, err
+		return types.IAMPolicyContainer{Service: nil}, err
 	}
 
-	bindings := []iam.IamBinding{}
+	bindings := []types.IamBinding{}
 
 	for _, role := range policy.Roles() {
 		for _, m := range policy.Members(role) {
-			bindings = append(bindings, iam.IamBinding{
+			bindings = append(bindings, types.IamBinding{
 				Role:         string(role),
 				Member:       m,
 				Resource:     fmt.Sprintf("%s.%s", configMap.GetString(common.GcpProjectId), id),
@@ -240,7 +240,7 @@ func (r *bigQueryIamRepository) getTableIamPolicy(ctx context.Context, configMap
 		}
 	}
 
-	return iam.IAMPolicyContainer{Service: bindings}, nil
+	return types.IAMPolicyContainer{Service: bindings}, nil
 }
 
 func (r *bigQueryIamRepository) updateBQDatasetAccess(ctx context.Context, configMap *config.ConfigMap, member, role, datasetID string, revoke bool) error {

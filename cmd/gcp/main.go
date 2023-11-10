@@ -20,7 +20,7 @@ func main() {
 	logger.SetLevel(hclog.Debug)
 
 	err := base.RegisterPlugins(
-		wrappers.IdentityStoreSync(gcp.NewIdentityStoreSyncer()),
+		wrappers.IdentityStoreSyncFactory(InitializeIdentityStoreSyncer),
 		wrappers.DataSourceSyncFactory(InitializeDataSourceSyncer),
 		wrappers.DataAccessSync(gcp.NewDataAccessSyncer(), access_provider.WithSupportPartialSync()),
 		&info.InfoImpl{

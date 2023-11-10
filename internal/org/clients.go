@@ -27,3 +27,12 @@ func NewFoldersClient(ctx context.Context, configMap *config.ConfigMap) (*resour
 
 	return c, func() { c.Close() }, nil
 }
+
+func NewOrganizationsClient(ctx context.Context, configMap *config.ConfigMap) (*resourcemanager.OrganizationsClient, func(), error) {
+	c, err := resourcemanager.NewOrganizationsClient(ctx, option.WithCredentialsFile(configMap.GetString(common.GcpSAFileLocation)))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return c, func() { c.Close() }, nil
+}

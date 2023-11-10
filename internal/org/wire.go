@@ -11,9 +11,17 @@ import (
 var Wired = wire.NewSet(
 	NewProjectsClient,
 	NewFoldersClient,
+	NewOrganizationsClient,
 
-	NewGcpRepository,
+	NewFolderRepository,
+	NewProjectRepository,
+	NewOrganizationRepository,
+	NewGcpDataObjectIterator,
 
 	wire.Bind(new(projectClient), new(*resourcemanager.ProjectsClient)),
 	wire.Bind(new(folderClient), new(*resourcemanager.FoldersClient)),
+	wire.Bind(new(organizationClient), new(*resourcemanager.OrganizationsClient)),
+	wire.Bind(new(projectRepo), new(*ProjectRepository)),
+	wire.Bind(new(folderRepo), new(*FolderRepository)),
+	wire.Bind(new(organizationRepo), new(*OrganizationRepository)),
 )

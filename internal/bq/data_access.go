@@ -15,6 +15,7 @@ import (
 
 	"github.com/raito-io/cli-plugin-gcp/internal/gcp"
 	"github.com/raito-io/cli-plugin-gcp/internal/iam"
+	"github.com/raito-io/cli-plugin-gcp/internal/iam/types"
 
 	importer "github.com/raito-io/cli/base/access_provider/sync_to_target"
 	"github.com/raito-io/cli/base/util/config"
@@ -34,12 +35,12 @@ func NewDataAccessSyncer() *AccessSyncer {
 	}
 
 	iamServiceProvider := func(configMap *config.ConfigMap) iam.IAMService {
-		return newIamServiceProvider(configMap).WithServiceIamRepo([]string{"dataset", "table"}, &bigQueryIamRepository{}, GetResourceIds).WithBindingHook(func(ap *importer.AccessProvider, members, deletedMembers []string, what importer.WhatItem) ([]iam.IamBinding, []iam.IamBinding) {
+		return newIamServiceProvider(configMap).WithServiceIamRepo([]string{"dataset", "table"}, &bigQueryIamRepository{}, GetResourceIds).WithBindingHook(func(ap *importer.AccessProvider, members, deletedMembers []string, what importer.WhatItem) ([]types.IamBinding, []types.IamBinding) {
 			if configMap.GetBoolWithDefault(BqCatalogEnabled, false) && !ap.Delete {
-				var bindingsToAdd []iam.IamBinding
+				var bindingsToAdd []types.IamBinding
 
 				for _, member := range members {
-					bindingsToAdd = append(bindingsToAdd, iam.IamBinding{
+					bindingsToAdd = append(bindingsToAdd, types.IamBinding{
 						Member:       member,
 						Role:         "roles/bigquerydatapolicy.maskedReader",
 						Resource:     strings.SplitN(what.DataObject.FullName, ".", 2)[0],

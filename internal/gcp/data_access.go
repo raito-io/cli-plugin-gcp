@@ -16,6 +16,7 @@ import (
 
 	"github.com/raito-io/cli-plugin-gcp/internal/common"
 	"github.com/raito-io/cli-plugin-gcp/internal/iam"
+	"github.com/raito-io/cli-plugin-gcp/internal/iam/types"
 
 	exporter "github.com/raito-io/cli/base/access_provider/sync_from_target"
 	importer "github.com/raito-io/cli/base/access_provider/sync_to_target"
@@ -24,8 +25,12 @@ import (
 
 type AccessSyncer struct {
 	iamServiceProvider   func(configMap *config.ConfigMap) iam.IAMService
-	raitoManagedBindings []iam.IamBinding
+	raitoManagedBindings []types.IamBinding
 	getDSMetadata        func(ctx context.Context, configMap *config.ConfigMap) (*data_source.MetaData, error)
+}
+
+func newIamServiceProvider(configMap *config.ConfigMap) iam.IAMService {
+	return iam.NewIAMService(configMap)
 }
 
 func NewDataAccessSyncer() *AccessSyncer {
@@ -69,7 +74,7 @@ func (a *AccessSyncer) SyncAccessProvidersFromTarget(ctx context.Context, access
 	return nil
 }
 
-func (a *AccessSyncer) ConvertBindingsToAccessProviders(ctx context.Context, configMap *config.ConfigMap, bindings []iam.IamBinding) ([]*exporter.AccessProvider, error) {
+func (a *AccessSyncer) ConvertBindingsToAccessProviders(ctx context.Context, configMap *config.ConfigMap, bindings []types.IamBinding) ([]*exporter.AccessProvider, error) {
 	rolesToGroupByIdentity := set.NewSet[string]()
 
 	toGroupConfig := configMap.GetString(common.GcpRolesToGroupByIdentity)
@@ -89,7 +94,7 @@ func (a *AccessSyncer) ConvertBindingsToAccessProviders(ctx context.Context, con
 	}
 
 	for _, binding := range bindings {
-		if strings.EqualFold(binding.ResourceType, iam.Organization.String()) {
+		if strings.EqualFold(binding.ResourceType, types.Organization.String()) {
 			binding.Resource = GetOrgDataObjectName(configMap)
 		}
 
@@ -142,7 +147,7 @@ func (a *AccessSyncer) ConvertBindingsToAccessProviders(ctx context.Context, con
 	return aps, nil
 }
 
-func (a *AccessSyncer) generateAccessProvider(binding iam.IamBinding, accessProviderMap map[string]*exporter.AccessProvider, managed bool) {
+func (a *AccessSyncer) generateAccessProvider(binding types.IamBinding, accessProviderMap map[string]*exporter.AccessProvider, managed bool) {
 	apName := fmt.Sprintf("%s_%s_%s", binding.ResourceType, binding.Resource, strings.Replace(binding.Role, "/", "_", -1))
 
 	if _, f := accessProviderMap[apName]; !f {
@@ -187,7 +192,7 @@ func (a *AccessSyncer) addBindingMemberToAccessProvider(bindingMember string, ac
 	}
 }
 
-func (a *AccessSyncer) generateGroupedByIdentityAcccessProvider(binding iam.IamBinding, groupedByIdentityAccesProviderMap map[string]*exporter.AccessProvider) {
+func (a *AccessSyncer) generateGroupedByIdentityAcccessProvider(binding types.IamBinding, groupedByIdentityAccesProviderMap map[string]*exporter.AccessProvider) {
 	member := binding.Member
 
 	memberName := strings.Replace(member, ":", " ", -1)
@@ -221,7 +226,7 @@ func (a *AccessSyncer) generateGroupedByIdentityAcccessProvider(binding iam.IamB
 	groupedByIdentityAccesProviderMap[apName] = groupedByIdentityAccesProvider
 }
 
-func (a *AccessSyncer) generateSpecialGroupOwnerAccessProvider(binding iam.IamBinding, specialGroupAccessProviderMap map[string]*exporter.AccessProvider, projectOwnersWho *exporter.WhoItem, projectEditorsWho *exporter.WhoItem, projectReadersWho *exporter.WhoItem) {
+func (a *AccessSyncer) generateSpecialGroupOwnerAccessProvider(binding types.IamBinding, specialGroupAccessProviderMap map[string]*exporter.AccessProvider, projectOwnersWho *exporter.WhoItem, projectEditorsWho *exporter.WhoItem, projectReadersWho *exporter.WhoItem) {
 	mapping := map[string]struct {
 		whoItem  *exporter.WhoItem
 		roleName string
@@ -367,7 +372,7 @@ func (a *AccessSyncer) SyncAccessAsCodeToTarget(ctx context.Context, accessProvi
 	return fmt.Errorf("access as code is not yet supported by this plugin")
 }
 
-func (a *AccessSyncer) isRaitoManagedBinding(ctx context.Context, configMap *config.ConfigMap, binding iam.IamBinding) (bool, error) {
+func (a *AccessSyncer) isRaitoManagedBinding(ctx context.Context, configMap *config.ConfigMap, binding types.IamBinding) (bool, error) {
 	meta, err := a.getDSMetadata(ctx, configMap)
 
 	if err != nil {
@@ -387,9 +392,9 @@ func (a *AccessSyncer) isRaitoManagedBinding(ctx context.Context, configMap *con
 	return false, nil
 }
 
-func ConvertAccessProviderToBindings(accessProviders *importer.AccessProviderImport, hooks ...iam.AccessProviderBindingHook) (map[iam.IamBinding][]*importer.AccessProvider, map[iam.IamBinding][]*importer.AccessProvider) {
-	bindingsToAdd := make(map[iam.IamBinding][]*importer.AccessProvider)
-	bindingsToDelete := make(map[iam.IamBinding][]*importer.AccessProvider)
+func ConvertAccessProviderToBindings(accessProviders *importer.AccessProviderImport, hooks ...iam.AccessProviderBindingHook) (map[types.IamBinding][]*importer.AccessProvider, map[types.IamBinding][]*importer.AccessProvider) {
+	bindingsToAdd := make(map[types.IamBinding][]*importer.AccessProvider)
+	bindingsToDelete := make(map[types.IamBinding][]*importer.AccessProvider)
 
 	for _, ap := range accessProviders.AccessProviders {
 		// Process the Who items
@@ -428,7 +433,7 @@ func ConvertAccessProviderToBindings(accessProviders *importer.AccessProviderImp
 			for _, p := range w.Permissions {
 				// for active members add bindings (except if AP gets deleted)
 				for _, m := range members {
-					binding := iam.IamBinding{
+					binding := types.IamBinding{
 						Member:       m,
 						Role:         p,
 						Resource:     w.DataObject.FullName,
@@ -444,7 +449,7 @@ func ConvertAccessProviderToBindings(accessProviders *importer.AccessProviderImp
 
 				// for deleted members remove bindings
 				for _, m := range deleteMembers {
-					binding := iam.IamBinding{
+					binding := types.IamBinding{
 						Member:       m,
 						Role:         p,
 						Resource:     w.DataObject.FullName,
@@ -473,7 +478,7 @@ func ConvertAccessProviderToBindings(accessProviders *importer.AccessProviderImp
 				for _, p := range w.Permissions {
 					// for ALL members delete the bindings
 					for _, m := range append(members, deleteMembers...) {
-						binding := iam.IamBinding{
+						binding := types.IamBinding{
 							Member:       m,
 							Role:         p,
 							Resource:     w.DataObject.FullName,

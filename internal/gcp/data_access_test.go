@@ -15,6 +15,7 @@ import (
 
 	"github.com/raito-io/cli-plugin-gcp/internal/common"
 	"github.com/raito-io/cli-plugin-gcp/internal/iam"
+	"github.com/raito-io/cli-plugin-gcp/internal/iam/types"
 )
 
 func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
@@ -26,7 +27,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 	fileCreator := mocks.NewSimpleAccessProviderHandler(t, 1)
 	iamServiceMock := iam.NewMockIAMService(t)
 
-	iamServiceMock.EXPECT().GetIAMPolicyBindings(mock.Anything, mock.Anything).Return([]iam.IamBinding{
+	iamServiceMock.EXPECT().GetIAMPolicyBindings(mock.Anything, mock.Anything).Return([]types.IamBinding{
 		{
 			Member:       "user:u1@example.com",
 			Role:         "roles/owner",
@@ -100,7 +101,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTargetError(t *testing.T) {
 	fileCreator := mocks.NewSimpleAccessProviderHandler(t, 1)
 	iamServiceMock := iam.NewMockIAMService(t)
 
-	iamServiceMock.EXPECT().GetIAMPolicyBindings(mock.Anything, mock.Anything).Return([]iam.IamBinding{}, fmt.Errorf("error!")).Once()
+	iamServiceMock.EXPECT().GetIAMPolicyBindings(mock.Anything, mock.Anything).Return([]types.IamBinding{}, fmt.Errorf("error!")).Once()
 
 	syncer := AccessSyncer{
 		iamServiceProvider: func(config *config.ConfigMap) iam.IAMService {
@@ -125,7 +126,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTargetIgnoreRaitoBindings(t *testin
 	fileCreator := mocks.NewSimpleAccessProviderHandler(t, 1)
 	iamServiceMock := iam.NewMockIAMService(t)
 
-	iamServiceMock.EXPECT().GetIAMPolicyBindings(mock.Anything, mock.Anything).Return([]iam.IamBinding{
+	iamServiceMock.EXPECT().GetIAMPolicyBindings(mock.Anything, mock.Anything).Return([]types.IamBinding{
 		{
 			Member:       "user:u1@example.com",
 			Role:         "roles/owner",
@@ -157,7 +158,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTargetIgnoreRaitoBindings(t *testin
 			return iamServiceMock
 		},
 		getDSMetadata: GetDataSourceMetaData,
-		raitoManagedBindings: []iam.IamBinding{
+		raitoManagedBindings: []types.IamBinding{
 			{
 				Member:       "group:g1@example.com",
 				Role:         "roles/viewer",
@@ -196,7 +197,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTargetIgnoreNonApplicablePermission
 	fileCreator := mocks.NewSimpleAccessProviderHandler(t, 1)
 	iamServiceMock := iam.NewMockIAMService(t)
 
-	iamServiceMock.EXPECT().GetIAMPolicyBindings(mock.Anything, mock.Anything).Return([]iam.IamBinding{
+	iamServiceMock.EXPECT().GetIAMPolicyBindings(mock.Anything, mock.Anything).Return([]types.IamBinding{
 		{
 			Member:       "user:u1@example.com",
 			Role:         "roles/random",
@@ -241,7 +242,7 @@ func TestAccessSyncer_SyncAccessProvidersToTarget(t *testing.T) {
 	fileCreator := mocks.NewSimpleAccessProviderFeedbackHandler(t)
 	iamServiceMock := iam.NewMockIAMService(t)
 
-	iamServiceMock.EXPECT().AddIamBinding(mock.Anything, mock.Anything, iam.IamBinding{
+	iamServiceMock.EXPECT().AddIamBinding(mock.Anything, mock.Anything, types.IamBinding{
 		Member:       "user:user1@example.com",
 		Role:         "role/owner",
 		Resource:     "project1",
@@ -250,35 +251,35 @@ func TestAccessSyncer_SyncAccessProvidersToTarget(t *testing.T) {
 
 	iamServiceMock.EXPECT().AccessProviderBindingHooks().Return(nil)
 
-	iamServiceMock.EXPECT().AddIamBinding(mock.Anything, mock.Anything, iam.IamBinding{
+	iamServiceMock.EXPECT().AddIamBinding(mock.Anything, mock.Anything, types.IamBinding{
 		Member:       "group:group1@example.com",
 		Role:         "role/owner",
 		Resource:     "project1",
 		ResourceType: "project",
 	}).Return(nil).Once()
 
-	iamServiceMock.EXPECT().AddIamBinding(mock.Anything, mock.Anything, iam.IamBinding{
+	iamServiceMock.EXPECT().AddIamBinding(mock.Anything, mock.Anything, types.IamBinding{
 		Member:       "serviceAccount:sa@gserviceaccount.com",
 		Role:         "role/owner",
 		Resource:     "project1",
 		ResourceType: "project",
 	}).Return(nil).Once()
 
-	iamServiceMock.EXPECT().RemoveIamBinding(mock.Anything, mock.Anything, iam.IamBinding{
+	iamServiceMock.EXPECT().RemoveIamBinding(mock.Anything, mock.Anything, types.IamBinding{
 		Member:       "user:user1@example.com",
 		Role:         "role/owner",
 		Resource:     "project1",
 		ResourceType: "project",
 	}).Return(nil).Once()
 
-	iamServiceMock.EXPECT().RemoveIamBinding(mock.Anything, mock.Anything, iam.IamBinding{
+	iamServiceMock.EXPECT().RemoveIamBinding(mock.Anything, mock.Anything, types.IamBinding{
 		Member:       "group:group1@example.com",
 		Role:         "role/owner",
 		Resource:     "project1",
 		ResourceType: "project",
 	}).Return(nil).Once()
 
-	iamServiceMock.EXPECT().RemoveIamBinding(mock.Anything, mock.Anything, iam.IamBinding{
+	iamServiceMock.EXPECT().RemoveIamBinding(mock.Anything, mock.Anything, types.IamBinding{
 		Member:       "serviceAccount:sa@gserviceaccount.com",
 		Role:         "role/owner",
 		Resource:     "project1",

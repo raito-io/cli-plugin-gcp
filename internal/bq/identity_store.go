@@ -2,11 +2,11 @@ package bigquery
 
 import (
 	"context"
+	"errors"
 
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/raito-io/cli/base/wrappers"
 
-	"github.com/raito-io/cli-plugin-gcp/internal/gcp"
 	"github.com/raito-io/cli-plugin-gcp/internal/iam"
 
 	is "github.com/raito-io/cli/base/identity_store"
@@ -35,9 +35,11 @@ func (s *IdentityStoreSyncer) GetIdentityStoreMetaData(_ context.Context, _ *con
 }
 
 func (s *IdentityStoreSyncer) SyncIdentityStore(ctx context.Context, identityHandler wrappers.IdentityStoreIdentityHandler, configMap *config.ConfigMap) error {
-	syncer := gcp.NewIdentityStoreSyncer().WithIAMServiceProvider(func(configMap *config.ConfigMap) iam.IAMService {
-		return s.iamServiceProvider(configMap).WithServiceIamRepo([]string{}, &bigQueryIamRepository{}, GetResourceIds)
-	})
+	//syncer := gcp.NewIdentityStoreSyncer().WithIAMServiceProvider(func(configMap *config.ConfigMap) iam.IAMService {
+	//	return s.iamServiceProvider(configMap).WithServiceIamRepo([]string{}, &bigQueryIamRepository{}, GetResourceIds)
+	//})
+	//
+	//return syncer.SyncIdentityStore(ctx, identityHandler, configMap)
 
-	return syncer.SyncIdentityStore(ctx, identityHandler, configMap)
+	return errors.New("not yet implemented")
 }

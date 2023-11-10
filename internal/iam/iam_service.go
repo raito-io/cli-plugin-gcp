@@ -10,6 +10,7 @@ import (
 	"github.com/raito-io/golang-set/set"
 
 	"github.com/raito-io/cli-plugin-gcp/internal/common"
+	"github.com/raito-io/cli-plugin-gcp/internal/iam/types"
 	"github.com/raito-io/cli-plugin-gcp/internal/org"
 )
 
@@ -18,7 +19,7 @@ const editorRole = "roles/editor"
 const viewerRole = "roles/viewer"
 
 // AccessProviderBindingHook can be used to add or remove additional bindings when converting an access provider to bindings
-type AccessProviderBindingHook func(accessProvider *sync_to_target.AccessProvider, members, deletedMembers []string, what sync_to_target.WhatItem) ([]IamBinding, []IamBinding)
+type AccessProviderBindingHook func(accessProvider *sync_to_target.AccessProvider, members, deletedMembers []string, what sync_to_target.WhatItem) ([]types.IamBinding, []types.IamBinding)
 
 //go:generate go run github.com/vektra/mockery/v2 --name=IAMService --with-expecter --inpackage
 type IAMService interface {
@@ -27,22 +28,22 @@ type IAMService interface {
 	// WithBindingHook adds AccessProviderBindingHook to IAMServer and will call the hooks during converting of Access Provider to bindings
 	WithBindingHook(hooks ...AccessProviderBindingHook) IAMService
 
-	GetUsers(ctx context.Context, configMap *config.ConfigMap) ([]UserEntity, error)
-	GetGroups(ctx context.Context, configMap *config.ConfigMap) ([]GroupEntity, error)
-	GetServiceAccounts(ctx context.Context, configMap *config.ConfigMap) ([]UserEntity, error)
-	GetIAMPolicyBindings(ctx context.Context, configMap *config.ConfigMap) ([]IamBinding, error)
-	AddIamBinding(ctx context.Context, configMap *config.ConfigMap, binding IamBinding) error
-	RemoveIamBinding(ctx context.Context, configMap *config.ConfigMap, binding IamBinding) error
+	GetUsers(ctx context.Context, configMap *config.ConfigMap) ([]types.UserEntity, error)
+	GetGroups(ctx context.Context, configMap *config.ConfigMap) ([]types.GroupEntity, error)
+	GetServiceAccounts(ctx context.Context, configMap *config.ConfigMap) ([]types.UserEntity, error)
+	GetIAMPolicyBindings(ctx context.Context, configMap *config.ConfigMap) ([]types.IamBinding, error)
+	AddIamBinding(ctx context.Context, configMap *config.ConfigMap, binding types.IamBinding) error
+	RemoveIamBinding(ctx context.Context, configMap *config.ConfigMap, binding types.IamBinding) error
 	GetProjectOwners(ctx context.Context, configMap *config.ConfigMap, projectId string) (owner []string, editor []string, viewer []string, err error)
 	AccessProviderBindingHooks() []AccessProviderBindingHook
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name=IAMRepository --with-expecter --inpackage
 type IAMRepository interface {
-	GetUsers(ctx context.Context, configMap *config.ConfigMap, id string) ([]UserEntity, error)
-	GetGroups(ctx context.Context, configMap *config.ConfigMap, id string) ([]GroupEntity, error)
-	GetServiceAccounts(ctx context.Context, configMap *config.ConfigMap, id string) ([]UserEntity, error)
-	GetIamPolicy(ctx context.Context, configMap *config.ConfigMap, id string) (IAMPolicyContainer, error)
+	GetUsers(ctx context.Context, configMap *config.ConfigMap, id string) ([]types.UserEntity, error)
+	GetGroups(ctx context.Context, configMap *config.ConfigMap, id string) ([]types.GroupEntity, error)
+	GetServiceAccounts(ctx context.Context, configMap *config.ConfigMap, id string) ([]types.UserEntity, error)
+	GetIamPolicy(ctx context.Context, configMap *config.ConfigMap, id string) (types.IAMPolicyContainer, error)
 	AddBinding(ctx context.Context, configMap *config.ConfigMap, id, member, role string) error
 	RemoveBinding(ctx context.Context, configMap *config.ConfigMap, id, member, role string) error
 }
@@ -53,7 +54,7 @@ type dataSourceRepository interface {
 }
 
 type iamService struct {
-	repos            map[IamType]IAMRepository
+	repos            map[types.IamType]IAMRepository
 	gcpRepo          dataSourceRepository
 	serviceRepoIds   func(ctx context.Context, configMap *config.ConfigMap) ([]string, error)
 	serviceRepoTypes set.Set[string]
@@ -61,20 +62,20 @@ type iamService struct {
 }
 
 func NewIAMService(configMap *config.ConfigMap) *iamService {
-	repos := map[IamType]IAMRepository{
-		Organization: &organizationIamRepository{},
-		Folder:       &folderIamRepository{},
-		Project:      &projectIamRepository{},
+	repos := map[types.IamType]IAMRepository{
+		types.Organization: &organizationIamRepository{},
+		types.Folder:       &folderIamRepository{},
+		types.Project:      &projectIamRepository{},
 	}
 
 	if configMap.GetStringWithDefault(common.GcpProjectId, "") != "" {
-		repos = map[IamType]IAMRepository{
-			Project: &projectIamRepository{},
+		repos = map[types.IamType]IAMRepository{
+			types.Project: &projectIamRepository{},
 		}
 	}
 
 	if configMap.GetBool(common.GsuiteIdentityStoreSync) {
-		repos[GSuite] = &gsuiteIamRepository{}
+		repos[types.GSuite] = &gsuiteIamRepository{}
 	}
 
 	return &iamService{
@@ -84,15 +85,15 @@ func NewIAMService(configMap *config.ConfigMap) *iamService {
 }
 
 func (s *iamService) WithServiceIamRepo(resourceTypes []string, serviceRepo IAMRepository, ids func(ctx context.Context, configMap *config.ConfigMap) ([]string, error)) IAMService {
-	s.repos[Service] = serviceRepo
+	s.repos[types.Service] = serviceRepo
 	s.serviceRepoIds = ids
 	s.serviceRepoTypes = set.NewSet[string](resourceTypes...)
 
 	return s
 }
 
-func (s *iamService) GetUsers(ctx context.Context, configMap *config.ConfigMap) ([]UserEntity, error) {
-	users := make([]UserEntity, 0)
+func (s *iamService) GetUsers(ctx context.Context, configMap *config.ConfigMap) ([]types.UserEntity, error) {
+	users := make([]types.UserEntity, 0)
 
 	ids := set.NewSet[string]()
 
@@ -122,13 +123,13 @@ func (s *iamService) GetUsers(ctx context.Context, configMap *config.ConfigMap) 
 	return users, nil
 }
 
-func (s *iamService) GetGroups(ctx context.Context, configMap *config.ConfigMap) ([]GroupEntity, error) {
-	groupMap := make(map[string]GroupEntity, 0)
+func (s *iamService) GetGroups(ctx context.Context, configMap *config.ConfigMap) ([]types.GroupEntity, error) {
+	groupMap := make(map[string]types.GroupEntity, 0)
 
 	typeToIdsMap, err := s.getIdsByRepoType(ctx, configMap)
 
 	if err != nil {
-		return []GroupEntity{}, err
+		return []types.GroupEntity{}, err
 	}
 
 	for t, repo := range s.repos {
@@ -150,7 +151,7 @@ func (s *iamService) GetGroups(ctx context.Context, configMap *config.ConfigMap)
 		}
 	}
 
-	groups := make([]GroupEntity, 0, len(groupMap))
+	groups := make([]types.GroupEntity, 0, len(groupMap))
 
 	for _, v := range groupMap {
 		groups = append(groups, v)
@@ -159,8 +160,8 @@ func (s *iamService) GetGroups(ctx context.Context, configMap *config.ConfigMap)
 	return groups, nil
 }
 
-func (s *iamService) GetServiceAccounts(ctx context.Context, configMap *config.ConfigMap) ([]UserEntity, error) {
-	serviceAccounts := make([]UserEntity, 0)
+func (s *iamService) GetServiceAccounts(ctx context.Context, configMap *config.ConfigMap) ([]types.UserEntity, error) {
+	serviceAccounts := make([]types.UserEntity, 0)
 
 	typeToIdsMap, err := s.getIdsByRepoType(ctx, configMap)
 
@@ -190,8 +191,8 @@ func (s *iamService) GetServiceAccounts(ctx context.Context, configMap *config.C
 	return serviceAccounts, nil
 }
 
-func (s *iamService) GetIAMPolicyBindings(ctx context.Context, configMap *config.ConfigMap) ([]IamBinding, error) {
-	bindings := []IamBinding{}
+func (s *iamService) GetIAMPolicyBindings(ctx context.Context, configMap *config.ConfigMap) ([]types.IamBinding, error) {
+	bindings := []types.IamBinding{}
 	typeToIdsMap, err := s.getIdsByRepoType(ctx, configMap)
 
 	if err != nil {
@@ -211,7 +212,7 @@ func (s *iamService) GetIAMPolicyBindings(ctx context.Context, configMap *config
 			} else if policyContainer.V1 != nil {
 				for _, binding := range policyContainer.V1.Bindings {
 					for _, member := range binding.Members {
-						bindings = append(bindings, IamBinding{
+						bindings = append(bindings, types.IamBinding{
 							Member:       member,
 							Role:         binding.Role,
 							Resource:     id,
@@ -222,7 +223,7 @@ func (s *iamService) GetIAMPolicyBindings(ctx context.Context, configMap *config
 			} else if policyContainer.V2 != nil {
 				for _, binding := range policyContainer.V2.Bindings {
 					for _, member := range binding.Members {
-						bindings = append(bindings, IamBinding{
+						bindings = append(bindings, types.IamBinding{
 							Member:       member,
 							Role:         binding.Role,
 							Resource:     id,
@@ -238,7 +239,7 @@ func (s *iamService) GetIAMPolicyBindings(ctx context.Context, configMap *config
 }
 
 func (s *iamService) GetProjectOwners(ctx context.Context, configMap *config.ConfigMap, projectId string) (owner []string, editor []string, viewer []string, err error) {
-	repo := s.repos[Project]
+	repo := s.repos[types.Project]
 
 	policyContainer, err := repo.GetIamPolicy(ctx, configMap, projectId)
 	if err != nil {
@@ -280,9 +281,9 @@ func (s *iamService) GetProjectOwners(ctx context.Context, configMap *config.Con
 	return owner, editor, viewer, nil
 }
 
-func (s *iamService) AddIamBinding(ctx context.Context, configMap *config.ConfigMap, binding IamBinding) error {
+func (s *iamService) AddIamBinding(ctx context.Context, configMap *config.ConfigMap, binding types.IamBinding) error {
 	if s.serviceRepoTypes.Contains(binding.ResourceType) {
-		binding.ResourceType = Service.String()
+		binding.ResourceType = types.Service.String()
 	}
 
 	for t, repo := range s.repos {
@@ -294,9 +295,9 @@ func (s *iamService) AddIamBinding(ctx context.Context, configMap *config.Config
 	return fmt.Errorf("adding IAM bindings for resource type %s is not supported", binding.ResourceType)
 }
 
-func (s *iamService) RemoveIamBinding(ctx context.Context, configMap *config.ConfigMap, binding IamBinding) error {
+func (s *iamService) RemoveIamBinding(ctx context.Context, configMap *config.ConfigMap, binding types.IamBinding) error {
 	if s.serviceRepoTypes.Contains(binding.ResourceType) {
-		binding.ResourceType = Service.String()
+		binding.ResourceType = types.Service.String()
 	}
 
 	for t, repo := range s.repos {
@@ -308,40 +309,40 @@ func (s *iamService) RemoveIamBinding(ctx context.Context, configMap *config.Con
 	return fmt.Errorf("removing IAM bindings for resource type %s is not supported", binding.ResourceType)
 }
 
-func (s *iamService) getIdsByRepoType(ctx context.Context, configMap *config.ConfigMap) (map[IamType][]string, error) {
-	out := map[IamType][]string{}
+func (s *iamService) getIdsByRepoType(ctx context.Context, configMap *config.ConfigMap) (map[types.IamType][]string, error) {
+	out := map[types.IamType][]string{}
 
 	for t := range s.repos {
 		out[t] = make([]string, 0)
 	}
 
 	// add gcp org id
-	if _, f := out[Organization]; f {
-		out[Organization] = append(out[Organization], configMap.GetString(common.GcpOrgId))
+	if _, f := out[types.Organization]; f {
+		out[types.Organization] = append(out[types.Organization], configMap.GetString(common.GcpOrgId))
 	}
 
 	// if we have a GCP Service repo (e.g. BigQuery) we add run the serviceRepoIds method to acquire resource ids
-	if _, f := out[Service]; f {
+	if _, f := out[types.Service]; f {
 		ids, err := s.serviceRepoIds(ctx, configMap)
 
 		if err != nil {
 			return nil, err
 		}
 
-		out[Service] = ids
+		out[types.Service] = ids
 	}
 
 	// GSuite we add empty string as id to get it in the loop as it does not have resource Ids to loop over
-	if _, f := out[GSuite]; f {
-		out[GSuite] = append(out[GSuite], "")
+	if _, f := out[types.GSuite]; f {
+		out[types.GSuite] = append(out[types.GSuite], "")
 	}
 
 	// get project ids
-	if _, f := out[Project]; f {
+	if _, f := out[types.Project]; f {
 		gcpProjectId := configMap.GetString(common.GcpProjectId)
 
 		if gcpProjectId != "" {
-			out[Project] = append(out[Project], gcpProjectId)
+			out[types.Project] = append(out[types.Project], gcpProjectId)
 			return out, nil
 		}
 
@@ -352,12 +353,12 @@ func (s *iamService) getIdsByRepoType(ctx context.Context, configMap *config.Con
 		}
 
 		for _, project := range gcpProjectIdList {
-			out[Project] = append(out[Project], project.Id)
+			out[types.Project] = append(out[types.Project], project.Id)
 		}
 	}
 
 	// get project ids
-	if _, f := out[Folder]; f {
+	if _, f := out[types.Folder]; f {
 		gcpFolderIds, err := s.gcpRepo.GetFolders(ctx, configMap)
 
 		if err != nil {
@@ -365,7 +366,7 @@ func (s *iamService) getIdsByRepoType(ctx context.Context, configMap *config.Con
 		}
 
 		for _, folder := range gcpFolderIds {
-			out[Folder] = append(out[Folder], folder.Id)
+			out[types.Folder] = append(out[types.Folder], folder.Id)
 		}
 	}
 

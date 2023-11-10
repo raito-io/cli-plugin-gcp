@@ -22,13 +22,13 @@ func (_m *MockDataSourceRepository) EXPECT() *MockDataSourceRepository_Expecter 
 	return &MockDataSourceRepository_Expecter{mock: &_m.Mock}
 }
 
-// GetFolders provides a mock function with given fields: ctx, parentName, parent, fn
-func (_m *MockDataSourceRepository) GetFolders(ctx context.Context, parentName string, parent *org.GcpOrgEntity, fn func(context.Context, *org.GcpOrgEntity) error) error {
-	ret := _m.Called(ctx, parentName, parent, fn)
+// DataObjects provides a mock function with given fields: ctx, fn
+func (_m *MockDataSourceRepository) DataObjects(ctx context.Context, fn func(context.Context, *org.GcpOrgEntity) error) error {
+	ret := _m.Called(ctx, fn)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, *org.GcpOrgEntity, func(context.Context, *org.GcpOrgEntity) error) error); ok {
-		r0 = rf(ctx, parentName, parent, fn)
+	if rf, ok := ret.Get(0).(func(context.Context, func(context.Context, *org.GcpOrgEntity) error) error); ok {
+		r0 = rf(ctx, fn)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -36,78 +36,31 @@ func (_m *MockDataSourceRepository) GetFolders(ctx context.Context, parentName s
 	return r0
 }
 
-// MockDataSourceRepository_GetFolders_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetFolders'
-type MockDataSourceRepository_GetFolders_Call struct {
+// MockDataSourceRepository_DataObjects_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DataObjects'
+type MockDataSourceRepository_DataObjects_Call struct {
 	*mock.Call
 }
 
-// GetFolders is a helper method to define mock.On call
+// DataObjects is a helper method to define mock.On call
 //   - ctx context.Context
-//   - parentName string
-//   - parent *org.GcpOrgEntity
 //   - fn func(context.Context , *org.GcpOrgEntity) error
-func (_e *MockDataSourceRepository_Expecter) GetFolders(ctx interface{}, parentName interface{}, parent interface{}, fn interface{}) *MockDataSourceRepository_GetFolders_Call {
-	return &MockDataSourceRepository_GetFolders_Call{Call: _e.mock.On("GetFolders", ctx, parentName, parent, fn)}
+func (_e *MockDataSourceRepository_Expecter) DataObjects(ctx interface{}, fn interface{}) *MockDataSourceRepository_DataObjects_Call {
+	return &MockDataSourceRepository_DataObjects_Call{Call: _e.mock.On("DataObjects", ctx, fn)}
 }
 
-func (_c *MockDataSourceRepository_GetFolders_Call) Run(run func(ctx context.Context, parentName string, parent *org.GcpOrgEntity, fn func(context.Context, *org.GcpOrgEntity) error)) *MockDataSourceRepository_GetFolders_Call {
+func (_c *MockDataSourceRepository_DataObjects_Call) Run(run func(ctx context.Context, fn func(context.Context, *org.GcpOrgEntity) error)) *MockDataSourceRepository_DataObjects_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(*org.GcpOrgEntity), args[3].(func(context.Context, *org.GcpOrgEntity) error))
+		run(args[0].(context.Context), args[1].(func(context.Context, *org.GcpOrgEntity) error))
 	})
 	return _c
 }
 
-func (_c *MockDataSourceRepository_GetFolders_Call) Return(_a0 error) *MockDataSourceRepository_GetFolders_Call {
+func (_c *MockDataSourceRepository_DataObjects_Call) Return(_a0 error) *MockDataSourceRepository_DataObjects_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockDataSourceRepository_GetFolders_Call) RunAndReturn(run func(context.Context, string, *org.GcpOrgEntity, func(context.Context, *org.GcpOrgEntity) error) error) *MockDataSourceRepository_GetFolders_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// GetProjects provides a mock function with given fields: ctx, parentName, parent, fn
-func (_m *MockDataSourceRepository) GetProjects(ctx context.Context, parentName string, parent *org.GcpOrgEntity, fn func(context.Context, *org.GcpOrgEntity) error) error {
-	ret := _m.Called(ctx, parentName, parent, fn)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, *org.GcpOrgEntity, func(context.Context, *org.GcpOrgEntity) error) error); ok {
-		r0 = rf(ctx, parentName, parent, fn)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockDataSourceRepository_GetProjects_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetProjects'
-type MockDataSourceRepository_GetProjects_Call struct {
-	*mock.Call
-}
-
-// GetProjects is a helper method to define mock.On call
-//   - ctx context.Context
-//   - parentName string
-//   - parent *org.GcpOrgEntity
-//   - fn func(context.Context , *org.GcpOrgEntity) error
-func (_e *MockDataSourceRepository_Expecter) GetProjects(ctx interface{}, parentName interface{}, parent interface{}, fn interface{}) *MockDataSourceRepository_GetProjects_Call {
-	return &MockDataSourceRepository_GetProjects_Call{Call: _e.mock.On("GetProjects", ctx, parentName, parent, fn)}
-}
-
-func (_c *MockDataSourceRepository_GetProjects_Call) Run(run func(ctx context.Context, parentName string, parent *org.GcpOrgEntity, fn func(context.Context, *org.GcpOrgEntity) error)) *MockDataSourceRepository_GetProjects_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(*org.GcpOrgEntity), args[3].(func(context.Context, *org.GcpOrgEntity) error))
-	})
-	return _c
-}
-
-func (_c *MockDataSourceRepository_GetProjects_Call) Return(_a0 error) *MockDataSourceRepository_GetProjects_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockDataSourceRepository_GetProjects_Call) RunAndReturn(run func(context.Context, string, *org.GcpOrgEntity, func(context.Context, *org.GcpOrgEntity) error) error) *MockDataSourceRepository_GetProjects_Call {
+func (_c *MockDataSourceRepository_DataObjects_Call) RunAndReturn(run func(context.Context, func(context.Context, *org.GcpOrgEntity) error) error) *MockDataSourceRepository_DataObjects_Call {
 	_c.Call.Return(run)
 	return _c
 }
