@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
+	"github.com/raito-io/cli-plugin-gcp/internal/common"
 	"github.com/raito-io/cli-plugin-gcp/internal/iam/types"
 )
 
@@ -43,7 +44,7 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 			}},
 			args: args{
 				ctx:       context.Background(),
-				configMap: &config.ConfigMap{},
+				configMap: &config.ConfigMap{Parameters: map[string]string{common.GsuiteIdentityStoreSync: "true"}},
 			},
 			expected: expected{groups: []identity_store.Group{}, users: []identity_store.User{}},
 			wantErr:  assert.NoError,
@@ -77,7 +78,7 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 			}},
 			args: args{
 				ctx:       context.Background(),
-				configMap: &config.ConfigMap{},
+				configMap: &config.ConfigMap{Parameters: map[string]string{common.GsuiteIdentityStoreSync: "true"}},
 			},
 			expected: expected{
 				groups: []identity_store.Group{},
@@ -151,7 +152,7 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 			}},
 			args: args{
 				ctx:       context.Background(),
-				configMap: &config.ConfigMap{},
+				configMap: &config.ConfigMap{Parameters: map[string]string{common.GsuiteIdentityStoreSync: "true"}},
 			},
 			expected: expected{
 				groups: []identity_store.Group{
@@ -227,7 +228,7 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 			}},
 			args: args{
 				ctx:       context.Background(),
-				configMap: &config.ConfigMap{},
+				configMap: &config.ConfigMap{Parameters: map[string]string{common.GsuiteIdentityStoreSync: "true"}},
 			},
 			expected: expected{
 				groups: []identity_store.Group{
@@ -254,6 +255,60 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 				},
 			},
 			wantErr: assert.Error,
+		},
+		{
+			name: "Groups and users in bindings only",
+			fields: fields{mockSetup: func(adminRepoMock *MockAdminRepository, doRepoMock *MockDataObjectRepository) {
+				doRepoMock.EXPECT().UserAndGroups(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, userFn func(context.Context, string) error, groupFn func(context.Context, string) error) error {
+					err := userFn(ctx, "user:dieter@raito.io")
+					if err != nil {
+						return err
+					}
+
+					err = userFn(ctx, "user:bart@raito.io")
+					if err != nil {
+						return err
+					}
+
+					err = groupFn(ctx, "group:engineers@raito.io")
+
+					return userFn(ctx, "serviceAccount:serviceAccount123@raito.io")
+				})
+			}},
+			args: args{
+				ctx:       context.Background(),
+				configMap: &config.ConfigMap{Parameters: map[string]string{}},
+			},
+			expected: expected{
+				groups: []identity_store.Group{
+					{
+						ExternalId:  "group:engineers@raito.io",
+						Name:        "engineers@raito.io",
+						DisplayName: "engineers@raito.io",
+					},
+				},
+				users: []identity_store.User{
+					{
+						ExternalId: "user:dieter@raito.io",
+						Email:      "dieter@raito.io",
+						Name:       "dieter@raito.io",
+						UserName:   "dieter@raito.io",
+					},
+					{
+						ExternalId: "user:bart@raito.io",
+						Name:       "bart@raito.io",
+						UserName:   "bart@raito.io",
+						Email:      "bart@raito.io",
+					},
+					{
+						ExternalId: "serviceAccount:serviceAccount123@raito.io",
+						Name:       "serviceAccount123@raito.io",
+						UserName:   "serviceAccount123@raito.io",
+						Email:      "serviceAccount123@raito.io",
+					},
+				},
+			},
+			wantErr: assert.NoError,
 		},
 	}
 	for _, tt := range tests {

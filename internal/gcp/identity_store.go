@@ -50,26 +50,33 @@ func (s *IdentityStoreSyncer) GetIdentityStoreMetaData(_ context.Context, _ *con
 }
 
 func (s *IdentityStoreSyncer) SyncIdentityStore(ctx context.Context, identityHandler wrappers.IdentityStoreIdentityHandler, configMap *config.ConfigMap) error {
-	// get groups and make a membership map key: ID of user/group, value array of Group IDs it is member of
-	common.Logger.Info("Syncing GCP groups")
+	groups := map[string]*is.Group{}
+	userIds := set.NewSet[string]()
 
-	groupMembership, groups, err := s.syncGcpGroups(ctx, identityHandler)
-	if err != nil {
-		return err
+	if configMap.GetBoolWithDefault(common.GsuiteIdentityStoreSync, false) {
+		// get groups and make a membership map key: ID of user/group, value array of Group IDs it is member of
+		common.Logger.Info("Syncing GCP groups")
+
+		var groupMembership map[string]set.Set[string]
+		var err error
+
+		groupMembership, groups, err = s.syncGcpGroups(ctx, identityHandler)
+		if err != nil {
+			return err
+		}
+
+		// get GCP users
+		common.Logger.Info("Syncing GCP users")
+
+		userIds, err = s.syncGcpUsers(ctx, identityHandler, groupMembership)
+		if err != nil {
+			return err
+		}
 	}
-
-	// get GCP users
-	common.Logger.Info("Syncing GCP users")
-
-	userIds, err := s.syncGcpUsers(ctx, identityHandler, groupMembership)
-	if err != nil {
-		return err
-	}
-
 	// Load users and groups from binding
 	common.Logger.Info("Syncing groups and users from bindings in gcp")
 
-	err = s.syncBindingUsersAndGroups(ctx, identityHandler, userIds, groups)
+	err := s.syncBindingUsersAndGroups(ctx, identityHandler, userIds, groups)
 	if err != nil {
 		return err
 	}
