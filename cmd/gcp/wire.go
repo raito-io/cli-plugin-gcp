@@ -32,12 +32,13 @@ func InitializeDataSourceSyncer(ctx context.Context, configMap *config.ConfigMap
 func InitializeIdentityStoreSyncer(ctx context.Context, configMap *config.ConfigMap) (wrappers.IdentityStoreSyncer, func(), error) {
 	wire.Build(
 		gcp.Wired,
+		syncer.Wired,
 		admin.Wired,
 		org.Wired,
 
-		wire.Bind(new(wrappers.IdentityStoreSyncer), new(*gcp.IdentityStoreSyncer)),
-		wire.Bind(new(gcp.AdminRepository), new(*admin.AdminRepository)),
-		wire.Bind(new(gcp.DataObjectRepository), new(*org.GcpDataObjectIterator)),
+		wire.Bind(new(wrappers.IdentityStoreSyncer), new(*syncer.IdentityStoreSyncer)),
+		wire.Bind(new(syncer.AdminRepository), new(*admin.AdminRepository)),
+		wire.Bind(new(syncer.DataObjectRepository), new(*org.GcpDataObjectIterator)),
 	)
 
 	return nil, nil, nil

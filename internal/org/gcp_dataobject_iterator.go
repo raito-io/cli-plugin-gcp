@@ -4,10 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/raito-io/cli/base/util/config"
-	"github.com/raito-io/golang-set/set"
 
 	"github.com/raito-io/cli-plugin-gcp/internal/common"
 	"github.com/raito-io/cli-plugin-gcp/internal/iam/types"
@@ -94,36 +92,6 @@ func (r *GcpDataObjectIterator) RemoveBinding(ctx context.Context, binding types
 	}
 
 	return repo.RemoveBinding(ctx, binding)
-}
-
-func (r *GcpDataObjectIterator) UserAndGroups(ctx context.Context, userFn func(ctx context.Context, userId string) error, groupFn func(ctx context.Context, groupId string) error) error {
-	groupsAndUsers := set.NewSet[string]()
-
-	return r.Bindings(ctx, func(ctx context.Context, dataObject *GcpOrgEntity, bindings []types.IamBinding) error {
-		for _, binding := range bindings {
-			if groupsAndUsers.Contains(binding.Member) {
-				continue
-			}
-
-			groupsAndUsers.Add(binding.Member)
-
-			if strings.HasPrefix(binding.Member, "user:") || strings.HasPrefix(binding.Member, "serviceAccount:") {
-				err := userFn(ctx, binding.Member)
-				if err != nil {
-					return err
-				}
-			} else if strings.HasPrefix(binding.Member, "group:") {
-				err := groupFn(ctx, binding.Member)
-				if err != nil {
-					return err
-				}
-			} else {
-				common.Logger.Warn(fmt.Sprintf("Ignore unknown member type: %s", binding.Member))
-			}
-		}
-
-		return nil
-	})
 }
 
 func (r *GcpDataObjectIterator) sync(ctx context.Context, fn func(ctx context.Context, dataObject *GcpOrgEntity) error) error {

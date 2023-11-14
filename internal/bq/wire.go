@@ -12,5 +12,7 @@ var Wired = wire.NewSet(
 
 	NewRepository,
 	NewDataObjectIterator,
+
 	NewDataSourceMetaData,
+	NewIdentityStoreMetadata,
 )

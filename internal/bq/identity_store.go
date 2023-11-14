@@ -24,14 +24,18 @@ func newIamServiceProvider(configMap *config.ConfigMap) iam.IAMService {
 	return iam.NewIAMService(configMap)
 }
 
-func (s *IdentityStoreSyncer) GetIdentityStoreMetaData(_ context.Context, _ *config.ConfigMap) (*is.MetaData, error) {
-	logger.Debug("Returning meta data for BigQuery identity store")
-
+func NewIdentityStoreMetadata() *is.MetaData {
 	return &is.MetaData{
 		Type:        "bigquery",
 		CanBeLinked: false,
 		CanBeMaster: false,
-	}, nil
+	}
+}
+
+func (s *IdentityStoreSyncer) GetIdentityStoreMetaData(_ context.Context, _ *config.ConfigMap) (*is.MetaData, error) {
+	logger.Debug("Returning meta data for BigQuery identity store")
+
+	return NewIdentityStoreMetadata(), nil
 }
 
 func (s *IdentityStoreSyncer) SyncIdentityStore(ctx context.Context, identityHandler wrappers.IdentityStoreIdentityHandler, configMap *config.ConfigMap) error {

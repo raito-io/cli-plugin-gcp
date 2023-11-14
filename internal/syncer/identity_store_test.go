@@ -1,4 +1,4 @@
-package gcp
+package syncer
 
 import (
 	"context"
@@ -13,12 +13,13 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/raito-io/cli-plugin-gcp/internal/common"
+	"github.com/raito-io/cli-plugin-gcp/internal/gcp"
 	"github.com/raito-io/cli-plugin-gcp/internal/iam/types"
 )
 
 func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 	type fields struct {
-		mockSetup func(adminRepoMock *MockAdminRepository, doRepoMock *MockDataObjectRepository)
+		mockSetup func(adminRepoMock *gcp.MockAdminRepository, doRepoMock *gcp.MockDataObjectRepository)
 	}
 	type args struct {
 		ctx       context.Context
@@ -37,7 +38,7 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 	}{
 		{
 			name: "No users and groups",
-			fields: fields{mockSetup: func(adminRepoMock *MockAdminRepository, doRepoMock *MockDataObjectRepository) {
+			fields: fields{mockSetup: func(adminRepoMock *gcp.MockAdminRepository, doRepoMock *gcp.MockDataObjectRepository) {
 				adminRepoMock.EXPECT().GetGroups(mock.Anything, mock.Anything).Return(nil)
 				adminRepoMock.EXPECT().GetUsers(mock.Anything, mock.Anything).Return(nil)
 				doRepoMock.EXPECT().UserAndGroups(mock.Anything, mock.Anything, mock.Anything).Return(nil)
@@ -51,7 +52,7 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 		},
 		{
 			name: "Users in gcp and bindings",
-			fields: fields{mockSetup: func(adminRepoMock *MockAdminRepository, doRepoMock *MockDataObjectRepository) {
+			fields: fields{mockSetup: func(adminRepoMock *gcp.MockAdminRepository, doRepoMock *gcp.MockDataObjectRepository) {
 				adminRepoMock.EXPECT().GetGroups(mock.Anything, mock.Anything).Return(nil)
 				adminRepoMock.EXPECT().GetUsers(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, fn func(context.Context, *types.UserEntity) error) error {
 					err := fn(ctx, &types.UserEntity{ExternalId: "user:dieter@raitio.io", Email: "dieter@raito.io", Name: "Dieter Wachters"})
@@ -113,7 +114,7 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 		},
 		{
 			name: "Groups and users in gcp and bindings",
-			fields: fields{mockSetup: func(adminRepoMock *MockAdminRepository, doRepoMock *MockDataObjectRepository) {
+			fields: fields{mockSetup: func(adminRepoMock *gcp.MockAdminRepository, doRepoMock *gcp.MockDataObjectRepository) {
 				adminRepoMock.EXPECT().GetGroups(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, fn func(context.Context, *types.GroupEntity) error) error {
 					err := fn(ctx, &types.GroupEntity{ExternalId: "group:admin@raito.io", Email: "administrators@raito.io", Members: []string{"user:dieter@raito.io", "serviceAccount:sa@raito.io"}})
 					if err != nil {
@@ -208,7 +209,7 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 		},
 		{
 			name: "Error during processing",
-			fields: fields{mockSetup: func(adminRepoMock *MockAdminRepository, doRepoMock *MockDataObjectRepository) {
+			fields: fields{mockSetup: func(adminRepoMock *gcp.MockAdminRepository, doRepoMock *gcp.MockDataObjectRepository) {
 				adminRepoMock.EXPECT().GetGroups(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, fn func(context.Context, *types.GroupEntity) error) error {
 					err := fn(ctx, &types.GroupEntity{ExternalId: "group:admin@raito.io", Email: "administrators@raito.io", Members: []string{"user:dieter@raito.io", "serviceAccount:sa@raito.io"}})
 					if err != nil {
@@ -258,7 +259,7 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 		},
 		{
 			name: "Groups and users in bindings only",
-			fields: fields{mockSetup: func(adminRepoMock *MockAdminRepository, doRepoMock *MockDataObjectRepository) {
+			fields: fields{mockSetup: func(adminRepoMock *gcp.MockAdminRepository, doRepoMock *gcp.MockDataObjectRepository) {
 				doRepoMock.EXPECT().UserAndGroups(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, userFn func(context.Context, string) error, groupFn func(context.Context, string) error) error {
 					err := userFn(ctx, "user:dieter@raito.io")
 					if err != nil {
@@ -332,11 +333,11 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 	}
 }
 
-func createIdentityStoreSyncer(t *testing.T) (*IdentityStoreSyncer, *MockAdminRepository, *MockDataObjectRepository) {
+func createIdentityStoreSyncer(t *testing.T) (*IdentityStoreSyncer, *gcp.MockAdminRepository, *gcp.MockDataObjectRepository) {
 	t.Helper()
 
-	adminRepoMock := NewMockAdminRepository(t)
-	dataObjectRepoMock := NewMockDataObjectRepository(t)
+	adminRepoMock := gcp.NewMockAdminRepository(t)
+	dataObjectRepoMock := gcp.NewMockDataObjectRepository(t)
 
 	return NewIdentityStoreSyncer(adminRepoMock, dataObjectRepoMock), adminRepoMock, dataObjectRepoMock
 }

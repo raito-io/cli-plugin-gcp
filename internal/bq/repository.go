@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/raito-io/cli/base/data_source"
@@ -11,6 +12,7 @@ import (
 	"google.golang.org/api/iterator"
 
 	"github.com/raito-io/cli-plugin-gcp/internal/common"
+	"github.com/raito-io/cli-plugin-gcp/internal/iam/types"
 	"github.com/raito-io/cli-plugin-gcp/internal/org"
 )
 
@@ -182,6 +184,77 @@ func (c *Repository) ListViews(ctx context.Context, ds *bigquery.Dataset, parent
 	}
 
 	return nil
+}
+
+func (c *Repository) GetBindings(ctx context.Context, entity *org.GcpOrgEntity) ([]types.IamBinding, error) {
+	entityIdParts := strings.Split(entity.Id, ".")
+
+	switch entity.Type {
+	case data_source.Dataset:
+		return c.getDataSetBindings(ctx, entity, entityIdParts)
+	case data_source.Table:
+		return c.getTableBindings(ctx, entity, entityIdParts)
+	}
+
+	return nil, nil
+}
+
+func (c *Repository) getDataSetBindings(ctx context.Context, entity *org.GcpOrgEntity, entityIdParts []string) ([]types.IamBinding, error) {
+	ds := c.client.Dataset(entityIdParts[1])
+
+	dsMeta, err := ds.Metadata(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("metadata of dataset %q: %w", entityIdParts[1], err)
+	}
+
+	var resultBindings []types.IamBinding
+
+	for _, a := range dsMeta.Access {
+		if a.EntityType == bigquery.UserEmailEntity || a.EntityType == bigquery.GroupEmailEntity || a.EntityType == bigquery.SpecialGroupEntity {
+			prefix := userPrefix
+
+			if a.EntityType == bigquery.GroupEmailEntity {
+				prefix = groupPrefix
+			} else if a.EntityType == bigquery.SpecialGroupEntity {
+				prefix = specialGroupPrefix
+			} else if strings.Contains(a.Entity, "gserviceaccount") {
+				prefix = serviceAccountPrefix
+			}
+
+			resultBindings = append(resultBindings, types.IamBinding{
+				Role:         getRoleForBQEntity(a.Role),
+				Member:       prefix + a.Entity,
+				Resource:     entity.Id,
+				ResourceType: "dataset",
+			})
+		}
+	}
+
+	return resultBindings, nil
+}
+
+func (c *Repository) getTableBindings(ctx context.Context, entity *org.GcpOrgEntity, entityIdParts []string) ([]types.IamBinding, error) {
+	t := c.client.Dataset(entityIdParts[1]).Table(entityIdParts[2])
+
+	policy, err := t.IAM().Policy(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("policy of table %q: %w", entity.Id, err)
+	}
+
+	var bindings []types.IamBinding
+
+	for _, role := range policy.Roles() {
+		for _, m := range policy.Members(role) {
+			bindings = append(bindings, types.IamBinding{
+				Role:         string(role),
+				Member:       m,
+				Resource:     entity.Id,
+				ResourceType: "table",
+			})
+		}
+	}
+
+	return bindings, nil
 }
 
 func (c *Repository) description(doType string) string {

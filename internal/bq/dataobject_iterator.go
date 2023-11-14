@@ -9,6 +9,7 @@ import (
 	"github.com/raito-io/cli/base/util/config"
 
 	"github.com/raito-io/cli-plugin-gcp/internal/common"
+	"github.com/raito-io/cli-plugin-gcp/internal/iam/types"
 	"github.com/raito-io/cli-plugin-gcp/internal/org"
 )
 
@@ -81,4 +82,20 @@ func (it *DataObjectIterator) DataObjects(ctx context.Context, fn func(ctx conte
 	}
 
 	return nil
+}
+
+func (it *DataObjectIterator) Bindings(ctx context.Context, fn func(ctx context.Context, dataObject *org.GcpOrgEntity, bindings []types.IamBinding) error) error {
+	return it.DataObjects(ctx, func(ctx context.Context, object *org.GcpOrgEntity) error {
+		bindings, err := it.repo.GetBindings(ctx, object)
+		if err != nil {
+			return fmt.Errorf("get bq bindings: %w", err)
+		}
+
+		err = fn(ctx, object, bindings)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
 }

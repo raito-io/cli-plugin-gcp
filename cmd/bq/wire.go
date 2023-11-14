@@ -10,6 +10,7 @@ import (
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/raito-io/cli/base/wrappers"
 
+	"github.com/raito-io/cli-plugin-gcp/internal/admin"
 	bigquery "github.com/raito-io/cli-plugin-gcp/internal/bq"
 	"github.com/raito-io/cli-plugin-gcp/internal/syncer"
 )
@@ -26,19 +27,20 @@ func InitializeDataSourceSyncer(ctx context.Context, configMap *config.ConfigMap
 	return nil, nil, nil
 }
 
-//func InitializeIdentityStoreSyncer(ctx context.Context, configMap *config.ConfigMap) (wrappers.IdentityStoreSyncer, func(), error) {
-//	wire.Build(
-//		gcp.Wired,
-//		admin.Wired,
-//		org.Wired,
-//
-//		wire.Bind(new(wrappers.IdentityStoreSyncer), new(*gcp.IdentityStoreSyncer)),
-//		wire.Bind(new(gcp.AdminRepository), new(*admin.AdminRepository)),
-//		wire.Bind(new(gcp.DataObjectRepository), new(*org.GcpDataObjectIterator)),
-//	)
-//
-//	return nil, nil, nil
-//}
+func InitializeIdentityStoreSyncer(ctx context.Context, configMap *config.ConfigMap) (wrappers.IdentityStoreSyncer, func(), error) {
+	wire.Build(
+		bigquery.Wired,
+		admin.Wired,
+		syncer.Wired,
+
+		wire.Bind(new(wrappers.IdentityStoreSyncer), new(*syncer.IdentityStoreSyncer)),
+		wire.Bind(new(syncer.AdminRepository), new(*admin.AdminRepository)),
+		wire.Bind(new(syncer.DataObjectRepository), new(*bigquery.DataObjectIterator)),
+	)
+
+	return nil, nil, nil
+}
+
 //
 //func InitializeDataAccessSyncer(ctx context.Context, configMap *config.ConfigMap) (wrappers.AccessProviderSyncer, func(), error) {
 //	wire.Build(

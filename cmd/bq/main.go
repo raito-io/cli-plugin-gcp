@@ -19,7 +19,7 @@ func main() {
 	logger.SetLevel(hclog.Debug)
 
 	err := base.RegisterPlugins(
-		wrappers.IdentityStoreSync(bigquery.NewIdentityStoreSyncer()),
+		wrappers.IdentityStoreSyncFactory(InitializeIdentityStoreSyncer),
 		wrappers.DataSourceSyncFactory(InitializeDataSourceSyncer),
 		wrappers.DataAccessSync(bigquery.NewDataAccessSyncer()),
 		wrappers.DataUsageSync(bigquery.NewDataUsageSyncer()), &info.InfoImpl{
