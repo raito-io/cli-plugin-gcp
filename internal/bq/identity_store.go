@@ -1,28 +1,8 @@
 package bigquery
 
 import (
-	"context"
-	"errors"
-
-	"github.com/raito-io/cli/base/util/config"
-	"github.com/raito-io/cli/base/wrappers"
-
-	"github.com/raito-io/cli-plugin-gcp/internal/iam"
-
 	is "github.com/raito-io/cli/base/identity_store"
 )
-
-type IdentityStoreSyncer struct {
-	iamServiceProvider func(configMap *config.ConfigMap) iam.IAMService
-}
-
-func NewIdentityStoreSyncer() *IdentityStoreSyncer {
-	return &IdentityStoreSyncer{iamServiceProvider: newIamServiceProvider}
-}
-
-func newIamServiceProvider(configMap *config.ConfigMap) iam.IAMService {
-	return iam.NewIAMService(configMap)
-}
 
 func NewIdentityStoreMetadata() *is.MetaData {
 	return &is.MetaData{
@@ -30,20 +10,4 @@ func NewIdentityStoreMetadata() *is.MetaData {
 		CanBeLinked: false,
 		CanBeMaster: false,
 	}
-}
-
-func (s *IdentityStoreSyncer) GetIdentityStoreMetaData(_ context.Context, _ *config.ConfigMap) (*is.MetaData, error) {
-	logger.Debug("Returning meta data for BigQuery identity store")
-
-	return NewIdentityStoreMetadata(), nil
-}
-
-func (s *IdentityStoreSyncer) SyncIdentityStore(ctx context.Context, identityHandler wrappers.IdentityStoreIdentityHandler, configMap *config.ConfigMap) error {
-	//syncer := gcp.NewIdentityStoreSyncer().WithIAMServiceProvider(func(configMap *config.ConfigMap) iam.IAMService {
-	//	return s.iamServiceProvider(configMap).WithServiceIamRepo([]string{}, &bigQueryIamRepository{}, GetResourceIds)
-	//})
-	//
-	//return syncer.SyncIdentityStore(ctx, identityHandler, configMap)
-
-	return errors.New("not yet implemented")
 }
