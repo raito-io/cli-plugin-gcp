@@ -51,6 +51,7 @@ func (r *ProjectRepository) GetProjects(ctx context.Context, parentName string, 
 			EntryName: project.Name,
 			Name:      project.DisplayName,
 			Id:        project.ProjectId,
+			FullName:  project.ProjectId,
 			Type:      "project",
 			Parent:    parent,
 		}

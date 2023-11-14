@@ -66,7 +66,7 @@ func NewDataAccessSyncer() *AccessSyncer {
 // GetAlteredDataSourceMetaData provides an altered version of the data source meta data to also add the 'project' type.
 // This is needed to correctly look up the applicable permissions for the mapped data object type (datasource = project).
 func GetAlteredDataSourceMetaData(ctx context.Context, config *config.ConfigMap) (*ds.MetaData, error) {
-	md, err := GetDataSourceMetaData(ctx, config)
+	md, err := NewDataSourceMetaData(ctx, config)
 
 	var permissions []*ds.DataObjectTypePermission
 

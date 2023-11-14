@@ -1,15 +1,16 @@
 //go:build wireinject
 // +build wireinject
 
-package gcp
+package bigquery
 
 import (
 	"github.com/google/wire"
 )
 
 var Wired = wire.NewSet(
-	NewIdentityStoreSyncer,
-	NewDataAccessSyncer,
+	NewBiqQueryClient,
 
+	NewRepository,
+	NewDataObjectIterator,
 	NewDataSourceMetaData,
 )

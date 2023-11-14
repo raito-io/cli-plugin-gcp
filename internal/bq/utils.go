@@ -2,14 +2,11 @@ package bigquery
 
 import (
 	"context"
-	"os"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/hashicorp/go-hclog"
 	"github.com/raito-io/cli/base"
 	"github.com/raito-io/cli/base/util/config"
-	"golang.org/x/oauth2/google"
-	"golang.org/x/oauth2/jwt"
 	admin "google.golang.org/api/admin/directory/v1"
 	"google.golang.org/api/option"
 
@@ -32,21 +29,6 @@ func ConnectToBigQuery(configMap *config.ConfigMap, ctx context.Context) (*bigqu
 	}
 
 	return bigquery.NewClient(ctx, gcpProjectId, option.WithHTTPClient(config.Client(ctx)))
-}
-
-func getConfig(configMap *config.ConfigMap, scopes ...string) (*jwt.Config, error) {
-	key := configMap.GetString(common.GcpSAFileLocation)
-
-	if key == "" {
-		key = os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
-	}
-
-	serviceAccountJSON, err := os.ReadFile(key)
-	if err != nil {
-		return nil, err
-	}
-
-	return google.JWTConfigFromJSON(serviceAccountJSON, scopes...)
 }
 
 func getRoleForBQEntity(t bigquery.AccessRole) string {

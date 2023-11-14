@@ -1,4 +1,4 @@
-package gcp
+package syncer
 
 import (
 	"context"
@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/raito-io/cli-plugin-gcp/internal/common"
+	"github.com/raito-io/cli-plugin-gcp/internal/gcp"
 	"github.com/raito-io/cli-plugin-gcp/internal/org"
 )
 
@@ -30,7 +31,7 @@ func TestDataSourceSyncer_GetMetaData(t *testing.T) {
 
 func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 	type fields struct {
-		mocksSetup func(repository *MockDataSourceRepository)
+		mocksSetup func(repository *gcp.MockDataSourceRepository)
 	}
 	type args struct {
 		ctx       context.Context
@@ -46,7 +47,7 @@ func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 		{
 			name: "Successfully synced data source",
 			fields: fields{
-				mocksSetup: func(repository *MockDataSourceRepository) {
+				mocksSetup: func(repository *gcp.MockDataSourceRepository) {
 					repository.EXPECT().DataObjects(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, f func(context.Context, *org.GcpOrgEntity) error) error {
 						err := f(ctx, &org.GcpOrgEntity{
 							EntryName: "projects/projectId1",
@@ -112,7 +113,7 @@ func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 		{
 			name: "processing error",
 			fields: fields{
-				mocksSetup: func(repository *MockDataSourceRepository) {
+				mocksSetup: func(repository *gcp.MockDataSourceRepository) {
 					repository.EXPECT().DataObjects(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, f func(context.Context, *org.GcpOrgEntity) error) error {
 						err := f(ctx, &org.GcpOrgEntity{
 							EntryName: "projects/projectId1",
@@ -178,10 +179,10 @@ func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 	}
 }
 
-func createTestDataSourceSyncer(t *testing.T) (*DataSourceSyncer, *MockDataSourceRepository) {
+func createTestDataSourceSyncer(t *testing.T) (*DataSourceSyncer, *gcp.MockDataSourceRepository) {
 	t.Helper()
 
-	repoMock := NewMockDataSourceRepository(t)
+	repoMock := gcp.NewMockDataSourceRepository(t)
 
 	return NewDataSourceSyncer(repoMock, NewDataSourceMetaData()), repoMock
 }

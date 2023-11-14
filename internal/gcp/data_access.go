@@ -17,6 +17,7 @@ import (
 	"github.com/raito-io/cli-plugin-gcp/internal/iam"
 	"github.com/raito-io/cli-plugin-gcp/internal/iam/types"
 	"github.com/raito-io/cli-plugin-gcp/internal/org"
+	"github.com/raito-io/cli-plugin-gcp/internal/syncer"
 
 	exporter "github.com/raito-io/cli/base/access_provider/sync_from_target"
 	importer "github.com/raito-io/cli/base/access_provider/sync_to_target"
@@ -145,7 +146,7 @@ func (a *AccessSyncer) ConvertBindingsToAccessProviders(ctx context.Context, con
 
 	for _, binding := range bindings {
 		if strings.EqualFold(binding.ResourceType, types.Organization.String()) {
-			binding.Resource = GetOrgDataObjectName(configMap)
+			binding.Resource = syncer.GetOrgDataObjectName(configMap)
 		}
 
 		managed := a.isRaitoManagedBinding(binding)

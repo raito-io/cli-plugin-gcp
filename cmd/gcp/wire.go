@@ -13,15 +13,17 @@ import (
 	"github.com/raito-io/cli-plugin-gcp/internal/admin"
 	"github.com/raito-io/cli-plugin-gcp/internal/gcp"
 	"github.com/raito-io/cli-plugin-gcp/internal/org"
+	"github.com/raito-io/cli-plugin-gcp/internal/syncer"
 )
 
 func InitializeDataSourceSyncer(ctx context.Context, configMap *config.ConfigMap) (wrappers.DataSourceSyncer, func(), error) {
 	wire.Build(
 		gcp.Wired,
+		syncer.Wired,
 		org.Wired,
 
-		wire.Bind(new(wrappers.DataSourceSyncer), new(*gcp.DataSourceSyncer)),
-		wire.Bind(new(gcp.DataSourceRepository), new(*org.GcpDataObjectIterator)),
+		wire.Bind(new(wrappers.DataSourceSyncer), new(*syncer.DataSourceSyncer)),
+		wire.Bind(new(syncer.DataSourceRepository), new(*org.GcpDataObjectIterator)),
 	)
 
 	return nil, nil, nil

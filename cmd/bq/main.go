@@ -20,7 +20,7 @@ func main() {
 
 	err := base.RegisterPlugins(
 		wrappers.IdentityStoreSync(bigquery.NewIdentityStoreSyncer()),
-		wrappers.DataSourceSync(bigquery.NewDataSourceSyncer()),
+		wrappers.DataSourceSyncFactory(InitializeDataSourceSyncer),
 		wrappers.DataAccessSync(bigquery.NewDataAccessSyncer()),
 		wrappers.DataUsageSync(bigquery.NewDataUsageSyncer()), &info.InfoImpl{
 			Info: &plugin.PluginInfo{

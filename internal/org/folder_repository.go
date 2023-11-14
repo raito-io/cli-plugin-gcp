@@ -44,10 +44,13 @@ func (r *FolderRepository) GetFolders(ctx context.Context, parentName string, pa
 			return fmt.Errorf("folder iterator: %w", err)
 		}
 
+		id := strings.Split(folder.Name, "/")[1]
+
 		res := GcpOrgEntity{
 			EntryName: folder.Name,
 			Name:      folder.DisplayName,
-			Id:        strings.Split(folder.Name, "/")[1],
+			Id:        id,
+			FullName:  id,
 			Type:      "folder",
 			Parent:    parent,
 		}

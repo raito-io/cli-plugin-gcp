@@ -5,8 +5,12 @@ type GcpOrgEntity struct {
 	EntryName string
 
 	// RaitoDetails
-	Id     string
-	Name   string
-	Type   string
-	Parent *GcpOrgEntity
+	Id          string
+	Name        string
+	FullName    string
+	Type        string
+	Location    string
+	Description string
+	PolicyTags  []string
+	Parent      *GcpOrgEntity
 }

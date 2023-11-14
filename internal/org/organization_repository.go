@@ -46,6 +46,7 @@ func (r *OrganizationRepository) GetOrganization(ctx context.Context) (*GcpOrgEn
 		EntryName: organization.Name,
 		Name:      name,
 		Id:        name,
+		FullName:  name,
 		Type:      "organization",
 		Parent:    nil,
 	}, nil

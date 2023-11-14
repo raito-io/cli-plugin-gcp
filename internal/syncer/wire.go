@@ -1,15 +1,12 @@
 //go:build wireinject
 // +build wireinject
 
-package gcp
+package syncer
 
 import (
 	"github.com/google/wire"
 )
 
 var Wired = wire.NewSet(
-	NewIdentityStoreSyncer,
-	NewDataAccessSyncer,
-
-	NewDataSourceMetaData,
+	NewDataSourceSyncer,
 )

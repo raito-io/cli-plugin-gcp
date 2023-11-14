@@ -19,6 +19,7 @@ import (
 	"github.com/raito-io/cli-plugin-gcp/internal/common"
 	"github.com/raito-io/cli-plugin-gcp/internal/iam/types"
 	"github.com/raito-io/cli-plugin-gcp/internal/org"
+	"github.com/raito-io/cli-plugin-gcp/internal/syncer"
 )
 
 func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
@@ -85,7 +86,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 						)
 					})
 				},
-				metadata:             NewDataSourceMetaData(),
+				metadata:             syncer.NewDataSourceMetaData(),
 				raitoManagedBindings: []types.IamBinding{},
 			},
 			args: args{
@@ -174,7 +175,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 						)
 					})
 				},
-				metadata:             NewDataSourceMetaData(),
+				metadata:             syncer.NewDataSourceMetaData(),
 				raitoManagedBindings: []types.IamBinding{},
 			},
 			args: args{
@@ -319,7 +320,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 						return errors.New("boom")
 					})
 				},
-				metadata:             NewDataSourceMetaData(),
+				metadata:             syncer.NewDataSourceMetaData(),
 				raitoManagedBindings: []types.IamBinding{},
 			},
 			args: args{
@@ -368,7 +369,7 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 				mocksSetup: func(gcpRepo *MockGcpBindingRepository, projectRepo *MockProjectRepo) {
 
 				},
-				metadata:             NewDataSourceMetaData(),
+				metadata:             syncer.NewDataSourceMetaData(),
 				raitoManagedBindings: []types.IamBinding{},
 			},
 			args: args{
@@ -465,7 +466,7 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 				mocksSetup: func(gcpRepo *MockGcpBindingRepository, projectRepo *MockProjectRepo) {
 
 				},
-				metadata: NewDataSourceMetaData(),
+				metadata: syncer.NewDataSourceMetaData(),
 				raitoManagedBindings: []types.IamBinding{
 					{
 						Member:       "user:ruben@raito.io",
@@ -575,7 +576,7 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 				mocksSetup: func(gcpRepo *MockGcpBindingRepository, projectRepo *MockProjectRepo) {
 
 				},
-				metadata:             NewDataSourceMetaData(),
+				metadata:             syncer.NewDataSourceMetaData(),
 				raitoManagedBindings: []types.IamBinding{},
 			},
 			args: args{
@@ -663,7 +664,7 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 				mocksSetup: func(gcpRepo *MockGcpBindingRepository, projectRepo *MockProjectRepo) {
 					projectRepo.EXPECT().GetProjectOwner(mock.Anything, mock.Anything).Return([]string{"user:owner@raito.io"}, []string{"user:editor@raito.io"}, []string{"user:viewer@raito.io"}, nil).Once()
 				},
-				metadata:             NewDataSourceMetaData(),
+				metadata:             syncer.NewDataSourceMetaData(),
 				raitoManagedBindings: []types.IamBinding{},
 			},
 			args: args{
@@ -779,7 +780,7 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 				mocksSetup: func(gcpRepo *MockGcpBindingRepository, projectRepo *MockProjectRepo) {
 
 				},
-				metadata:             NewDataSourceMetaData(),
+				metadata:             syncer.NewDataSourceMetaData(),
 				raitoManagedBindings: []types.IamBinding{},
 			},
 			args: args{
@@ -950,7 +951,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 				mocksSetup: func(gcpRepo *MockGcpBindingRepository, projectRepo *MockProjectRepo) {
 
 				},
-				metadata: NewDataSourceMetaData(),
+				metadata: syncer.NewDataSourceMetaData(),
 			},
 			args: args{
 				ctx:             context.Background(),
@@ -1007,7 +1008,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 						Role:         "roles/editor",
 					}).Return(nil).Once()
 				},
-				metadata: NewDataSourceMetaData(),
+				metadata: syncer.NewDataSourceMetaData(),
 			},
 			args: args{
 				ctx: context.Background(),
