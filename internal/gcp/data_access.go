@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
-
 	"github.com/raito-io/golang-set/set"
 
 	"github.com/aws/smithy-go/ptr"
@@ -17,61 +16,112 @@ import (
 	"github.com/raito-io/cli-plugin-gcp/internal/common"
 	"github.com/raito-io/cli-plugin-gcp/internal/iam"
 	"github.com/raito-io/cli-plugin-gcp/internal/iam/types"
+	"github.com/raito-io/cli-plugin-gcp/internal/org"
 
 	exporter "github.com/raito-io/cli/base/access_provider/sync_from_target"
 	importer "github.com/raito-io/cli/base/access_provider/sync_to_target"
 	"github.com/raito-io/cli/base/util/config"
 )
 
+//go:generate go run github.com/vektra/mockery/v2 --name=GcpBindingRepository --with-expecter --inpackage
+type GcpBindingRepository interface {
+	Bindings(ctx context.Context, fn func(ctx context.Context, dataObject *org.GcpOrgEntity, bindings []types.IamBinding) error) error
+	AddBinding(ctx context.Context, binding types.IamBinding) error
+	RemoveBinding(ctx context.Context, binding types.IamBinding) error
+}
+
+//go:generate go run github.com/vektra/mockery/v2 --name=ProjectRepo --with-expecter --inpackage
+type ProjectRepo interface {
+	GetProjectOwner(ctx context.Context, projectId string) (owner []string, editor []string, viewer []string, err error)
+}
+
 type AccessSyncer struct {
-	iamServiceProvider   func(configMap *config.ConfigMap) iam.IAMService
+	bindingRepo GcpBindingRepository
+	projectRepo ProjectRepo
+	metadata    *data_source.MetaData
+
+	// cache
 	raitoManagedBindings []types.IamBinding
-	getDSMetadata        func(ctx context.Context, configMap *config.ConfigMap) (*data_source.MetaData, error)
 }
 
-func newIamServiceProvider(configMap *config.ConfigMap) iam.IAMService {
-	return iam.NewIAMService(configMap)
-}
-
-func NewDataAccessSyncer() *AccessSyncer {
+func NewDataAccessSyncer(bindingRepo GcpBindingRepository, projectRepo ProjectRepo, metadata *data_source.MetaData) *AccessSyncer {
 	return &AccessSyncer{
-		iamServiceProvider: newIamServiceProvider,
-		getDSMetadata:      GetDataSourceMetaData,
+		bindingRepo: bindingRepo,
+		projectRepo: projectRepo,
+		metadata:    metadata,
 	}
-}
-
-func (a *AccessSyncer) WithDataSourceMetadataFetcher(getDSMetadata func(ctx context.Context, configMap *config.ConfigMap) (*data_source.MetaData, error)) *AccessSyncer {
-	a.getDSMetadata = getDSMetadata
-	return a
-}
-
-func (a *AccessSyncer) WithIAMServiceProvider(provider func(configMap *config.ConfigMap) iam.IAMService) *AccessSyncer {
-	a.iamServiceProvider = provider
-	return a
 }
 
 func (a *AccessSyncer) SyncAccessProvidersFromTarget(ctx context.Context, accessProviderHandler wrappers.AccessProviderHandler, configMap *config.ConfigMap) error {
-	bindings, err := a.iamServiceProvider(configMap).GetIAMPolicyBindings(ctx, configMap)
+	var allBindings []types.IamBinding
 
-	if err != nil || len(bindings) == 0 {
-		return err
-	}
-
-	aps, err := a.ConvertBindingsToAccessProviders(ctx, configMap, bindings)
-
-	if err != nil || len(aps) == 0 {
-		return err
-	}
-
-	for _, ap := range aps {
-		err = accessProviderHandler.AddAccessProviders(ap)
-
-		if err != nil {
-			return err
+	err := a.bindingRepo.Bindings(ctx, func(ctx context.Context, dataObject *org.GcpOrgEntity, bindings []types.IamBinding) error {
+		if len(bindings) == 0 {
+			return nil
 		}
+
+		allBindings = append(allBindings, bindings...)
+
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("processing bindings: %w", err)
+	}
+
+	aps, err := a.ConvertBindingsToAccessProviders(ctx, configMap, allBindings)
+	if err != nil {
+		return fmt.Errorf("convert bindings to access providers: %w", err)
+	}
+
+	err = accessProviderHandler.AddAccessProviders(aps...)
+	if err != nil {
+		return fmt.Errorf("add access providers: %w", err)
 	}
 
 	return nil
+}
+
+func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessProviders *importer.AccessProviderImport, accessProviderFeedbackHandler wrappers.AccessProviderFeedbackHandler, configMap *config.ConfigMap) error {
+	common.Logger.Info(fmt.Sprintf("Start converting %d access providers to bindings", len(accessProviders.AccessProviders)))
+
+	bindingsToAdd, bindingsToDelete := ConvertAccessProviderToBindings(accessProviders)
+
+	common.Logger.Info(fmt.Sprintf("Done converting access providers to bindings: %d bindings to add, %d bindings to remove", len(bindingsToAdd), len(bindingsToDelete)))
+
+	apFeedback := make(map[string]*importer.AccessProviderSyncFeedback)
+
+	for _, ap := range accessProviders.AccessProviders {
+		apFeedback[ap.Id] = &importer.AccessProviderSyncFeedback{AccessProvider: ap.Id, ActualName: ap.Id, Type: ptr.String(access_provider.AclSet)}
+	}
+
+	for b, aps := range bindingsToDelete {
+		common.Logger.Info(fmt.Sprintf("Revoking binding %+v", b))
+
+		a.handleErrors(a.bindingRepo.RemoveBinding(ctx, b), apFeedback, aps)
+	}
+
+	for b, aps := range bindingsToAdd {
+		common.Logger.Info(fmt.Sprintf("Granting binding %+v", b))
+
+		a.handleErrors(a.bindingRepo.AddBinding(ctx, b), apFeedback, aps)
+
+		a.raitoManagedBindings = append(a.raitoManagedBindings, b)
+	}
+
+	var merr error
+
+	for _, apsf := range apFeedback {
+		err := accessProviderFeedbackHandler.AddAccessProviderFeedback(*apsf)
+		if err != nil {
+			merr = multierror.Append(merr, err)
+		}
+	}
+
+	return merr
+}
+
+func (a *AccessSyncer) SyncAccessAsCodeToTarget(_ context.Context, _ *importer.AccessProviderImport, _ string, _ *config.ConfigMap) error {
+	return fmt.Errorf("access as code is not yet supported by this plugin")
 }
 
 func (a *AccessSyncer) ConvertBindingsToAccessProviders(ctx context.Context, configMap *config.ConfigMap, bindings []types.IamBinding) ([]*exporter.AccessProvider, error) {
@@ -98,11 +148,7 @@ func (a *AccessSyncer) ConvertBindingsToAccessProviders(ctx context.Context, con
 			binding.Resource = GetOrgDataObjectName(configMap)
 		}
 
-		managed, err2 := a.isRaitoManagedBinding(ctx, configMap, binding)
-
-		if err2 != nil {
-			return nil, err2
-		}
+		managed := a.isRaitoManagedBinding(binding)
 
 		if configMap.GetBoolWithDefault(common.ExcludeNonAplicablePermissions, true) && !managed {
 			common.Logger.Info(fmt.Sprintf("Skipping role %s for %s on %s %s as it is not an applicable permission for this datasource and %s is false", binding.Role, binding.Member, binding.Resource, binding.ResourceType, common.ExcludeNonAplicablePermissions))
@@ -157,8 +203,7 @@ func (a *AccessSyncer) generateAccessProvider(binding types.IamBinding, accessPr
 			NamingHint:        generateNamingHint(apName),
 			NotInternalizable: !managed,
 			WhoLocked:         ptr.Bool(false),
-			WhatLocked:        ptr.Bool(true),
-			WhatLockedReason:  ptr.String("This Access Control was imported from GCP and can only cover 1 Data Object. If you want a GCP Access Control with multiple Data Objects, you can create a new one in Raito"),
+			WhatLocked:        ptr.Bool(false),
 			Action:            exporter.Grant,
 			NameLocked:        ptr.Bool(false),
 			DeleteLocked:      ptr.Bool(false),
@@ -285,7 +330,7 @@ func (a *AccessSyncer) projectRolesWhoItem(ctx context.Context, configMap *confi
 
 	gcpProject := configMap.GetString(common.GcpProjectId)
 	if gcpProject != "" {
-		projectOwnerIds, projectEditorIds, projectViewerIDs, err := a.iamServiceProvider(configMap).GetProjectOwners(ctx, configMap, gcpProject)
+		projectOwnerIds, projectEditorIds, projectViewerIDs, err := a.projectRepo.GetProjectOwner(ctx, gcpProject)
 
 		if err != nil {
 			return nil, nil, nil, err
@@ -317,50 +362,9 @@ func (a *AccessSyncer) generateProjectWhoItem(projectOwnerIds []string) *exporte
 	return result
 }
 
-func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessProviders *importer.AccessProviderImport, accessProviderFeedbackHandler wrappers.AccessProviderFeedbackHandler, configMap *config.ConfigMap) error {
-	common.Logger.Info(fmt.Sprintf("Start converting %d access providers to bindings", len(accessProviders.AccessProviders)))
-
-	iamService := a.iamServiceProvider(configMap)
-
-	bindingsToAdd, bindingsToDelete := ConvertAccessProviderToBindings(accessProviders, iamService.AccessProviderBindingHooks()...)
-
-	common.Logger.Info(fmt.Sprintf("Done converting access providers to bindings: %d bindings to add, %d bindings to remove", len(bindingsToAdd), len(bindingsToDelete)))
-
-	apFeedback := make(map[string]*importer.AccessProviderSyncFeedback)
-
-	for _, ap := range accessProviders.AccessProviders {
-		apFeedback[ap.Id] = &importer.AccessProviderSyncFeedback{AccessProvider: ap.Id, ActualName: ap.Id, Type: ptr.String(access_provider.AclSet)}
-	}
-
-	for b, aps := range bindingsToDelete {
-		common.Logger.Info(fmt.Sprintf("Revoking binding %+v", b))
-
-		a.handleErrors(iamService.RemoveIamBinding(ctx, configMap, b), apFeedback, aps)
-	}
-
-	for b, aps := range bindingsToAdd {
-		common.Logger.Info(fmt.Sprintf("Granting binding %+v", b))
-
-		a.handleErrors(iamService.AddIamBinding(ctx, configMap, b), apFeedback, aps)
-
-		a.raitoManagedBindings = append(a.raitoManagedBindings, b)
-	}
-
-	var merr error
-
-	for _, apsf := range apFeedback {
-		err := accessProviderFeedbackHandler.AddAccessProviderFeedback(*apsf)
-		if err != nil {
-			merr = multierror.Append(merr, err)
-		}
-	}
-
-	return merr
-}
-
 func (a *AccessSyncer) handleErrors(err error, apFeedback map[string]*importer.AccessProviderSyncFeedback, aps []*importer.AccessProvider) {
 	if err != nil {
-		common.Logger.Error("error while updating bindings: %s", err.Error())
+		common.Logger.Error(fmt.Sprintf("error while updating bindings: %s", err.Error()))
 
 		for _, ap := range aps {
 			apFeedback[ap.Id].Errors = append(apFeedback[ap.Id].Errors, err.Error())
@@ -368,28 +372,18 @@ func (a *AccessSyncer) handleErrors(err error, apFeedback map[string]*importer.A
 	}
 }
 
-func (a *AccessSyncer) SyncAccessAsCodeToTarget(ctx context.Context, accessProviders *importer.AccessProviderImport, prefix string, configMap *config.ConfigMap) error {
-	return fmt.Errorf("access as code is not yet supported by this plugin")
-}
-
-func (a *AccessSyncer) isRaitoManagedBinding(ctx context.Context, configMap *config.ConfigMap, binding types.IamBinding) (bool, error) {
-	meta, err := a.getDSMetadata(ctx, configMap)
-
-	if err != nil {
-		return false, err
-	}
-
-	for _, doType := range meta.DataObjectTypes {
+func (a *AccessSyncer) isRaitoManagedBinding(binding types.IamBinding) bool {
+	for _, doType := range a.metadata.DataObjectTypes {
 		if strings.EqualFold(binding.ResourceType, doType.Type) {
 			for _, perm := range doType.Permissions {
 				if strings.EqualFold(binding.Role, perm.Permission) {
-					return true, nil
+					return true
 				}
 			}
 		}
 	}
 
-	return false, nil
+	return false
 }
 
 func ConvertAccessProviderToBindings(accessProviders *importer.AccessProviderImport, hooks ...iam.AccessProviderBindingHook) (map[types.IamBinding][]*importer.AccessProvider, map[types.IamBinding][]*importer.AccessProvider) {

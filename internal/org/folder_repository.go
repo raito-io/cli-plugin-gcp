@@ -18,6 +18,7 @@ import (
 type folderClient interface {
 	ListFolders(ctx context.Context, req *resourcemanagerpb.ListFoldersRequest, opts ...gax.CallOption) *resourcemanager.FolderIterator
 	GetIamPolicy(ctx context.Context, req *iampb.GetIamPolicyRequest, opts ...gax.CallOption) (*iampb.Policy, error)
+	SetIamPolicy(ctx context.Context, req *iampb.SetIamPolicyRequest, opts ...gax.CallOption) (*iampb.Policy, error)
 }
 
 type FolderRepository struct {
@@ -60,6 +61,14 @@ func (r *FolderRepository) GetFolders(ctx context.Context, parentName string, pa
 	return nil
 }
 
-func (r *FolderRepository) GetIamPolicies(ctx context.Context, folderId string) ([]types.IamBinding, error) {
-	return parseBindings(ctx, r.folderClient, "folder", folderId)
+func (r *FolderRepository) GetIamPolicy(ctx context.Context, folderId string) ([]types.IamBinding, error) {
+	return getAndParseBindings(ctx, r.folderClient, "folder", folderId)
+}
+
+func (r *FolderRepository) AddBinding(ctx context.Context, binding types.IamBinding) error {
+	return addBinding(ctx, r.folderClient, binding)
+}
+
+func (r *FolderRepository) RemoveBinding(ctx context.Context, binding types.IamBinding) error {
+	return removeBinding(ctx, r.folderClient, binding)
 }

@@ -14,9 +14,14 @@ import (
 	"github.com/raito-io/cli-plugin-gcp/internal/iam/types"
 )
 
+const ownerRole = "roles/owner"
+const editorRole = "roles/editor"
+const viewerRole = "roles/viewer"
+
 type projectClient interface {
 	ListProjects(ctx context.Context, req *resourcemanagerpb.ListProjectsRequest, opts ...gax.CallOption) *resourcemanager.ProjectIterator
 	GetIamPolicy(ctx context.Context, req *iampb.GetIamPolicyRequest, opts ...gax.CallOption) (*iampb.Policy, error)
+	SetIamPolicy(ctx context.Context, req *iampb.SetIamPolicyRequest, opts ...gax.CallOption) (*iampb.Policy, error)
 }
 
 type ProjectRepository struct {
@@ -59,6 +64,33 @@ func (r *ProjectRepository) GetProjects(ctx context.Context, parentName string, 
 	return nil
 }
 
-func (r *ProjectRepository) GetIamPolicies(ctx context.Context, projectId string) ([]types.IamBinding, error) {
-	return parseBindings(ctx, r.projectClient, "project", projectId)
+func (r *ProjectRepository) GetProjectOwner(ctx context.Context, projectId string) (owner []string, editor []string, viewer []string, err error) {
+	bindings, err := r.GetIamPolicy(ctx, projectId)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("get iam bindings for project %s: %w", projectId, err)
+	}
+
+	for _, binding := range bindings {
+		if binding.Role == ownerRole {
+			owner = append(owner, binding.Member)
+		} else if binding.Role == editorRole {
+			editor = append(editor, binding.Member)
+		} else if binding.Role == viewerRole {
+			viewer = append(viewer, binding.Member)
+		}
+	}
+
+	return owner, editor, viewer, nil
+}
+
+func (r *ProjectRepository) GetIamPolicy(ctx context.Context, projectId string) ([]types.IamBinding, error) {
+	return getAndParseBindings(ctx, r.projectClient, "project", projectId)
+}
+
+func (r *ProjectRepository) AddBinding(ctx context.Context, binding types.IamBinding) error {
+	return addBinding(ctx, r.projectClient, binding)
+}
+
+func (r *ProjectRepository) RemoveBinding(ctx context.Context, binding types.IamBinding) error {
+	return removeBinding(ctx, r.projectClient, binding)
 }

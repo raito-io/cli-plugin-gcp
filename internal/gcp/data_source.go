@@ -24,10 +24,11 @@ type DataSourceRepository interface {
 
 type DataSourceSyncer struct {
 	repoProvider DataSourceRepository
+	metadata     *ds.MetaData
 }
 
-func NewDataSourceSyncer(repository DataSourceRepository) *DataSourceSyncer {
-	return &DataSourceSyncer{repoProvider: repository}
+func NewDataSourceSyncer(repository DataSourceRepository, metadata *ds.MetaData) *DataSourceSyncer {
+	return &DataSourceSyncer{repoProvider: repository, metadata: metadata}
 }
 
 func GetOrgDataObjectName(configmap *config.ConfigMap) string {
@@ -61,14 +62,13 @@ func handleGcpOrgEntities(entity *org.GcpOrgEntity) *ds.DataObject {
 	}
 }
 
-func (s *DataSourceSyncer) GetDataSourceMetaData(ctx context.Context, configParams *config.ConfigMap) (*ds.MetaData, error) {
+func (s *DataSourceSyncer) GetDataSourceMetaData(_ context.Context, _ *config.ConfigMap) (*ds.MetaData, error) {
 	common.Logger.Info("DataSource meta data sync")
-	return GetDataSourceMetaData(ctx, configParams)
+
+	return s.metadata, nil
 }
 
-func GetDataSourceMetaData(_ context.Context, _ *config.ConfigMap) (*ds.MetaData, error) {
-	common.Logger.Debug("Returning meta data for the GCP data source")
-
+func NewDataSourceMetaData() *ds.MetaData {
 	managed_permissions := []*ds.DataObjectTypePermission{
 		roles.RolesOwner.ToDataObjectTypePermission(roles.ServiceGcp),
 		roles.RolesEditor.ToDataObjectTypePermission(roles.ServiceGcp),
@@ -135,5 +135,5 @@ func GetDataSourceMetaData(_ context.Context, _ *config.ConfigMap) (*ds.MetaData
 				IsNamedEntity: false,
 			},
 		},
-	}, nil
+	}
 }

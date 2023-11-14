@@ -10,4 +10,7 @@ import (
 var Wired = wire.NewSet(
 	NewDataSourceSyncer,
 	NewIdentityStoreSyncer,
+	NewDataAccessSyncer,
+
+	NewDataSourceMetaData,
 )

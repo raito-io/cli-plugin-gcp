@@ -28,14 +28,6 @@ func TestDataSourceSyncer_GetMetaData(t *testing.T) {
 	assert.NotEmpty(t, result.DataObjectTypes)
 }
 
-func createTestDataSourceSyncer(t *testing.T) (*DataSourceSyncer, *MockDataSourceRepository) {
-	t.Helper()
-
-	repoMock := NewMockDataSourceRepository(t)
-
-	return NewDataSourceSyncer(repoMock), repoMock
-}
-
 func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 	type fields struct {
 		mocksSetup func(repository *MockDataSourceRepository)
@@ -94,24 +86,18 @@ func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 			},
 			expectedDataObjects: []data_source.DataObject{
 				{
-					ExternalId: "gcp-org-orgId",
-					Name:       "gcp-org-orgId",
-					FullName:   "gcp-org-orgId",
-					Type:       "organization",
-				},
-				{
 					ExternalId:       "projectId1",
 					Name:             "projectName1",
 					FullName:         "projectId1",
 					Type:             "project",
-					ParentExternalId: "gcp-org-orgId",
+					ParentExternalId: "",
 				},
 				{
 					ExternalId:       "folderId1",
 					Name:             "folderName1",
 					FullName:         "folderId1",
 					Type:             "folder",
-					ParentExternalId: "gcp-org-orgId",
+					ParentExternalId: "",
 				},
 				{
 					ExternalId:       "projectId3",
@@ -160,24 +146,18 @@ func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 			},
 			expectedDataObjects: []data_source.DataObject{
 				{
-					ExternalId: "gcp-org-orgId",
-					Name:       "gcp-org-orgId",
-					FullName:   "gcp-org-orgId",
-					Type:       "organization",
-				},
-				{
 					ExternalId:       "projectId1",
 					Name:             "projectName1",
 					FullName:         "projectId1",
 					Type:             "project",
-					ParentExternalId: "gcp-org-orgId",
+					ParentExternalId: "",
 				},
 				{
 					ExternalId:       "folderId1",
 					Name:             "folderName1",
 					FullName:         "folderId1",
 					Type:             "folder",
-					ParentExternalId: "gcp-org-orgId",
+					ParentExternalId: "",
 				},
 			},
 			wantErr: assert.Error,
@@ -198,10 +178,10 @@ func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 	}
 }
 
-func createDataSourceSyncer(t *testing.T) (*DataSourceSyncer, *MockDataSourceRepository) {
+func createTestDataSourceSyncer(t *testing.T) (*DataSourceSyncer, *MockDataSourceRepository) {
 	t.Helper()
 
 	repoMock := NewMockDataSourceRepository(t)
 
-	return NewDataSourceSyncer(repoMock), repoMock
+	return NewDataSourceSyncer(repoMock, NewDataSourceMetaData()), repoMock
 }

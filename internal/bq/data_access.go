@@ -58,8 +58,8 @@ func NewDataAccessSyncer() *AccessSyncer {
 	return &AccessSyncer{
 		datacatalogRepo:    datacatalogRepo,
 		iamServiceProvider: iamServiceProvider,
-		gcpAccessSyncer:    gcp.NewDataAccessSyncer().WithIAMServiceProvider(iamServiceProvider).WithDataSourceMetadataFetcher(GetAlteredDataSourceMetaData),
-		raitoMasks:         set.NewSet[string](),
+		//gcpAccessSyncer:    gcp.NewDataAccessSyncer().WithIAMServiceProvider(iamServiceProvider).WithDataSourceMetadataFetcher(GetAlteredDataSourceMetaData),
+		raitoMasks: set.NewSet[string](),
 	}
 }
 
@@ -86,51 +86,52 @@ func GetAlteredDataSourceMetaData(ctx context.Context, config *config.ConfigMap)
 }
 
 func (a *AccessSyncer) SyncAccessProvidersFromTarget(ctx context.Context, accessProviderHandler wrappers.AccessProviderHandler, configMap *config.ConfigMap) error {
-	bindings, err := a.iamServiceProvider(configMap).GetIAMPolicyBindings(ctx, configMap)
-	if err != nil || len(bindings) == 0 {
-		return err
-	}
-
-	aps, err := a.gcpAccessSyncer.ConvertBindingsToAccessProviders(ctx, configMap, bindings)
-
-	if err != nil || len(aps) == 0 {
-		return err
-	}
-
-	for i := range aps {
-		ap := aps[i]
-
-		for wi := range ap.What {
-			what := ap.What[wi]
-			if what.DataObject.Type == project {
-				ap.What[wi] = sync_from_target.WhatItem{
-					DataObject: &ds.DataObjectReference{
-						FullName: what.DataObject.FullName,
-						Type:     "datasource",
-					},
-					Permissions: what.Permissions,
-				}
-			}
-		}
-
-		err = accessProviderHandler.AddAccessProviders(ap)
-
-		if err != nil {
-			return err
-		}
-	}
-
-	if configMap.GetBoolWithDefault(BqCatalogEnabled, false) {
-		logger.Info("Import masks.")
-		logger.Debug(fmt.Sprintf("%d masks created by raito. Those will be ingored during import: %v", len(a.raitoMasks), a.raitoMasks.Slice()))
-
-		err = a.importMasks(ctx, accessProviderHandler, configMap)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+	//bindings, err := a.iamServiceProvider(configMap).GetIAMPolicyBindings(ctx, configMap)
+	//if err != nil || len(bindings) == 0 {
+	//	return err
+	//}
+	//
+	//aps, err := a.gcpAccessSyncer.ConvertBindingsToAccessProviders(ctx, configMap, bindings)
+	//
+	//if err != nil || len(aps) == 0 {
+	//	return err
+	//}
+	//
+	//for i := range aps {
+	//	ap := aps[i]
+	//
+	//	for wi := range ap.What {
+	//		what := ap.What[wi]
+	//		if what.DataObject.Type == project {
+	//			ap.What[wi] = sync_from_target.WhatItem{
+	//				DataObject: &ds.DataObjectReference{
+	//					FullName: what.DataObject.FullName,
+	//					Type:     "datasource",
+	//				},
+	//				Permissions: what.Permissions,
+	//			}
+	//		}
+	//	}
+	//
+	//	err = accessProviderHandler.AddAccessProviders(ap)
+	//
+	//	if err != nil {
+	//		return err
+	//	}
+	//}
+	//
+	//if configMap.GetBoolWithDefault(BqCatalogEnabled, false) {
+	//	logger.Info("Import masks.")
+	//	logger.Debug(fmt.Sprintf("%d masks created by raito. Those will be ingored during import: %v", len(a.raitoMasks), a.raitoMasks.Slice()))
+	//
+	//	err = a.importMasks(ctx, accessProviderHandler, configMap)
+	//	if err != nil {
+	//		return err
+	//	}
+	//}
+	//
+	//return nil
+	panic("NOT IMPLEMENTED")
 }
 
 func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessProviders *importer.AccessProviderImport, accessProviderFeedbackHandler wrappers.AccessProviderFeedbackHandler, configMap *config.ConfigMap) error {

@@ -16,6 +16,7 @@ import (
 type organizationClient interface {
 	GetOrganization(ctx context.Context, req *resourcemanagerpb.GetOrganizationRequest, opts ...gax.CallOption) (*resourcemanagerpb.Organization, error)
 	GetIamPolicy(ctx context.Context, req *iampb.GetIamPolicyRequest, opts ...gax.CallOption) (*iampb.Policy, error)
+	SetIamPolicy(ctx context.Context, req *iampb.SetIamPolicyRequest, opts ...gax.CallOption) (*iampb.Policy, error)
 }
 
 type OrganizationRepository struct {
@@ -50,6 +51,18 @@ func (r *OrganizationRepository) GetOrganization(ctx context.Context) (*GcpOrgEn
 	}, nil
 }
 
-func (r *OrganizationRepository) GetIamPolicies(ctx context.Context) ([]types.IamBinding, error) {
-	return parseBindings(ctx, r.organizationClient, "organization", r.organizationId)
+func (r *OrganizationRepository) GetIamPolicy(ctx context.Context, _ string) ([]types.IamBinding, error) {
+	return getAndParseBindings(ctx, r.organizationClient, "organization", r.organizationId)
+}
+
+func (r *OrganizationRepository) AddBinding(ctx context.Context, binding types.IamBinding) error {
+	binding.Resource = r.organizationId
+
+	return addBinding(ctx, r.organizationClient, binding)
+}
+
+func (r *OrganizationRepository) RemoveBinding(ctx context.Context, binding types.IamBinding) error {
+	binding.Resource = r.organizationId
+
+	return removeBinding(ctx, r.organizationClient, binding)
 }

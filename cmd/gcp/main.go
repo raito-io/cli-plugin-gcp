@@ -11,7 +11,6 @@ import (
 	"github.com/raito-io/cli/base/wrappers"
 
 	"github.com/raito-io/cli-plugin-gcp/internal/common"
-	"github.com/raito-io/cli-plugin-gcp/internal/gcp"
 	"github.com/raito-io/cli-plugin-gcp/version"
 )
 
@@ -22,7 +21,7 @@ func main() {
 	err := base.RegisterPlugins(
 		wrappers.IdentityStoreSyncFactory(InitializeIdentityStoreSyncer),
 		wrappers.DataSourceSyncFactory(InitializeDataSourceSyncer),
-		wrappers.DataAccessSync(gcp.NewDataAccessSyncer(), access_provider.WithSupportPartialSync()),
+		wrappers.DataAccessSyncFactory(InitializeDataAccessSyncer, access_provider.WithSupportPartialSync()),
 		&info.InfoImpl{
 			Info: &plugin.PluginInfo{
 				Name:    "gcp",

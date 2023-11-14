@@ -40,3 +40,16 @@ func InitializeIdentityStoreSyncer(ctx context.Context, configMap *config.Config
 
 	return nil, nil, nil
 }
+
+func InitializeDataAccessSyncer(ctx context.Context, configMap *config.ConfigMap) (wrappers.AccessProviderSyncer, func(), error) {
+	wire.Build(
+		gcp.Wired,
+		org.Wired,
+
+		wire.Bind(new(wrappers.AccessProviderSyncer), new(*gcp.AccessSyncer)),
+		wire.Bind(new(gcp.ProjectRepo), new(*org.ProjectRepository)),
+		wire.Bind(new(gcp.GcpBindingRepository), new(*org.GcpDataObjectIterator)),
+	)
+
+	return nil, nil, nil
+}
