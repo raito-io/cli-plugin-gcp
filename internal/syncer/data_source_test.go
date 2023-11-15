@@ -53,6 +53,7 @@ func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 							EntryName: "projects/projectId1",
 							Id:        "projectId1",
 							Name:      "projectName1",
+							FullName:  "gcp.projectId1",
 							Type:      "project",
 							Parent:    nil,
 						})
@@ -64,6 +65,7 @@ func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 							EntryName: "folders/folder1",
 							Id:        "folderId1",
 							Name:      "folderName1",
+							FullName:  "gcp.folderId1",
 							Type:      "folder",
 							Parent:    nil,
 						})
@@ -75,8 +77,9 @@ func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 							EntryName: "projects/projectId3",
 							Id:        "projectId3",
 							Name:      "projectName3",
+							FullName:  "gcp.folderId1.projectId3",
 							Type:      "project",
-							Parent:    &org.GcpOrgEntity{EntryName: "folders/folder1", Id: "folderId1", Name: "folderName1", Type: "folder", Parent: nil},
+							Parent:    &org.GcpOrgEntity{EntryName: "folders/folder1", Id: "folderId1", Name: "folderName1", FullName: "gcp.folderId1", Type: "folder", Parent: nil},
 						})
 					})
 				},
@@ -89,21 +92,21 @@ func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 				{
 					ExternalId:       "projectId1",
 					Name:             "projectName1",
-					FullName:         "projectId1",
+					FullName:         "gcp.projectId1",
 					Type:             "project",
 					ParentExternalId: "",
 				},
 				{
 					ExternalId:       "folderId1",
 					Name:             "folderName1",
-					FullName:         "folderId1",
+					FullName:         "gcp.folderId1",
 					Type:             "folder",
 					ParentExternalId: "",
 				},
 				{
 					ExternalId:       "projectId3",
 					Name:             "projectName3",
-					FullName:         "projectId3",
+					FullName:         "gcp.folderId1.projectId3",
 					Type:             "project",
 					ParentExternalId: "folderId1",
 				},
@@ -119,6 +122,7 @@ func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 							EntryName: "projects/projectId1",
 							Id:        "projectId1",
 							Name:      "projectName1",
+							FullName:  "gcp.projectId1",
 							Type:      "project",
 							Parent:    nil,
 						})
@@ -130,6 +134,7 @@ func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 							EntryName: "folders/folder1",
 							Id:        "folderId1",
 							Name:      "folderName1",
+							FullName:  "gcp.folderId1",
 							Type:      "folder",
 							Parent:    nil,
 						})
@@ -149,14 +154,14 @@ func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 				{
 					ExternalId:       "projectId1",
 					Name:             "projectName1",
-					FullName:         "projectId1",
+					FullName:         "gcp.projectId1",
 					Type:             "project",
 					ParentExternalId: "",
 				},
 				{
 					ExternalId:       "folderId1",
 					Name:             "folderName1",
-					FullName:         "folderId1",
+					FullName:         "gcp.folderId1",
 					Type:             "folder",
 					ParentExternalId: "",
 				},

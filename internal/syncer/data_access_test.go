@@ -45,6 +45,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 				mockSetup: func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
 					gcpRepo.EXPECT().Bindings(mock.Anything, mock.Anything).Return(nil)
 				},
+				metadata: gcp.NewDataSourceMetaData(),
 			},
 			args: args{
 				ctx:       context.Background(),
@@ -91,7 +92,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			},
 			args: args{
 				ctx:       context.Background(),
-				configMap: &config.ConfigMap{},
+				configMap: &config.ConfigMap{Parameters: map[string]string{}},
 			},
 			expectedAccessProviders: []sync_from_target.AccessProvider{
 				{
@@ -956,7 +957,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 			args: args{
 				ctx:             context.Background(),
 				accessProviders: &importer.AccessProviderImport{},
-				configMap:       &config.ConfigMap{},
+				configMap:       &config.ConfigMap{Parameters: map[string]string{}},
 			},
 			want:             []importer.AccessProviderSyncFeedback{},
 			expectedBindings: []iam.IamBinding{},
@@ -966,42 +967,42 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 			name: "Access provider to binding",
 			fields: fields{
 				mocksSetup: func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
-					gcpRepo.EXPECT().AddBinding(mock.Anything, iam.IamBinding{
+					gcpRepo.EXPECT().AddBinding(mock.Anything, &iam.IamBinding{
 						Member:       "serviceAccount:sa@raito.gserviceaccount.com",
 						Resource:     "project1",
 						ResourceType: "project",
 						Role:         "roles/owner",
 					}).Return(nil).Once()
 
-					gcpRepo.EXPECT().AddBinding(mock.Anything, iam.IamBinding{
+					gcpRepo.EXPECT().AddBinding(mock.Anything, &iam.IamBinding{
 						Member:       "user:ruben@raito.io",
 						Resource:     "project1",
 						ResourceType: "project",
 						Role:         "roles/owner",
 					}).Return(nil).Once()
 
-					gcpRepo.EXPECT().AddBinding(mock.Anything, iam.IamBinding{
+					gcpRepo.EXPECT().AddBinding(mock.Anything, &iam.IamBinding{
 						Member:       "group:sales@raito.io",
 						Resource:     "project1",
 						ResourceType: "project",
 						Role:         "roles/owner",
 					}).Return(nil).Once()
 
-					gcpRepo.EXPECT().AddBinding(mock.Anything, iam.IamBinding{
+					gcpRepo.EXPECT().AddBinding(mock.Anything, &iam.IamBinding{
 						Member:       "serviceAccount:sa@raito.gserviceaccount.com",
 						Resource:     "folder1",
 						ResourceType: "folder",
 						Role:         "roles/editor",
 					}).Return(nil).Once()
 
-					gcpRepo.EXPECT().AddBinding(mock.Anything, iam.IamBinding{
+					gcpRepo.EXPECT().AddBinding(mock.Anything, &iam.IamBinding{
 						Member:       "user:ruben@raito.io",
 						Resource:     "folder1",
 						ResourceType: "folder",
 						Role:         "roles/editor",
 					}).Return(nil).Once()
 
-					gcpRepo.EXPECT().AddBinding(mock.Anything, iam.IamBinding{
+					gcpRepo.EXPECT().AddBinding(mock.Anything, &iam.IamBinding{
 						Member:       "group:sales@raito.io",
 						Resource:     "folder1",
 						ResourceType: "folder",
@@ -1048,6 +1049,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 						DeleteWhat: nil,
 					},
 				}},
+				configMap: &config.ConfigMap{Parameters: map[string]string{}},
 			},
 			want: []importer.AccessProviderSyncFeedback{
 				{

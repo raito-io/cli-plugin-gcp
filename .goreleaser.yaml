@@ -15,7 +15,6 @@ builds:
     ldflags:
       - -X version.Version={{.Version}}
   - id: "bigquery"
-
     main: ./cmd/bq
     env:
       - CGO_ENABLED=0

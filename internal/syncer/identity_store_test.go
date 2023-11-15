@@ -15,6 +15,7 @@ import (
 	"github.com/raito-io/cli-plugin-gcp/internal/common"
 	"github.com/raito-io/cli-plugin-gcp/internal/gcp"
 	"github.com/raito-io/cli-plugin-gcp/internal/iam"
+	"github.com/raito-io/cli-plugin-gcp/internal/org"
 )
 
 func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
@@ -41,7 +42,7 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 			fields: fields{mockSetup: func(adminRepoMock *MockAdminRepository, doRepoMock *MockDataObjectRepository) {
 				adminRepoMock.EXPECT().GetGroups(mock.Anything, mock.Anything).Return(nil)
 				adminRepoMock.EXPECT().GetUsers(mock.Anything, mock.Anything).Return(nil)
-				//doRepoMock.EXPECT().UserAndGroups(mock.Anything, mock.Anything, mock.Anything).Return(nil)
+				doRepoMock.EXPECT().Bindings(mock.Anything, mock.Anything).Return(nil)
 			}},
 			args: args{
 				ctx:       context.Background(),
@@ -63,20 +64,25 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 					return fn(ctx, &iam.UserEntity{ExternalId: "user:ruben@raitio.io", Email: "ruben@raito.io", Name: "Ruben Mennes"})
 				})
 
-				// TODO
-				//doRepoMock.EXPECT().UserAndGroups(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, userFn func(context.Context, string) error, groupFn func(context.Context, string) error) error {
-				//	err := userFn(ctx, "user:dieter@raitio.io")
-				//	if err != nil {
-				//		return err
-				//	}
-				//
-				//	err = userFn(ctx, "user:bart@raitio.io")
-				//	if err != nil {
-				//		return err
-				//	}
-				//
-				//	return userFn(ctx, "serviceAccount:serviceAccount123@raito.io")
-				//})
+				doRepoMock.EXPECT().Bindings(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, f func(context.Context, *org.GcpOrgEntity, []iam.IamBinding) error) error {
+					err := f(ctx, &org.GcpOrgEntity{FullName: "gcp.projectId1", Type: "project", Id: "projectId1"},
+						[]iam.IamBinding{
+							{Member: "user:dieter@raitio.io", Role: "roles/editor", ResourceType: "project", Resource: "projectId1"},
+							{Member: "user:bart@raitio.io", Role: "roles/editor", ResourceType: "project", Resource: "projectId1"},
+						},
+					)
+
+					if err != nil {
+						return err
+					}
+
+					return f(ctx, &org.GcpOrgEntity{FullName: "gcp.folderId1", Type: "folder", Id: "folderId1"},
+						[]iam.IamBinding{
+							{Member: "serviceAccount:serviceAccount123@raito.io", Role: "roles/editor", ResourceType: "folder", Resource: "folderId1"},
+							{Member: "user:bart@raitio.io", Role: "roles/editor", ResourceType: "folder", Resource: "folderId1"},
+						},
+					)
+				})
 			}},
 			args: args{
 				ctx:       context.Background(),
@@ -139,19 +145,25 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 				})
 
 				// TODO
-				//doRepoMock.EXPECT().UserAndGroups(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, userFn func(context.Context, string) error, groupFn func(context.Context, string) error) error {
-				//	err := userFn(ctx, "user:dieter@raito.io")
-				//	if err != nil {
-				//		return err
-				//	}
-				//
-				//	err = userFn(ctx, "user:bart@raito.io")
-				//	if err != nil {
-				//		return err
-				//	}
-				//
-				//	return userFn(ctx, "serviceAccount:serviceAccount123@raito.io")
-				//})
+				doRepoMock.EXPECT().Bindings(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, f func(context.Context, *org.GcpOrgEntity, []iam.IamBinding) error) error {
+					err := f(ctx, &org.GcpOrgEntity{FullName: "gcp.projectId1", Type: "project", Id: "projectId1"},
+						[]iam.IamBinding{
+							{Member: "user:dieter@raito.io", Role: "roles/editor", ResourceType: "project", Resource: "projectId1"},
+							{Member: "user:bart@raito.io", Role: "roles/editor", ResourceType: "project", Resource: "projectId1"},
+						},
+					)
+
+					if err != nil {
+						return err
+					}
+
+					return f(ctx, &org.GcpOrgEntity{FullName: "gcp.folderId1", Type: "folder", Id: "folderId1"},
+						[]iam.IamBinding{
+							{Member: "serviceAccount:serviceAccount123@raito.io", Role: "roles/editor", ResourceType: "folder", Resource: "folderId1"},
+							{Member: "user:bart@raito.io", Role: "roles/editor", ResourceType: "folder", Resource: "folderId1"},
+						},
+					)
+				})
 			}},
 			args: args{
 				ctx:       context.Background(),
@@ -262,22 +274,25 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 		{
 			name: "Groups and users in bindings only",
 			fields: fields{mockSetup: func(adminRepoMock *MockAdminRepository, doRepoMock *MockDataObjectRepository) {
-				// TODO
-				//doRepoMock.EXPECT().UserAndGroups(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, userFn func(context.Context, string) error, groupFn func(context.Context, string) error) error {
-				//	err := userFn(ctx, "user:dieter@raito.io")
-				//	if err != nil {
-				//		return err
-				//	}
-				//
-				//	err = userFn(ctx, "user:bart@raito.io")
-				//	if err != nil {
-				//		return err
-				//	}
-				//
-				//	err = groupFn(ctx, "group:engineers@raito.io")
-				//
-				//	return userFn(ctx, "serviceAccount:serviceAccount123@raito.io")
-				//})
+				doRepoMock.EXPECT().Bindings(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, f func(context.Context, *org.GcpOrgEntity, []iam.IamBinding) error) error {
+					err := f(ctx, &org.GcpOrgEntity{FullName: "gcp.projectId1", Type: "project", Id: "projectId1"},
+						[]iam.IamBinding{
+							{Member: "user:dieter@raito.io", Role: "roles/editor", ResourceType: "project", Resource: "projectId1"},
+							{Member: "user:bart@raito.io", Role: "roles/editor", ResourceType: "project", Resource: "projectId1"},
+						},
+					)
+
+					if err != nil {
+						return err
+					}
+
+					return f(ctx, &org.GcpOrgEntity{FullName: "gcp.folderId1", Type: "folder", Id: "folderId1"},
+						[]iam.IamBinding{
+							{Member: "serviceAccount:serviceAccount123@raito.io", Role: "roles/editor", ResourceType: "folder", Resource: "folderId1"},
+							{Member: "group:engineers@raito.io", Role: "roles/editor", ResourceType: "folder", Resource: "folderId1"},
+						},
+					)
+				})
 			}},
 			args: args{
 				ctx:       context.Background(),
