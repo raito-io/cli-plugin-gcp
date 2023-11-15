@@ -7,7 +7,7 @@ import (
 	"cloud.google.com/go/iam/apiv1/iampb"
 	"github.com/googleapis/gax-go/v2"
 
-	"github.com/raito-io/cli-plugin-gcp/internal/iam/types"
+	"github.com/raito-io/cli-plugin-gcp/internal/iam"
 )
 
 type getPolicyClient interface {
@@ -19,7 +19,7 @@ type setPolicyClient interface {
 	SetIamPolicy(ctx context.Context, req *iampb.SetIamPolicyRequest, opts ...gax.CallOption) (*iampb.Policy, error)
 }
 
-func getAndParseBindings(ctx context.Context, policyClient getPolicyClient, resourceType string, resourceId string) ([]types.IamBinding, error) {
+func getAndParseBindings(ctx context.Context, policyClient getPolicyClient, resourceType string, resourceId string) ([]iam.IamBinding, error) {
 	resourceName := _resourceName(resourceType, resourceId)
 
 	policy, err := policyClient.GetIamPolicy(ctx, &iampb.GetIamPolicyRequest{Resource: resourceName})
@@ -27,11 +27,11 @@ func getAndParseBindings(ctx context.Context, policyClient getPolicyClient, reso
 		return nil, fmt.Errorf("get %s iam policy: %w", resourceType, err)
 	}
 
-	var result []types.IamBinding
+	var result []iam.IamBinding
 
 	for _, binding := range policy.Bindings {
 		for _, member := range binding.Members {
-			result = append(result, types.IamBinding{
+			result = append(result, iam.IamBinding{
 				Role:         binding.Role,
 				Member:       member,
 				Resource:     resourceId,
@@ -43,7 +43,7 @@ func getAndParseBindings(ctx context.Context, policyClient getPolicyClient, reso
 	return result, nil
 }
 
-func addBinding(ctx context.Context, policyClient setPolicyClient, binding types.IamBinding) error {
+func addBinding(ctx context.Context, policyClient setPolicyClient, binding *iam.IamBinding) error {
 	resourceName := _resourceName(binding.ResourceType, binding.Resource)
 
 	resourcePolicy, err := policyClient.GetIamPolicy(ctx, &iampb.GetIamPolicyRequest{Resource: resourceName})
@@ -75,7 +75,7 @@ func addBinding(ctx context.Context, policyClient setPolicyClient, binding types
 	return nil
 }
 
-func removeBinding(ctx context.Context, policyClient setPolicyClient, binding types.IamBinding) error {
+func removeBinding(ctx context.Context, policyClient setPolicyClient, binding *iam.IamBinding) error {
 	resourceName := _resourceName(binding.ResourceType, binding.Resource)
 
 	resourcePolicy, err := policyClient.GetIamPolicy(ctx, &iampb.GetIamPolicyRequest{Resource: resourceName})

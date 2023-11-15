@@ -12,6 +12,7 @@ import (
 
 	"github.com/raito-io/cli-plugin-gcp/internal/admin"
 	bigquery "github.com/raito-io/cli-plugin-gcp/internal/bq"
+	"github.com/raito-io/cli-plugin-gcp/internal/org"
 	"github.com/raito-io/cli-plugin-gcp/internal/syncer"
 )
 
@@ -41,16 +42,29 @@ func InitializeIdentityStoreSyncer(ctx context.Context, configMap *config.Config
 	return nil, nil, nil
 }
 
-//
-//func InitializeDataAccessSyncer(ctx context.Context, configMap *config.ConfigMap) (wrappers.AccessProviderSyncer, func(), error) {
-//	wire.Build(
-//		gcp.Wired,
-//		org.Wired,
-//
-//		wire.Bind(new(wrappers.AccessProviderSyncer), new(*gcp.AccessSyncer)),
-//		wire.Bind(new(gcp.ProjectRepo), new(*org.ProjectRepository)),
-//		wire.Bind(new(gcp.GcpBindingRepository), new(*org.GcpDataObjectIterator)),
-//	)
-//
-//	return nil, nil, nil
-//}
+func InitializeDataAccessSyncer(ctx context.Context, configMap *config.ConfigMap) (wrappers.AccessProviderSyncer, func(), error) {
+	wire.Build(
+		bigquery.Wired,
+		syncer.Wired,
+		org.Wired,
+
+		wire.Bind(new(wrappers.AccessProviderSyncer), new(*syncer.AccessSyncer)),
+		wire.Bind(new(syncer.ProjectRepo), new(*org.ProjectRepository)),
+		wire.Bind(new(syncer.BindingRepository), new(*bigquery.DataObjectIterator)),
+		wire.Bind(new(syncer.MaskingService), new(*bigquery.BqMaskingService)),
+	)
+
+	return nil, nil, nil
+}
+
+func InitializeDataUsageSyncer(ctx context.Context, configMap *config.ConfigMap) (wrappers.DataUsageSyncer, func(), error) {
+	wire.Build(
+		bigquery.Wired,
+		syncer.Wired,
+
+		wire.Bind(new(wrappers.DataUsageSyncer), new(*syncer.DataUsageSyncer)),
+		wire.Bind(new(syncer.DataUsageRepository), new(*bigquery.Repository)),
+	)
+
+	return nil, nil, nil
+}

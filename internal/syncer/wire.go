@@ -10,4 +10,10 @@ import (
 var Wired = wire.NewSet(
 	NewDataSourceSyncer,
 	NewIdentityStoreSyncer,
+	NewDataAccessSyncer,
+	NewDataUsageSyncer,
+
+	NewIdGenerator,
+
+	wire.Bind(new(IdGen), new(*IdGenerator)),
 )

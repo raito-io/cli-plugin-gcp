@@ -22,16 +22,15 @@ func NewGcpAdminService(ctx context.Context, configMap *config.ConfigMap) (*gcpa
 
 	serviceAccountJSON, err := os.ReadFile(key)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("read file %q: %w", key, err)
 	}
 
 	config, err := google.JWTConfigFromJSON(serviceAccountJSON, gcpadmin.AdminDirectoryGroupReadonlyScope, gcpadmin.AdminDirectoryUserReadonlyScope)
+	if err != nil {
+		return nil, fmt.Errorf("create jwt config from file %q: %w", key, err)
+	}
 
 	config.Subject = configMap.GetString(common.GsuiteImpersonateSubject)
-
-	if err != nil {
-		return nil, err
-	}
 
 	customerId := configMap.GetString(common.GsuiteCustomerId)
 
@@ -39,5 +38,10 @@ func NewGcpAdminService(ctx context.Context, configMap *config.ConfigMap) (*gcpa
 		return nil, fmt.Errorf("for GSuite identity store sync please configure %s and %s", common.GsuiteCustomerId, common.GsuiteImpersonateSubject)
 	}
 
-	return gcpadmin.NewService(ctx, option.WithHTTPClient(config.Client(ctx)))
+	service, err := gcpadmin.NewService(ctx, option.WithHTTPClient(config.Client(ctx)))
+	if err != nil {
+		return nil, fmt.Errorf("create gcp admin service: %w", err)
+	}
+
+	return service, nil
 }

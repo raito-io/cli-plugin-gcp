@@ -17,12 +17,11 @@ import (
 	"github.com/raito-io/cli/base/access_provider/sync_to_target"
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/raito-io/golang-set/set"
-	admin "google.golang.org/api/admin/directory/v1"
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/iterator"
-	"google.golang.org/api/option"
 
 	"github.com/raito-io/cli-plugin-gcp/internal/common"
+	"github.com/raito-io/cli-plugin-gcp/internal/org"
 )
 
 const (
@@ -32,23 +31,35 @@ const (
 	idAlphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 )
 
-type dataCatalogIamRepository struct {
-	bigQueryRepo *BigQueryRepository
+type DataCatalogRepository struct {
+	bigQueryRepo     *Repository
+	policyTagClient  *datacatalog.PolicyTagManagerClient
+	dataPolicyClient *datapolicies.DataPolicyClient
+	bigQueryClient   *bigquery.Client
+
+	projectId string
 
 	// Cache
 	dataPolicies map[string]BQMaskingInformation
-	datasetCache map[string]BQEntity
+	datasetCache map[string]org.GcpOrgEntity
 }
 
-func (r *dataCatalogIamRepository) UpdateAccess(ctx context.Context, configMap *config.ConfigMap, maskingInformation *BQMaskingInformation, who *sync_to_target.WhoItem, deletedWho *sync_to_target.WhoItem) error {
-	client, err := r.createPolicyTagClient(ctx, configMap)
-	if err != nil {
-		return err
+func NewDataCatalogRepository(repository *Repository, tagClient *datacatalog.PolicyTagManagerClient, dataPolicyClient *datapolicies.DataPolicyClient, bqClient *bigquery.Client, configMap *config.ConfigMap) *DataCatalogRepository {
+	return &DataCatalogRepository{
+		bigQueryRepo:     repository,
+		policyTagClient:  tagClient,
+		dataPolicyClient: dataPolicyClient,
+		bigQueryClient:   bqClient,
+
+		projectId: configMap.GetString(common.GcpProjectId),
+
+		dataPolicies: make(map[string]BQMaskingInformation),
+		datasetCache: make(map[string]org.GcpOrgEntity),
 	}
+}
 
-	defer client.Close()
-
-	policy, err := client.GetIamPolicy(ctx, &iampb.GetIamPolicyRequest{Resource: maskingInformation.PolicyTag.FullName})
+func (r *DataCatalogRepository) UpdateAccess(ctx context.Context, maskingInformation *BQMaskingInformation, who *sync_to_target.WhoItem, deletedWho *sync_to_target.WhoItem) error {
+	policy, err := r.policyTagClient.GetIamPolicy(ctx, &iampb.GetIamPolicyRequest{Resource: maskingInformation.PolicyTag.FullName})
 	if err != nil {
 		return fmt.Errorf("failed to get iam policy of policy tag %q: %w", maskingInformation.PolicyTag.FullName, err)
 	}
@@ -100,7 +111,7 @@ func (r *dataCatalogIamRepository) UpdateAccess(ctx context.Context, configMap *
 		updatedPolicy.Bindings = append(updatedPolicy.Bindings, newBinding)
 	}
 
-	_, err = client.SetIamPolicy(ctx, &iampb.SetIamPolicyRequest{Policy: updatedPolicy, Resource: maskingInformation.PolicyTag.FullName})
+	_, err = r.policyTagClient.SetIamPolicy(ctx, &iampb.SetIamPolicyRequest{Policy: updatedPolicy, Resource: maskingInformation.PolicyTag.FullName})
 	if err != nil {
 		return fmt.Errorf("set fine grained reader role on %q: %w", maskingInformation.PolicyTag.FullName, err)
 	}
@@ -108,22 +119,15 @@ func (r *dataCatalogIamRepository) UpdateAccess(ctx context.Context, configMap *
 	return nil
 }
 
-func (r *dataCatalogIamRepository) UpdatePolicyTag(ctx context.Context, configMap *config.ConfigMap, location string, maskingType datapoliciespb.DataMaskingPolicy_PredefinedExpression, ap *sync_to_target.AccessProvider, dataPolicyId string) (*BQMaskingInformation, error) {
-	maskInfo, err := r.GetMaskingInformationForDataPolicy(ctx, configMap, dataPolicyId)
+func (r *DataCatalogRepository) UpdatePolicyTag(ctx context.Context, location string, maskingType datapoliciespb.DataMaskingPolicy_PredefinedExpression, ap *sync_to_target.AccessProvider, dataPolicyId string) (*BQMaskingInformation, error) {
+	maskInfo, err := r.GetMaskingInformationForDataPolicy(ctx, dataPolicyId)
 	if err != nil {
 		return nil, err
 	}
 
 	if maskInfo == nil {
-		return r.CreatePolicyTagWithDataPolicy(ctx, configMap, location, maskingType, ap)
+		return r.CreatePolicyTagWithDataPolicy(ctx, location, maskingType, ap)
 	}
-
-	tagClient, err := r.createPolicyTagClient(ctx, configMap)
-	if err != nil {
-		return nil, err
-	}
-
-	defer tagClient.Close()
 
 	var displayName string
 
@@ -133,7 +137,7 @@ func (r *dataCatalogIamRepository) UpdatePolicyTag(ctx context.Context, configMa
 		displayName = createTagDisplayname(ap)
 	}
 
-	_, err = tagClient.UpdatePolicyTag(ctx, &datacatalogpb.UpdatePolicyTagRequest{
+	_, err = r.policyTagClient.UpdatePolicyTag(ctx, &datacatalogpb.UpdatePolicyTagRequest{
 		PolicyTag: &datacatalogpb.PolicyTag{
 			Name:            maskInfo.PolicyTag.FullName,
 			DisplayName:     displayName,
@@ -152,31 +156,21 @@ func (r *dataCatalogIamRepository) UpdatePolicyTag(ctx context.Context, configMa
 	return maskInfo, nil
 }
 
-func (r *dataCatalogIamRepository) ListDataPolicies(ctx context.Context, configMap *config.ConfigMap) (map[string]BQMaskingInformation, error) {
+func (r *DataCatalogRepository) ListDataPolicies(ctx context.Context) (map[string]BQMaskingInformation, error) {
 	if len(r.dataPolicies) == 0 {
-		gcpProject := configMap.GetString(common.GcpProjectId)
-
-		client, err := r.createDataPolicyClient(ctx, configMap)
-		if err != nil {
-			return nil, err
-		}
-
-		defer client.Close()
-
 		locations := set.NewSet[string]()
 
-		dataSets, err := r.bigQueryRepo.GetDataSets(ctx, configMap)
+		err := r.bigQueryRepo.ListDataSets(ctx, r.bigQueryRepo.Project(), func(ctx context.Context, entity *org.GcpOrgEntity, dataset *bigquery.Dataset) error {
+			locations.Add(entity.Location)
+			return nil
+		})
 		if err != nil {
 			return nil, err
-		}
-
-		for _, dataSet := range dataSets {
-			locations.Add(dataSet.Location)
 		}
 
 		r.dataPolicies = make(map[string]BQMaskingInformation)
 		for location := range locations {
-			err = r.listDataPoliciesForLocation(ctx, gcpProject, strings.ToLower(location), configMap, r.dataPolicies)
+			err = r.listDataPoliciesForLocation(ctx, strings.ToLower(location), r.dataPolicies)
 			if err != nil {
 				return nil, err
 			}
@@ -186,18 +180,11 @@ func (r *dataCatalogIamRepository) ListDataPolicies(ctx context.Context, configM
 	return r.dataPolicies, nil
 }
 
-func (r *dataCatalogIamRepository) listDataPoliciesForLocation(ctx context.Context, gcpProject string, location string, configMap *config.ConfigMap, result map[string]BQMaskingInformation) error {
-	logger.Info(fmt.Sprintf("Listing policy tags for project %s in location %s", gcpProject, location))
+func (r *DataCatalogRepository) listDataPoliciesForLocation(ctx context.Context, location string, result map[string]BQMaskingInformation) error {
+	common.Logger.Info(fmt.Sprintf("Listing policy tags for project %s in location %s", r.projectId, location))
 
-	client, err2 := r.createDataPolicyClient(ctx, configMap)
-	if err2 != nil {
-		return fmt.Errorf("unabled to create data policy client: %w", err2)
-	}
-
-	defer client.Close()
-
-	it := client.ListDataPolicies(ctx, &datapoliciespb.ListDataPoliciesRequest{
-		Parent: fmt.Sprintf("projects/%s/locations/%s", gcpProject, location),
+	it := r.dataPolicyClient.ListDataPolicies(ctx, &datapoliciespb.ListDataPoliciesRequest{
+		Parent: fmt.Sprintf("projects/%s/locations/%s", r.projectId, location),
 	})
 
 	for {
@@ -210,19 +197,19 @@ func (r *dataCatalogIamRepository) listDataPoliciesForLocation(ctx context.Conte
 		}
 
 		if policy.DataPolicyType == datapoliciespb.DataPolicy_DATA_MASKING_POLICY {
-			maskingInformation, err3 := r.createBqMaskingInformation(ctx, policy, configMap)
+			maskingInformation, err3 := r.createBqMaskingInformation(ctx, policy)
 			if err3 != nil {
 				return fmt.Errorf("create bq masking information: %w", err3)
 			}
 
 			if maskingInformation == nil {
-				logger.Warn(fmt.Sprintf("Data policy %q is not associated with a policy tag. This data policy will be ignored.", policy.GetPolicyTag()))
+				common.Logger.Warn(fmt.Sprintf("Data policy %q is not associated with a policy tag. This data policy will be ignored.", policy.GetPolicyTag()))
 
 				continue
 			}
 
 			keyRegex := regexp.MustCompile(`projects/\d*/`)
-			key := keyRegex.ReplaceAllString(policy.GetPolicyTag(), fmt.Sprintf("projects/%s/", gcpProject))
+			key := keyRegex.ReplaceAllString(policy.GetPolicyTag(), fmt.Sprintf("projects/%s/", r.projectId))
 
 			result[key] = *maskingInformation
 		}
@@ -231,33 +218,21 @@ func (r *dataCatalogIamRepository) listDataPoliciesForLocation(ctx context.Conte
 	return nil
 }
 
-func (r *dataCatalogIamRepository) GetMaskingInformationForDataPolicy(ctx context.Context, configMap *config.ConfigMap, dataPolicyId string) (*BQMaskingInformation, error) {
-	client, err := r.createDataPolicyClient(ctx, configMap)
-	if err != nil {
-		return nil, err
-	}
-
-	defer client.Close()
-
-	dataPolicy, err := client.GetDataPolicy(ctx, &datapoliciespb.GetDataPolicyRequest{
+func (r *DataCatalogRepository) GetMaskingInformationForDataPolicy(ctx context.Context, dataPolicyId string) (*BQMaskingInformation, error) {
+	dataPolicy, err := r.dataPolicyClient.GetDataPolicy(ctx, &datapoliciespb.GetDataPolicyRequest{
 		Name: dataPolicyId,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("get data policy %q: %w", dataPolicyId, err)
 	}
 
-	return r.createBqMaskingInformation(ctx, dataPolicy, configMap)
+	return r.createBqMaskingInformation(ctx, dataPolicy)
 }
 
-func (r *dataCatalogIamRepository) createBqMaskingInformation(ctx context.Context, policy *datapoliciespb.DataPolicy, configMap *config.ConfigMap) (*BQMaskingInformation, error) {
+func (r *DataCatalogRepository) createBqMaskingInformation(ctx context.Context, policy *datapoliciespb.DataPolicy) (*BQMaskingInformation, error) {
 	maskType := policy.GetDataMaskingPolicy().GetPredefinedExpression()
 
-	policyTagClient, err := r.createPolicyTagClient(ctx, configMap)
-	if err != nil {
-		return nil, err
-	}
-
-	policyTag, err := policyTagClient.GetPolicyTag(ctx, &datacatalogpb.GetPolicyTagRequest{Name: policy.GetPolicyTag()})
+	policyTag, err := r.policyTagClient.GetPolicyTag(ctx, &datacatalogpb.GetPolicyTagRequest{Name: policy.GetPolicyTag()})
 
 	var e *googleapi.Error
 	if ok := errors.As(err, &e); ok && e.Code == 404 {
@@ -282,66 +257,30 @@ func (r *dataCatalogIamRepository) createBqMaskingInformation(ctx context.Contex
 	return maskingInformation, nil
 }
 
-func (r *dataCatalogIamRepository) createPolicyTagClient(ctx context.Context, configMap *config.ConfigMap) (*datacatalog.PolicyTagManagerClient, error) {
-	config, err := getConfig(configMap, admin.CloudPlatformScope)
-
-	if err != nil {
-		return nil, err
-	}
-
-	client, err := datacatalog.NewPolicyTagManagerRESTClient(ctx, option.WithHTTPClient(config.Client(ctx)))
-	if err != nil {
-		return nil, err
-	}
-
-	return client, nil
-}
-
-func (r *dataCatalogIamRepository) createDataPolicyClient(ctx context.Context, configMap *config.ConfigMap) (*datapolicies.DataPolicyClient, error) {
-	config, err := getConfig(configMap, admin.CloudPlatformScope)
-	if err != nil {
-		return nil, err
-	}
-
-	client, err := datapolicies.NewDataPolicyRESTClient(ctx, option.WithHTTPClient(config.Client(ctx)))
-	if err != nil {
-		return nil, err
-	}
-
-	return client, nil
-}
-
-func (r *dataCatalogIamRepository) DeletePolicyAndTag(ctx context.Context, configMap *config.ConfigMap, policyTagId string) error {
-	info, err := r.GetMaskingInformationForDataPolicy(ctx, configMap, policyTagId)
+func (r *DataCatalogRepository) DeletePolicyAndTag(ctx context.Context, policyTagId string) error {
+	info, err := r.GetMaskingInformationForDataPolicy(ctx, policyTagId)
 
 	var e *googleapi.Error
 	if ok := errors.As(err, &e); ok && e.Code == 404 {
-		logger.Warn(fmt.Sprintf("Cannot found data policy %q. Assuming data policy is already deleted", policyTagId))
+		common.Logger.Warn(fmt.Sprintf("Cannot found data policy %q. Assuming data policy is already deleted", policyTagId))
 
 		return nil
 	} else if err != nil {
 		return err
 	}
 
-	logger.Debug(fmt.Sprintf("Deleting data policy %s", info.DataPolicy.FullName))
+	common.Logger.Debug(fmt.Sprintf("Deleting data policy %s", info.DataPolicy.FullName))
 
-	err = r.deleteDataPolicy(ctx, configMap, info.DataPolicy.FullName)
+	err = r.deleteDataPolicy(ctx, info.DataPolicy.FullName)
 	if err != nil {
 		return fmt.Errorf("delete data policy %q: %w", info.DataPolicy.FullName, err)
 	}
 
-	client, err := r.createPolicyTagClient(ctx, configMap)
-	if err != nil {
-		return err
-	}
-
-	defer client.Close()
-
 	taxonomyId := info.PolicyTag.Taxonomy()
 
-	logger.Debug(fmt.Sprintf("Get taxonomy: %s", taxonomyId))
+	common.Logger.Debug(fmt.Sprintf("Get taxonomy: %s", taxonomyId))
 
-	taxonomy, err := client.GetTaxonomy(ctx, &datacatalogpb.GetTaxonomyRequest{
+	taxonomy, err := r.policyTagClient.GetTaxonomy(ctx, &datacatalogpb.GetTaxonomyRequest{
 		Name: taxonomyId,
 	})
 
@@ -350,14 +289,14 @@ func (r *dataCatalogIamRepository) DeletePolicyAndTag(ctx context.Context, confi
 	}
 
 	if strings.HasPrefix(taxonomy.GetDisplayName(), taxonomy_prefix) {
-		logger.Debug(fmt.Sprintf("Delete policyTag: %s", info.PolicyTag.FullName))
+		common.Logger.Debug(fmt.Sprintf("Delete policyTag: %s", info.PolicyTag.FullName))
 
-		err = r.deletePolicyTag(ctx, configMap, info.PolicyTag.FullName)
+		err = r.deletePolicyTag(ctx, info.PolicyTag.FullName)
 		if err != nil {
 			return fmt.Errorf("delete policy tag %q: %w", info.PolicyTag.FullName, err)
 		}
 
-		taxonomy, err = client.GetTaxonomy(ctx, &datacatalogpb.GetTaxonomyRequest{
+		taxonomy, err = r.policyTagClient.GetTaxonomy(ctx, &datacatalogpb.GetTaxonomyRequest{
 			Name: taxonomyId,
 		})
 		if err != nil {
@@ -365,9 +304,9 @@ func (r *dataCatalogIamRepository) DeletePolicyAndTag(ctx context.Context, confi
 		}
 
 		if taxonomy.GetPolicyTagCount() == 0 {
-			logger.Debug(fmt.Sprintf("Delete taxonomy: %s", taxonomy.GetName()))
+			common.Logger.Debug(fmt.Sprintf("Delete taxonomy: %s", taxonomy.GetName()))
 
-			err = client.DeleteTaxonomy(ctx, &datacatalogpb.DeleteTaxonomyRequest{
+			err = r.policyTagClient.DeleteTaxonomy(ctx, &datacatalogpb.DeleteTaxonomyRequest{
 				Name: taxonomy.GetName(),
 			})
 
@@ -380,38 +319,27 @@ func (r *dataCatalogIamRepository) DeletePolicyAndTag(ctx context.Context, confi
 	return nil
 }
 
-func (r *dataCatalogIamRepository) deletePolicyTag(ctx context.Context, configMap *config.ConfigMap, id string) error {
-	client, err := r.createPolicyTagClient(ctx, configMap)
+func (r *DataCatalogRepository) deletePolicyTag(ctx context.Context, id string) error {
+	err := r.policyTagClient.DeletePolicyTag(ctx, &datacatalogpb.DeletePolicyTagRequest{Name: id})
 	if err != nil {
-		return err
+		return fmt.Errorf("delete policy tag %q: %w", id, err)
 	}
 
-	defer client.Close()
-
-	return client.DeletePolicyTag(ctx, &datacatalogpb.DeletePolicyTagRequest{Name: id})
+	return nil
 }
 
-func (r *dataCatalogIamRepository) deleteDataPolicy(ctx context.Context, configMap *config.ConfigMap, id string) error {
-	client, err := r.createDataPolicyClient(ctx, configMap)
+func (r *DataCatalogRepository) deleteDataPolicy(ctx context.Context, id string) error {
+	err := r.dataPolicyClient.DeleteDataPolicy(ctx, &datapoliciespb.DeleteDataPolicyRequest{Name: id})
 	if err != nil {
-		return err
+		return fmt.Errorf("delete data policy %q: %w", id, err)
 	}
 
-	defer client.Close()
-
-	return client.DeleteDataPolicy(ctx, &datapoliciespb.DeleteDataPolicyRequest{Name: id})
+	return nil
 }
-func (r *dataCatalogIamRepository) GetFineGrainedReaderMembers(ctx context.Context, configMap *config.ConfigMap, tagId string) ([]string, error) {
-	tagClient, err := r.createPolicyTagClient(ctx, configMap)
-	if err != nil {
-		return nil, err
-	}
+func (r *DataCatalogRepository) GetFineGrainedReaderMembers(ctx context.Context, tagId string) ([]string, error) {
+	common.Logger.Debug(fmt.Sprintf("Getting iam policy for policy tag %s", tagId))
 
-	defer tagClient.Close()
-
-	logger.Debug(fmt.Sprintf("Getting iam policy for policy tag %s", tagId))
-
-	iamPolicy, err := tagClient.GetIamPolicy(ctx, &iampb.GetIamPolicyRequest{
+	iamPolicy, err := r.policyTagClient.GetIamPolicy(ctx, &iampb.GetIamPolicyRequest{
 		Resource: tagId,
 	})
 
@@ -422,7 +350,7 @@ func (r *dataCatalogIamRepository) GetFineGrainedReaderMembers(ctx context.Conte
 	var result []string
 
 	for _, binding := range iamPolicy.Bindings {
-		logger.Debug(fmt.Sprintf("Binding for %q with role %q: %v", tagId, binding.Role, binding.Members))
+		common.Logger.Debug(fmt.Sprintf("Binding for %q with role %q: %v", tagId, binding.Role, binding.Members))
 
 		if binding.Role == fineGrainedReaderRole {
 			result = binding.Members
@@ -432,21 +360,14 @@ func (r *dataCatalogIamRepository) GetFineGrainedReaderMembers(ctx context.Conte
 	return result, nil
 }
 
-func (r *dataCatalogIamRepository) CreatePolicyTagWithDataPolicy(ctx context.Context, configMap *config.ConfigMap, location string, maskingType datapoliciespb.DataMaskingPolicy_PredefinedExpression, ap *sync_to_target.AccessProvider) (_ *BQMaskingInformation, err error) {
-	policyTagClient, err := r.createPolicyTagClient(ctx, configMap)
-	if err != nil {
-		return nil, err
-	}
-
-	defer policyTagClient.Close()
-
+func (r *DataCatalogRepository) CreatePolicyTagWithDataPolicy(ctx context.Context, location string, maskingType datapoliciespb.DataMaskingPolicy_PredefinedExpression, ap *sync_to_target.AccessProvider) (_ *BQMaskingInformation, err error) {
 	location = strings.ToLower(location)
 
 	// 1. Create taxonomy if not exists
 	taxonomyName := taxonomy_prefix + location
-	parent := fmt.Sprintf("projects/%s/locations/%s", configMap.GetString(common.GcpProjectId), location)
+	parent := fmt.Sprintf("projects/%s/locations/%s", r.projectId, location)
 
-	taxIt := policyTagClient.ListTaxonomies(ctx, &datacatalogpb.ListTaxonomiesRequest{
+	taxIt := r.policyTagClient.ListTaxonomies(ctx, &datacatalogpb.ListTaxonomiesRequest{
 		Parent: parent,
 	})
 
@@ -458,7 +379,7 @@ func (r *dataCatalogIamRepository) CreatePolicyTagWithDataPolicy(ctx context.Con
 		if errors.Is(err2, iterator.Done) {
 			break
 		} else if err2 != nil {
-			logger.Error(fmt.Sprintf("failed to list taxonomies with parent %q: %s", parent, err2.Error()))
+			common.Logger.Error(fmt.Sprintf("failed to list taxonomies with parent %q: %s", parent, err2.Error()))
 
 			return nil, fmt.Errorf("list taxonomies: %w", err2)
 		}
@@ -473,7 +394,7 @@ func (r *dataCatalogIamRepository) CreatePolicyTagWithDataPolicy(ctx context.Con
 	}
 
 	if taxonomy == nil {
-		taxonomy, err = policyTagClient.CreateTaxonomy(ctx, &datacatalogpb.CreateTaxonomyRequest{
+		taxonomy, err = r.policyTagClient.CreateTaxonomy(ctx, &datacatalogpb.CreateTaxonomyRequest{
 			Taxonomy: &datacatalogpb.Taxonomy{
 				DisplayName:          taxonomyName,
 				Description:          fmt.Sprintf("Raito managed taxonomy for location %s", location),
@@ -490,7 +411,7 @@ func (r *dataCatalogIamRepository) CreatePolicyTagWithDataPolicy(ctx context.Con
 	// 2. Create policy tag
 	displayName := createTagDisplayname(ap)
 
-	policyTag, err := policyTagClient.CreatePolicyTag(ctx, &datacatalogpb.CreatePolicyTagRequest{
+	policyTag, err := r.policyTagClient.CreatePolicyTag(ctx, &datacatalogpb.CreatePolicyTagRequest{
 		Parent: taxonomy.Name,
 		PolicyTag: &datacatalogpb.PolicyTag{
 			DisplayName: displayName,
@@ -504,20 +425,15 @@ func (r *dataCatalogIamRepository) CreatePolicyTagWithDataPolicy(ctx context.Con
 
 	defer func() {
 		if err != nil {
-			policyTagClient.DeletePolicyTag(ctx, &datacatalogpb.DeletePolicyTagRequest{Name: policyTag.Name}) //nolint:errcheck
+			r.policyTagClient.DeletePolicyTag(ctx, &datacatalogpb.DeletePolicyTagRequest{Name: policyTag.Name}) //nolint:errcheck
 		}
 	}()
 
 	// 3. Create data policy
 	dataPolicyId := gonanoid.MustGenerate(idAlphabet, 24) // Must be unique in the project and location
 
-	dataPolicyClient, err := r.createDataPolicyClient(ctx, configMap)
-	if err != nil {
-		return nil, err
-	}
-
-	dataPolicy, err := dataPolicyClient.CreateDataPolicy(ctx, &datapoliciespb.CreateDataPolicyRequest{
-		Parent: fmt.Sprintf("projects/%s/locations/%s", configMap.GetString(common.GcpProjectId), location),
+	dataPolicy, err := r.dataPolicyClient.CreateDataPolicy(ctx, &datapoliciespb.CreateDataPolicyRequest{
+		Parent: fmt.Sprintf("projects/%s/locations/%s", r.projectId, location),
 		DataPolicy: &datapoliciespb.DataPolicy{
 			DataPolicyId:   dataPolicyId,
 			DataPolicyType: datapoliciespb.DataPolicy_DATA_MASKING_POLICY,
@@ -538,7 +454,7 @@ func (r *dataCatalogIamRepository) CreatePolicyTagWithDataPolicy(ctx context.Con
 		return nil, fmt.Errorf("create data policy %q in policy tag %q: %w", dataPolicyId, policyTag.Name, err)
 	}
 
-	return r.createBqMaskingInformation(ctx, dataPolicy, configMap)
+	return r.createBqMaskingInformation(ctx, dataPolicy)
 }
 
 func createTagDisplayname(ap *sync_to_target.AccessProvider) string {
@@ -546,8 +462,8 @@ func createTagDisplayname(ap *sync_to_target.AccessProvider) string {
 	return displayName
 }
 
-func (r *dataCatalogIamRepository) GetLocationsForDataObjects(ctx context.Context, configMap *config.ConfigMap, ap *sync_to_target.AccessProvider) (map[string]string, map[string]string, error) {
-	datasets, err := r.getDataSets(ctx, configMap)
+func (r *DataCatalogRepository) GetLocationsForDataObjects(ctx context.Context, ap *sync_to_target.AccessProvider) (map[string]string, map[string]string, error) {
+	datasets, err := r.getDataSets(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -581,7 +497,7 @@ type tableMaskUpdate struct {
 	ColumnsToRemoveMask set.Set[string]
 }
 
-func (r *dataCatalogIamRepository) UpdateWhatOfDataPolicy(ctx context.Context, configMap *config.ConfigMap, policy *BQMaskingInformation, dataObjects []string, deletedDataObjects []string) error {
+func (r *DataCatalogRepository) UpdateWhatOfDataPolicy(ctx context.Context, policy *BQMaskingInformation, dataObjects []string, deletedDataObjects []string) error {
 	columnsToUpdatePerTable := make(map[string]tableMaskUpdate)
 
 	parseColumnsToUpdatePerTable := func(dos []string, toRemove bool) {
@@ -615,16 +531,9 @@ func (r *dataCatalogIamRepository) UpdateWhatOfDataPolicy(ctx context.Context, c
 	parseColumnsToUpdatePerTable(dataObjects, false)
 	parseColumnsToUpdatePerTable(deletedDataObjects, true)
 
-	client, err := ConnectToBigQuery(configMap, ctx)
-	if err != nil {
-		return err
-	}
-
-	defer client.Close()
-
 	for table, maskUpdates := range columnsToUpdatePerTable {
 		nameSplit := strings.Split(table, ".")
-		ds := client.Dataset(nameSplit[1])
+		ds := r.bigQueryClient.Dataset(nameSplit[1])
 		bqTable := ds.Table(nameSplit[2])
 
 		metadata, err := bqTable.Metadata(ctx)
@@ -660,17 +569,18 @@ func (r *dataCatalogIamRepository) UpdateWhatOfDataPolicy(ctx context.Context, c
 	return nil
 }
 
-func (r *dataCatalogIamRepository) getDataSets(ctx context.Context, configMap *config.ConfigMap) (map[string]BQEntity, error) {
+func (r *DataCatalogRepository) getDataSets(ctx context.Context) (map[string]org.GcpOrgEntity, error) {
 	if len(r.datasetCache) == 0 {
-		dataSets, err := r.bigQueryRepo.GetDataSets(ctx, configMap)
+		r.datasetCache = make(map[string]org.GcpOrgEntity)
+
+		err := r.bigQueryRepo.ListDataSets(ctx, r.bigQueryRepo.Project(), func(ctx context.Context, entity *org.GcpOrgEntity, dataset *bigquery.Dataset) error {
+			r.datasetCache[entity.FullName] = *entity
+
+			return nil
+		})
+
 		if err != nil {
 			return nil, err
-		}
-
-		r.datasetCache = make(map[string]BQEntity)
-
-		for _, dataSet := range dataSets {
-			r.datasetCache[dataSet.FullName] = dataSet
 		}
 	}
 

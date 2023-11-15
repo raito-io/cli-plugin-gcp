@@ -31,7 +31,7 @@ func TestDataSourceSyncer_GetMetaData(t *testing.T) {
 
 func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 	type fields struct {
-		mocksSetup func(repository *gcp.MockDataSourceRepository)
+		mocksSetup func(repository *MockDataSourceRepository)
 	}
 	type args struct {
 		ctx       context.Context
@@ -47,7 +47,7 @@ func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 		{
 			name: "Successfully synced data source",
 			fields: fields{
-				mocksSetup: func(repository *gcp.MockDataSourceRepository) {
+				mocksSetup: func(repository *MockDataSourceRepository) {
 					repository.EXPECT().DataObjects(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, f func(context.Context, *org.GcpOrgEntity) error) error {
 						err := f(ctx, &org.GcpOrgEntity{
 							EntryName: "projects/projectId1",
@@ -113,7 +113,7 @@ func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 		{
 			name: "processing error",
 			fields: fields{
-				mocksSetup: func(repository *gcp.MockDataSourceRepository) {
+				mocksSetup: func(repository *MockDataSourceRepository) {
 					repository.EXPECT().DataObjects(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, f func(context.Context, *org.GcpOrgEntity) error) error {
 						err := f(ctx, &org.GcpOrgEntity{
 							EntryName: "projects/projectId1",
@@ -179,10 +179,10 @@ func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 	}
 }
 
-func createTestDataSourceSyncer(t *testing.T) (*DataSourceSyncer, *gcp.MockDataSourceRepository) {
+func createTestDataSourceSyncer(t *testing.T) (*DataSourceSyncer, *MockDataSourceRepository) {
 	t.Helper()
 
-	repoMock := gcp.NewMockDataSourceRepository(t)
+	repoMock := NewMockDataSourceRepository(t)
 
-	return NewDataSourceSyncer(repoMock, NewDataSourceMetaData()), repoMock
+	return NewDataSourceSyncer(repoMock, gcp.NewDataSourceMetaData()), repoMock
 }

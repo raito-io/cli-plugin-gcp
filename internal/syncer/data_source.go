@@ -31,9 +31,14 @@ func GetOrgDataObjectName(configmap *config.ConfigMap) string {
 	return fmt.Sprintf("gcp-org-%s", configmap.GetString(common.GcpOrgId))
 }
 
-func (s *DataSourceSyncer) SyncDataSource(ctx context.Context, dataSourceHandler wrappers.DataSourceObjectHandler, configMap *config.ConfigMap) error {
+func (s *DataSourceSyncer) SyncDataSource(ctx context.Context, dataSourceHandler wrappers.DataSourceObjectHandler, _ *config.ConfigMap) error {
 	err := s.repoProvider.DataObjects(ctx, func(_ context.Context, object *org.GcpOrgEntity) error {
-		return dataSourceHandler.AddDataObjects(handleGcpOrgEntities(object))
+		err := dataSourceHandler.AddDataObjects(handleGcpOrgEntities(object))
+		if err != nil {
+			return fmt.Errorf("add data object to handler: %w", err)
+		}
+
+		return nil
 	})
 
 	if err != nil {

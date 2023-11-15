@@ -8,8 +8,7 @@ import (
 )
 
 var Wired = wire.NewSet(
-	NewDataAccessSyncer,
-
 	NewDataSourceMetaData,
 	NewIdentityStoreMetadata,
+	NewNoMasking,
 )

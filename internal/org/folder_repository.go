@@ -12,7 +12,7 @@ import (
 	"github.com/googleapis/gax-go/v2"
 	"google.golang.org/api/iterator"
 
-	"github.com/raito-io/cli-plugin-gcp/internal/iam/types"
+	"github.com/raito-io/cli-plugin-gcp/internal/iam"
 )
 
 type folderClient interface {
@@ -64,14 +64,14 @@ func (r *FolderRepository) GetFolders(ctx context.Context, parentName string, pa
 	return nil
 }
 
-func (r *FolderRepository) GetIamPolicy(ctx context.Context, folderId string) ([]types.IamBinding, error) {
+func (r *FolderRepository) GetIamPolicy(ctx context.Context, folderId string) ([]iam.IamBinding, error) {
 	return getAndParseBindings(ctx, r.folderClient, "folder", folderId)
 }
 
-func (r *FolderRepository) AddBinding(ctx context.Context, binding types.IamBinding) error {
+func (r *FolderRepository) AddBinding(ctx context.Context, binding *iam.IamBinding) error {
 	return addBinding(ctx, r.folderClient, binding)
 }
 
-func (r *FolderRepository) RemoveBinding(ctx context.Context, binding types.IamBinding) error {
+func (r *FolderRepository) RemoveBinding(ctx context.Context, binding *iam.IamBinding) error {
 	return removeBinding(ctx, r.folderClient, binding)
 }

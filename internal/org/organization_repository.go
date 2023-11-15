@@ -10,7 +10,7 @@ import (
 	"github.com/raito-io/cli/base/util/config"
 
 	"github.com/raito-io/cli-plugin-gcp/internal/common"
-	"github.com/raito-io/cli-plugin-gcp/internal/iam/types"
+	"github.com/raito-io/cli-plugin-gcp/internal/iam"
 )
 
 type organizationClient interface {
@@ -52,17 +52,17 @@ func (r *OrganizationRepository) GetOrganization(ctx context.Context) (*GcpOrgEn
 	}, nil
 }
 
-func (r *OrganizationRepository) GetIamPolicy(ctx context.Context, _ string) ([]types.IamBinding, error) {
+func (r *OrganizationRepository) GetIamPolicy(ctx context.Context, _ string) ([]iam.IamBinding, error) {
 	return getAndParseBindings(ctx, r.organizationClient, "organization", r.organizationId)
 }
 
-func (r *OrganizationRepository) AddBinding(ctx context.Context, binding types.IamBinding) error {
+func (r *OrganizationRepository) AddBinding(ctx context.Context, binding *iam.IamBinding) error {
 	binding.Resource = r.organizationId
 
 	return addBinding(ctx, r.organizationClient, binding)
 }
 
-func (r *OrganizationRepository) RemoveBinding(ctx context.Context, binding types.IamBinding) error {
+func (r *OrganizationRepository) RemoveBinding(ctx context.Context, binding *iam.IamBinding) error {
 	binding.Resource = r.organizationId
 
 	return removeBinding(ctx, r.organizationClient, binding)

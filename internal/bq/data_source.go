@@ -6,13 +6,14 @@ import (
 	ds "github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/cli/base/util/config"
 
+	"github.com/raito-io/cli-plugin-gcp/internal/common"
 	"github.com/raito-io/cli-plugin-gcp/internal/common/roles"
 )
 
 func NewDataSourceMetaData(_ context.Context, configParams *config.ConfigMap) (*ds.MetaData, error) {
 	var supportedFeatures []string
 
-	if configParams.GetBoolWithDefault(BqCatalogEnabled, false) {
+	if configParams.GetBoolWithDefault(common.BqCatalogEnabled, false) {
 		supportedFeatures = append(supportedFeatures, ds.ColumnMasking) // TODO include row filtering
 	}
 

@@ -2,6 +2,7 @@ package org
 
 import (
 	"context"
+	"fmt"
 
 	resourcemanager "cloud.google.com/go/resourcemanager/apiv3"
 	"github.com/raito-io/cli/base/util/config"
@@ -13,7 +14,7 @@ import (
 func NewProjectsClient(ctx context.Context, configMap *config.ConfigMap) (*resourcemanager.ProjectsClient, func(), error) {
 	c, err := resourcemanager.NewProjectsClient(ctx, option.WithCredentialsFile(configMap.GetString(common.GcpSAFileLocation)))
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("new projects client: %w", err)
 	}
 
 	return c, func() { c.Close() }, nil
@@ -22,7 +23,7 @@ func NewProjectsClient(ctx context.Context, configMap *config.ConfigMap) (*resou
 func NewFoldersClient(ctx context.Context, configMap *config.ConfigMap) (*resourcemanager.FoldersClient, func(), error) {
 	c, err := resourcemanager.NewFoldersClient(ctx, option.WithCredentialsFile(configMap.GetString(common.GcpSAFileLocation)))
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("new folders client: %w", err)
 	}
 
 	return c, func() { c.Close() }, nil
@@ -31,7 +32,7 @@ func NewFoldersClient(ctx context.Context, configMap *config.ConfigMap) (*resour
 func NewOrganizationsClient(ctx context.Context, configMap *config.ConfigMap) (*resourcemanager.OrganizationsClient, func(), error) {
 	c, err := resourcemanager.NewOrganizationsClient(ctx, option.WithCredentialsFile(configMap.GetString(common.GcpSAFileLocation)))
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("new organizations client: %w", err)
 	}
 
 	return c, func() { c.Close() }, nil

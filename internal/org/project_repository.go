@@ -11,7 +11,7 @@ import (
 	"github.com/googleapis/gax-go/v2"
 	"google.golang.org/api/iterator"
 
-	"github.com/raito-io/cli-plugin-gcp/internal/iam/types"
+	"github.com/raito-io/cli-plugin-gcp/internal/iam"
 )
 
 const ownerRole = "roles/owner"
@@ -84,14 +84,14 @@ func (r *ProjectRepository) GetProjectOwner(ctx context.Context, projectId strin
 	return owner, editor, viewer, nil
 }
 
-func (r *ProjectRepository) GetIamPolicy(ctx context.Context, projectId string) ([]types.IamBinding, error) {
+func (r *ProjectRepository) GetIamPolicy(ctx context.Context, projectId string) ([]iam.IamBinding, error) {
 	return getAndParseBindings(ctx, r.projectClient, "project", projectId)
 }
 
-func (r *ProjectRepository) AddBinding(ctx context.Context, binding types.IamBinding) error {
+func (r *ProjectRepository) AddBinding(ctx context.Context, binding *iam.IamBinding) error {
 	return addBinding(ctx, r.projectClient, binding)
 }
 
-func (r *ProjectRepository) RemoveBinding(ctx context.Context, binding types.IamBinding) error {
+func (r *ProjectRepository) RemoveBinding(ctx context.Context, binding *iam.IamBinding) error {
 	return removeBinding(ctx, r.projectClient, binding)
 }

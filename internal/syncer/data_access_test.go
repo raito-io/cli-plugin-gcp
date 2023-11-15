@@ -1,4 +1,4 @@
-package gcp
+package syncer
 
 import (
 	"context"
@@ -17,16 +17,16 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/raito-io/cli-plugin-gcp/internal/common"
-	"github.com/raito-io/cli-plugin-gcp/internal/iam/types"
+	"github.com/raito-io/cli-plugin-gcp/internal/gcp"
+	"github.com/raito-io/cli-plugin-gcp/internal/iam"
 	"github.com/raito-io/cli-plugin-gcp/internal/org"
-	"github.com/raito-io/cli-plugin-gcp/internal/syncer"
 )
 
 func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 	type fields struct {
-		mockSetup            func(gcpRepo *MockGcpBindingRepository, projectRepo *MockProjectRepo)
+		mockSetup            func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService)
 		metadata             *data_source.MetaData
-		raitoManagedBindings []types.IamBinding
+		raitoManagedBindings []iam.IamBinding
 	}
 	type args struct {
 		ctx       context.Context
@@ -42,7 +42,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 		{
 			name: "No access providers",
 			fields: fields{
-				mockSetup: func(gcpRepo *MockGcpBindingRepository, projectRepo *MockProjectRepo) {
+				mockSetup: func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
 					gcpRepo.EXPECT().Bindings(mock.Anything, mock.Anything).Return(nil)
 				},
 			},
@@ -56,14 +56,14 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 		{
 			name: "Single access provider",
 			fields: fields{
-				mockSetup: func(gcpRepo *MockGcpBindingRepository, projectRepo *MockProjectRepo) {
-					gcpRepo.EXPECT().Bindings(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, f func(context.Context, *org.GcpOrgEntity, []types.IamBinding) error) error {
+				mockSetup: func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
+					gcpRepo.EXPECT().Bindings(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, f func(context.Context, *org.GcpOrgEntity, []iam.IamBinding) error) error {
 						return f(ctx, &org.GcpOrgEntity{
 							EntryName: "projects/project1",
 							Id:        "project1",
 							Type:      "project",
 							Name:      "project1",
-						}, []types.IamBinding{
+						}, []iam.IamBinding{
 							{
 								Member:       "user:ruben@raito.io",
 								Resource:     "project1",
@@ -86,8 +86,8 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 						)
 					})
 				},
-				metadata:             syncer.NewDataSourceMetaData(),
-				raitoManagedBindings: []types.IamBinding{},
+				metadata:             gcp.NewDataSourceMetaData(),
+				raitoManagedBindings: []iam.IamBinding{},
 			},
 			args: args{
 				ctx:       context.Background(),
@@ -127,14 +127,14 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 		{
 			name: "Multiple access provider",
 			fields: fields{
-				mockSetup: func(gcpRepo *MockGcpBindingRepository, projectRepo *MockProjectRepo) {
-					gcpRepo.EXPECT().Bindings(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, f func(context.Context, *org.GcpOrgEntity, []types.IamBinding) error) error {
+				mockSetup: func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
+					gcpRepo.EXPECT().Bindings(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, f func(context.Context, *org.GcpOrgEntity, []iam.IamBinding) error) error {
 						err := f(ctx, &org.GcpOrgEntity{
 							EntryName: "projects/project1",
 							Id:        "project1",
 							Type:      "project",
 							Name:      "project1",
-						}, []types.IamBinding{
+						}, []iam.IamBinding{
 							{
 								Member:       "user:ruben@raito.io",
 								Resource:     "project1",
@@ -158,7 +158,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 							Id:        "folder1",
 							Type:      "folder",
 							Name:      "folder1",
-						}, []types.IamBinding{
+						}, []iam.IamBinding{
 							{
 								Member:       "serviceAccount:sa@raito.io",
 								Resource:     "folder1",
@@ -175,8 +175,8 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 						)
 					})
 				},
-				metadata:             syncer.NewDataSourceMetaData(),
-				raitoManagedBindings: []types.IamBinding{},
+				metadata:             gcp.NewDataSourceMetaData(),
+				raitoManagedBindings: []iam.IamBinding{},
 			},
 			args: args{
 				ctx:       context.Background(),
@@ -297,14 +297,14 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 		{
 			name: "processing error",
 			fields: fields{
-				mockSetup: func(gcpRepo *MockGcpBindingRepository, projectRepo *MockProjectRepo) {
-					gcpRepo.EXPECT().Bindings(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, f func(context.Context, *org.GcpOrgEntity, []types.IamBinding) error) error {
+				mockSetup: func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
+					gcpRepo.EXPECT().Bindings(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, f func(context.Context, *org.GcpOrgEntity, []iam.IamBinding) error) error {
 						err := f(ctx, &org.GcpOrgEntity{
 							EntryName: "projects/project1",
 							Id:        "project1",
 							Type:      "project",
 							Name:      "project1",
-						}, []types.IamBinding{
+						}, []iam.IamBinding{
 							{
 								Member:       "user:ruben@raito.io",
 								Resource:     "project1",
@@ -320,8 +320,8 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 						return errors.New("boom")
 					})
 				},
-				metadata:             syncer.NewDataSourceMetaData(),
-				raitoManagedBindings: []types.IamBinding{},
+				metadata:             gcp.NewDataSourceMetaData(),
+				raitoManagedBindings: []iam.IamBinding{},
 			},
 			args: args{
 				ctx:       context.Background(),
@@ -333,8 +333,8 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			syncer, gcpMock, projectMock := createAccessSyncer(t, tt.fields.metadata)
-			tt.fields.mockSetup(gcpMock, projectMock)
+			syncer, gcpMock, projectMock, mockMaskingService := createAccessSyncer(t, tt.fields.metadata, tt.args.configMap)
+			tt.fields.mockSetup(gcpMock, projectMock, mockMaskingService)
 
 			apHandler := mocks.NewSimpleAccessProviderHandler(t, 4)
 			err := syncer.SyncAccessProvidersFromTarget(tt.args.ctx, apHandler, tt.args.configMap)
@@ -347,14 +347,14 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 
 func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 	type fields struct {
-		mocksSetup           func(gcpRepo *MockGcpBindingRepository, projectRepo *MockProjectRepo)
+		mocksSetup           func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, mockMaskingService *MockMaskingService)
 		metadata             *data_source.MetaData
-		raitoManagedBindings []types.IamBinding
+		raitoManagedBindings []iam.IamBinding
 	}
 	type args struct {
 		ctx       context.Context
 		configMap *config.ConfigMap
-		bindings  []types.IamBinding
+		bindings  []iam.IamBinding
 	}
 	tests := []struct {
 		name    string
@@ -366,16 +366,16 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 		{
 			name: "Regular bindings to Access Provider and no managed bindings",
 			fields: fields{
-				mocksSetup: func(gcpRepo *MockGcpBindingRepository, projectRepo *MockProjectRepo) {
+				mocksSetup: func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
 
 				},
-				metadata:             syncer.NewDataSourceMetaData(),
-				raitoManagedBindings: []types.IamBinding{},
+				metadata:             gcp.NewDataSourceMetaData(),
+				raitoManagedBindings: []iam.IamBinding{},
 			},
 			args: args{
 				ctx:       context.Background(),
 				configMap: &config.ConfigMap{},
-				bindings: []types.IamBinding{
+				bindings: []iam.IamBinding{
 					{
 						Member:       "user:ruben@raito.io",
 						Resource:     "project1",
@@ -463,11 +463,11 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 		{
 			name: "Regular bindings to Access Provider and managed bindings",
 			fields: fields{
-				mocksSetup: func(gcpRepo *MockGcpBindingRepository, projectRepo *MockProjectRepo) {
+				mocksSetup: func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
 
 				},
-				metadata: syncer.NewDataSourceMetaData(),
-				raitoManagedBindings: []types.IamBinding{
+				metadata: gcp.NewDataSourceMetaData(),
+				raitoManagedBindings: []iam.IamBinding{
 					{
 						Member:       "user:ruben@raito.io",
 						Resource:     "project1",
@@ -485,7 +485,7 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 			args: args{
 				ctx:       context.Background(),
 				configMap: &config.ConfigMap{},
-				bindings: []types.IamBinding{
+				bindings: []iam.IamBinding{
 					{
 						Member:       "user:ruben@raito.io",
 						Resource:     "project1",
@@ -573,11 +573,11 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 		{
 			name: "Regular bindings to Access Provider and include unknown roles",
 			fields: fields{
-				mocksSetup: func(gcpRepo *MockGcpBindingRepository, projectRepo *MockProjectRepo) {
+				mocksSetup: func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
 
 				},
-				metadata:             syncer.NewDataSourceMetaData(),
-				raitoManagedBindings: []types.IamBinding{},
+				metadata:             gcp.NewDataSourceMetaData(),
+				raitoManagedBindings: []iam.IamBinding{},
 			},
 			args: args{
 				ctx: context.Background(),
@@ -585,7 +585,7 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 					common.ExcludeNonAplicablePermissions: "false",
 				},
 				},
-				bindings: []types.IamBinding{
+				bindings: []iam.IamBinding{
 					{
 						Member:       "user:ruben@raito.io",
 						Resource:     "project1",
@@ -661,11 +661,11 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 		{
 			name: "Special bindings for project",
 			fields: fields{
-				mocksSetup: func(gcpRepo *MockGcpBindingRepository, projectRepo *MockProjectRepo) {
+				mocksSetup: func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
 					projectRepo.EXPECT().GetProjectOwner(mock.Anything, mock.Anything).Return([]string{"user:owner@raito.io"}, []string{"user:editor@raito.io"}, []string{"user:viewer@raito.io"}, nil).Once()
 				},
-				metadata:             syncer.NewDataSourceMetaData(),
-				raitoManagedBindings: []types.IamBinding{},
+				metadata:             gcp.NewDataSourceMetaData(),
+				raitoManagedBindings: []iam.IamBinding{},
 			},
 			args: args{
 				ctx: context.Background(),
@@ -673,7 +673,7 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 					common.GcpProjectId: "projectId",
 				},
 				},
-				bindings: []types.IamBinding{
+				bindings: []iam.IamBinding{
 					{
 						Member:       "special_group:",
 						Resource:     "project1",
@@ -777,11 +777,11 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 		{
 			name: "Roles to group by identity",
 			fields: fields{
-				mocksSetup: func(gcpRepo *MockGcpBindingRepository, projectRepo *MockProjectRepo) {
+				mocksSetup: func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
 
 				},
-				metadata:             syncer.NewDataSourceMetaData(),
-				raitoManagedBindings: []types.IamBinding{},
+				metadata:             gcp.NewDataSourceMetaData(),
+				raitoManagedBindings: []iam.IamBinding{},
 			},
 			args: args{
 				ctx: context.Background(),
@@ -789,7 +789,7 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 					common.GcpRolesToGroupByIdentity: "roles/viewer,roles/editor",
 				},
 				},
-				bindings: []types.IamBinding{
+				bindings: []iam.IamBinding{
 					{
 						Member:       "user:ruben@raito.io",
 						Resource:     "project1",
@@ -912,8 +912,8 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			a, gcpMock, projectMock := createAccessSyncer(t, tt.fields.metadata)
-			tt.fields.mocksSetup(gcpMock, projectMock)
+			a, gcpMock, projectMock, mockMaskingService := createAccessSyncer(t, tt.fields.metadata, tt.args.configMap)
+			tt.fields.mocksSetup(gcpMock, projectMock, mockMaskingService)
 
 			a.raitoManagedBindings = tt.fields.raitoManagedBindings
 
@@ -929,7 +929,7 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 
 func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 	type fields struct {
-		mocksSetup func(gcpRepo *MockGcpBindingRepository, projectRepo *MockProjectRepo)
+		mocksSetup func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService)
 		metadata   *data_source.MetaData
 	}
 	type args struct {
@@ -942,16 +942,16 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 		fields           fields
 		args             args
 		want             []importer.AccessProviderSyncFeedback
-		expectedBindings []types.IamBinding
+		expectedBindings []iam.IamBinding
 		wantErr          assert.ErrorAssertionFunc
 	}{
 		{
 			name: "No access providers",
 			fields: fields{
-				mocksSetup: func(gcpRepo *MockGcpBindingRepository, projectRepo *MockProjectRepo) {
+				mocksSetup: func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
 
 				},
-				metadata: syncer.NewDataSourceMetaData(),
+				metadata: gcp.NewDataSourceMetaData(),
 			},
 			args: args{
 				ctx:             context.Background(),
@@ -959,56 +959,56 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 				configMap:       &config.ConfigMap{},
 			},
 			want:             []importer.AccessProviderSyncFeedback{},
-			expectedBindings: []types.IamBinding{},
+			expectedBindings: []iam.IamBinding{},
 			wantErr:          assert.NoError,
 		},
 		{
 			name: "Access provider to binding",
 			fields: fields{
-				mocksSetup: func(gcpRepo *MockGcpBindingRepository, projectRepo *MockProjectRepo) {
-					gcpRepo.EXPECT().AddBinding(mock.Anything, types.IamBinding{
+				mocksSetup: func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
+					gcpRepo.EXPECT().AddBinding(mock.Anything, iam.IamBinding{
 						Member:       "serviceAccount:sa@raito.gserviceaccount.com",
 						Resource:     "project1",
 						ResourceType: "project",
 						Role:         "roles/owner",
 					}).Return(nil).Once()
 
-					gcpRepo.EXPECT().AddBinding(mock.Anything, types.IamBinding{
+					gcpRepo.EXPECT().AddBinding(mock.Anything, iam.IamBinding{
 						Member:       "user:ruben@raito.io",
 						Resource:     "project1",
 						ResourceType: "project",
 						Role:         "roles/owner",
 					}).Return(nil).Once()
 
-					gcpRepo.EXPECT().AddBinding(mock.Anything, types.IamBinding{
+					gcpRepo.EXPECT().AddBinding(mock.Anything, iam.IamBinding{
 						Member:       "group:sales@raito.io",
 						Resource:     "project1",
 						ResourceType: "project",
 						Role:         "roles/owner",
 					}).Return(nil).Once()
 
-					gcpRepo.EXPECT().AddBinding(mock.Anything, types.IamBinding{
+					gcpRepo.EXPECT().AddBinding(mock.Anything, iam.IamBinding{
 						Member:       "serviceAccount:sa@raito.gserviceaccount.com",
 						Resource:     "folder1",
 						ResourceType: "folder",
 						Role:         "roles/editor",
 					}).Return(nil).Once()
 
-					gcpRepo.EXPECT().AddBinding(mock.Anything, types.IamBinding{
+					gcpRepo.EXPECT().AddBinding(mock.Anything, iam.IamBinding{
 						Member:       "user:ruben@raito.io",
 						Resource:     "folder1",
 						ResourceType: "folder",
 						Role:         "roles/editor",
 					}).Return(nil).Once()
 
-					gcpRepo.EXPECT().AddBinding(mock.Anything, types.IamBinding{
+					gcpRepo.EXPECT().AddBinding(mock.Anything, iam.IamBinding{
 						Member:       "group:sales@raito.io",
 						Resource:     "folder1",
 						ResourceType: "folder",
 						Role:         "roles/editor",
 					}).Return(nil).Once()
 				},
-				metadata: syncer.NewDataSourceMetaData(),
+				metadata: gcp.NewDataSourceMetaData(),
 			},
 			args: args{
 				ctx: context.Background(),
@@ -1057,7 +1057,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 					Type:           ptr.String(access_provider.AclSet),
 				},
 			},
-			expectedBindings: []types.IamBinding{
+			expectedBindings: []iam.IamBinding{
 				{
 					Member:       "group:sales@raito.io",
 					Role:         "roles/owner",
@@ -1100,8 +1100,8 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			a, gcpMock, projectRepoMock := createAccessSyncer(t, tt.fields.metadata)
-			tt.fields.mocksSetup(gcpMock, projectRepoMock)
+			a, gcpMock, projectRepoMock, maskingService := createAccessSyncer(t, tt.fields.metadata, tt.args.configMap)
+			tt.fields.mocksSetup(gcpMock, projectRepoMock, maskingService)
 
 			feedbackHandler := mocks.NewSimpleAccessProviderFeedbackHandler(t)
 
@@ -1115,11 +1115,12 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 	}
 }
 
-func createAccessSyncer(t *testing.T, dsMetadata *data_source.MetaData) (*AccessSyncer, *MockGcpBindingRepository, *MockProjectRepo) {
+func createAccessSyncer(t *testing.T, dsMetadata *data_source.MetaData, configMap *config.ConfigMap) (*AccessSyncer, *MockBindingRepository, *MockProjectRepo, *MockMaskingService) {
 	t.Helper()
 
-	gcpRepo := NewMockGcpBindingRepository(t)
+	gcpRepo := NewMockBindingRepository(t)
 	projectRepo := NewMockProjectRepo(t)
+	maskingService := NewMockMaskingService(t)
 
-	return NewDataAccessSyncer(gcpRepo, projectRepo, dsMetadata), gcpRepo, projectRepo
+	return NewDataAccessSyncer(gcpRepo, projectRepo, maskingService, dsMetadata, configMap), gcpRepo, projectRepo, maskingService
 }

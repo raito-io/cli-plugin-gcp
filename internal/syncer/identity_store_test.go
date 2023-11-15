@@ -14,12 +14,12 @@ import (
 
 	"github.com/raito-io/cli-plugin-gcp/internal/common"
 	"github.com/raito-io/cli-plugin-gcp/internal/gcp"
-	"github.com/raito-io/cli-plugin-gcp/internal/iam/types"
+	"github.com/raito-io/cli-plugin-gcp/internal/iam"
 )
 
 func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 	type fields struct {
-		mockSetup func(adminRepoMock *gcp.MockAdminRepository, doRepoMock *gcp.MockDataObjectRepository)
+		mockSetup func(adminRepoMock *MockAdminRepository, doRepoMock *MockDataObjectRepository)
 	}
 	type args struct {
 		ctx       context.Context
@@ -38,10 +38,10 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 	}{
 		{
 			name: "No users and groups",
-			fields: fields{mockSetup: func(adminRepoMock *gcp.MockAdminRepository, doRepoMock *gcp.MockDataObjectRepository) {
+			fields: fields{mockSetup: func(adminRepoMock *MockAdminRepository, doRepoMock *MockDataObjectRepository) {
 				adminRepoMock.EXPECT().GetGroups(mock.Anything, mock.Anything).Return(nil)
 				adminRepoMock.EXPECT().GetUsers(mock.Anything, mock.Anything).Return(nil)
-				doRepoMock.EXPECT().UserAndGroups(mock.Anything, mock.Anything, mock.Anything).Return(nil)
+				//doRepoMock.EXPECT().UserAndGroups(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 			}},
 			args: args{
 				ctx:       context.Background(),
@@ -52,30 +52,31 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 		},
 		{
 			name: "Users in gcp and bindings",
-			fields: fields{mockSetup: func(adminRepoMock *gcp.MockAdminRepository, doRepoMock *gcp.MockDataObjectRepository) {
+			fields: fields{mockSetup: func(adminRepoMock *MockAdminRepository, doRepoMock *MockDataObjectRepository) {
 				adminRepoMock.EXPECT().GetGroups(mock.Anything, mock.Anything).Return(nil)
-				adminRepoMock.EXPECT().GetUsers(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, fn func(context.Context, *types.UserEntity) error) error {
-					err := fn(ctx, &types.UserEntity{ExternalId: "user:dieter@raitio.io", Email: "dieter@raito.io", Name: "Dieter Wachters"})
+				adminRepoMock.EXPECT().GetUsers(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, fn func(context.Context, *iam.UserEntity) error) error {
+					err := fn(ctx, &iam.UserEntity{ExternalId: "user:dieter@raitio.io", Email: "dieter@raito.io", Name: "Dieter Wachters"})
 					if err != nil {
 						return err
 					}
 
-					return fn(ctx, &types.UserEntity{ExternalId: "user:ruben@raitio.io", Email: "ruben@raito.io", Name: "Ruben Mennes"})
+					return fn(ctx, &iam.UserEntity{ExternalId: "user:ruben@raitio.io", Email: "ruben@raito.io", Name: "Ruben Mennes"})
 				})
 
-				doRepoMock.EXPECT().UserAndGroups(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, userFn func(context.Context, string) error, groupFn func(context.Context, string) error) error {
-					err := userFn(ctx, "user:dieter@raitio.io")
-					if err != nil {
-						return err
-					}
-
-					err = userFn(ctx, "user:bart@raitio.io")
-					if err != nil {
-						return err
-					}
-
-					return userFn(ctx, "serviceAccount:serviceAccount123@raito.io")
-				})
+				// TODO
+				//doRepoMock.EXPECT().UserAndGroups(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, userFn func(context.Context, string) error, groupFn func(context.Context, string) error) error {
+				//	err := userFn(ctx, "user:dieter@raitio.io")
+				//	if err != nil {
+				//		return err
+				//	}
+				//
+				//	err = userFn(ctx, "user:bart@raitio.io")
+				//	if err != nil {
+				//		return err
+				//	}
+				//
+				//	return userFn(ctx, "serviceAccount:serviceAccount123@raito.io")
+				//})
 			}},
 			args: args{
 				ctx:       context.Background(),
@@ -114,42 +115,43 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 		},
 		{
 			name: "Groups and users in gcp and bindings",
-			fields: fields{mockSetup: func(adminRepoMock *gcp.MockAdminRepository, doRepoMock *gcp.MockDataObjectRepository) {
-				adminRepoMock.EXPECT().GetGroups(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, fn func(context.Context, *types.GroupEntity) error) error {
-					err := fn(ctx, &types.GroupEntity{ExternalId: "group:admin@raito.io", Email: "administrators@raito.io", Members: []string{"user:dieter@raito.io", "serviceAccount:sa@raito.io"}})
+			fields: fields{mockSetup: func(adminRepoMock *MockAdminRepository, doRepoMock *MockDataObjectRepository) {
+				adminRepoMock.EXPECT().GetGroups(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, fn func(context.Context, *iam.GroupEntity) error) error {
+					err := fn(ctx, &iam.GroupEntity{ExternalId: "group:admin@raito.io", Email: "administrators@raito.io", Members: []string{"user:dieter@raito.io", "serviceAccount:sa@raito.io"}})
 					if err != nil {
 						return err
 					}
 
-					return fn(ctx, &types.GroupEntity{ExternalId: "group:engineers@raito.io", Email: "engineers@raito.io", Members: []string{"user:ruben@raito.io", "group:admin@raito.io", "user:dieter@raito.io"}})
+					return fn(ctx, &iam.GroupEntity{ExternalId: "group:engineers@raito.io", Email: "engineers@raito.io", Members: []string{"user:ruben@raito.io", "group:admin@raito.io", "user:dieter@raito.io"}})
 				})
-				adminRepoMock.EXPECT().GetUsers(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, fn func(context.Context, *types.UserEntity) error) error {
-					err := fn(ctx, &types.UserEntity{ExternalId: "user:dieter@raito.io", Email: "dieter@raito.io", Name: "Dieter Wachters"})
+				adminRepoMock.EXPECT().GetUsers(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, fn func(context.Context, *iam.UserEntity) error) error {
+					err := fn(ctx, &iam.UserEntity{ExternalId: "user:dieter@raito.io", Email: "dieter@raito.io", Name: "Dieter Wachters"})
 					if err != nil {
 						return err
 					}
 
-					err = fn(ctx, &types.UserEntity{ExternalId: "serviceAccount:sa@raito.io", Email: "sa@raito.io", Name: "sa@raito.io"})
+					err = fn(ctx, &iam.UserEntity{ExternalId: "serviceAccount:sa@raito.io", Email: "sa@raito.io", Name: "sa@raito.io"})
 					if err != nil {
 						return err
 					}
 
-					return fn(ctx, &types.UserEntity{ExternalId: "user:ruben@raito.io", Email: "ruben@raito.io", Name: "Ruben Mennes"})
+					return fn(ctx, &iam.UserEntity{ExternalId: "user:ruben@raito.io", Email: "ruben@raito.io", Name: "Ruben Mennes"})
 				})
 
-				doRepoMock.EXPECT().UserAndGroups(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, userFn func(context.Context, string) error, groupFn func(context.Context, string) error) error {
-					err := userFn(ctx, "user:dieter@raito.io")
-					if err != nil {
-						return err
-					}
-
-					err = userFn(ctx, "user:bart@raito.io")
-					if err != nil {
-						return err
-					}
-
-					return userFn(ctx, "serviceAccount:serviceAccount123@raito.io")
-				})
+				// TODO
+				//doRepoMock.EXPECT().UserAndGroups(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, userFn func(context.Context, string) error, groupFn func(context.Context, string) error) error {
+				//	err := userFn(ctx, "user:dieter@raito.io")
+				//	if err != nil {
+				//		return err
+				//	}
+				//
+				//	err = userFn(ctx, "user:bart@raito.io")
+				//	if err != nil {
+				//		return err
+				//	}
+				//
+				//	return userFn(ctx, "serviceAccount:serviceAccount123@raito.io")
+				//})
 			}},
 			args: args{
 				ctx:       context.Background(),
@@ -209,17 +211,17 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 		},
 		{
 			name: "Error during processing",
-			fields: fields{mockSetup: func(adminRepoMock *gcp.MockAdminRepository, doRepoMock *gcp.MockDataObjectRepository) {
-				adminRepoMock.EXPECT().GetGroups(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, fn func(context.Context, *types.GroupEntity) error) error {
-					err := fn(ctx, &types.GroupEntity{ExternalId: "group:admin@raito.io", Email: "administrators@raito.io", Members: []string{"user:dieter@raito.io", "serviceAccount:sa@raito.io"}})
+			fields: fields{mockSetup: func(adminRepoMock *MockAdminRepository, doRepoMock *MockDataObjectRepository) {
+				adminRepoMock.EXPECT().GetGroups(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, fn func(context.Context, *iam.GroupEntity) error) error {
+					err := fn(ctx, &iam.GroupEntity{ExternalId: "group:admin@raito.io", Email: "administrators@raito.io", Members: []string{"user:dieter@raito.io", "serviceAccount:sa@raito.io"}})
 					if err != nil {
 						return err
 					}
 
-					return fn(ctx, &types.GroupEntity{ExternalId: "group:engineers@raito.io", Email: "engineers@raito.io", Members: []string{"user:ruben@raito.io", "group:admin@raito.io", "user:dieter@raito.io"}})
+					return fn(ctx, &iam.GroupEntity{ExternalId: "group:engineers@raito.io", Email: "engineers@raito.io", Members: []string{"user:ruben@raito.io", "group:admin@raito.io", "user:dieter@raito.io"}})
 				})
-				adminRepoMock.EXPECT().GetUsers(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, fn func(context.Context, *types.UserEntity) error) error {
-					err := fn(ctx, &types.UserEntity{ExternalId: "user:dieter@raito.io", Email: "dieter@raito.io", Name: "Dieter Wachters"})
+				adminRepoMock.EXPECT().GetUsers(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, fn func(context.Context, *iam.UserEntity) error) error {
+					err := fn(ctx, &iam.UserEntity{ExternalId: "user:dieter@raito.io", Email: "dieter@raito.io", Name: "Dieter Wachters"})
 					if err != nil {
 						return err
 					}
@@ -259,22 +261,23 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 		},
 		{
 			name: "Groups and users in bindings only",
-			fields: fields{mockSetup: func(adminRepoMock *gcp.MockAdminRepository, doRepoMock *gcp.MockDataObjectRepository) {
-				doRepoMock.EXPECT().UserAndGroups(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, userFn func(context.Context, string) error, groupFn func(context.Context, string) error) error {
-					err := userFn(ctx, "user:dieter@raito.io")
-					if err != nil {
-						return err
-					}
-
-					err = userFn(ctx, "user:bart@raito.io")
-					if err != nil {
-						return err
-					}
-
-					err = groupFn(ctx, "group:engineers@raito.io")
-
-					return userFn(ctx, "serviceAccount:serviceAccount123@raito.io")
-				})
+			fields: fields{mockSetup: func(adminRepoMock *MockAdminRepository, doRepoMock *MockDataObjectRepository) {
+				// TODO
+				//doRepoMock.EXPECT().UserAndGroups(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, userFn func(context.Context, string) error, groupFn func(context.Context, string) error) error {
+				//	err := userFn(ctx, "user:dieter@raito.io")
+				//	if err != nil {
+				//		return err
+				//	}
+				//
+				//	err = userFn(ctx, "user:bart@raito.io")
+				//	if err != nil {
+				//		return err
+				//	}
+				//
+				//	err = groupFn(ctx, "group:engineers@raito.io")
+				//
+				//	return userFn(ctx, "serviceAccount:serviceAccount123@raito.io")
+				//})
 			}},
 			args: args{
 				ctx:       context.Background(),
@@ -314,7 +317,7 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s, adminRepoMock, doRepoMock := createIdentityStoreSyncer(t)
+			s, adminRepoMock, doRepoMock := createIdentityStoreSyncer(t, gcp.NewIdentityStoreMetadata())
 			tt.fields.mockSetup(adminRepoMock, doRepoMock)
 
 			isHandlerMock := mocks.NewSimpleIdentityStoreIdentityHandler(t, 1)
@@ -333,11 +336,11 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 	}
 }
 
-func createIdentityStoreSyncer(t *testing.T) (*IdentityStoreSyncer, *gcp.MockAdminRepository, *gcp.MockDataObjectRepository) {
+func createIdentityStoreSyncer(t *testing.T, metadata *identity_store.MetaData) (*IdentityStoreSyncer, *MockAdminRepository, *MockDataObjectRepository) {
 	t.Helper()
 
-	adminRepoMock := gcp.NewMockAdminRepository(t)
-	dataObjectRepoMock := gcp.NewMockDataObjectRepository(t)
+	adminRepoMock := NewMockAdminRepository(t)
+	dataObjectRepoMock := NewMockDataObjectRepository(t)
 
-	return NewIdentityStoreSyncer(adminRepoMock, dataObjectRepoMock), adminRepoMock, dataObjectRepoMock
+	return NewIdentityStoreSyncer(adminRepoMock, dataObjectRepoMock, metadata), adminRepoMock, dataObjectRepoMock
 }

@@ -5,11 +5,10 @@ import (
 	"fmt"
 
 	"cloud.google.com/go/bigquery"
-	"github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/cli/base/util/config"
 
 	"github.com/raito-io/cli-plugin-gcp/internal/common"
-	"github.com/raito-io/cli-plugin-gcp/internal/iam/types"
+	"github.com/raito-io/cli-plugin-gcp/internal/iam"
 	"github.com/raito-io/cli-plugin-gcp/internal/org"
 )
 
@@ -26,52 +25,42 @@ func NewDataObjectIterator(repo *Repository, configMap *config.ConfigMap) *DataO
 }
 
 func (it *DataObjectIterator) DataObjects(ctx context.Context, fn func(ctx context.Context, object *org.GcpOrgEntity) error) error {
-	ds := org.GcpOrgEntity{
-		EntryName:   it.projectId,
-		Id:          it.projectId,
-		Name:        it.projectId,
-		FullName:    it.projectId,
-		Type:        data_source.Datasource,
-		Description: fmt.Sprintf("BigQuery DataSource for GCP project %s", it.projectId),
-		Location:    "",
-		PolicyTags:  nil,
-		Parent:      nil,
-	}
+	ds := it.repo.Project()
 
-	err := fn(ctx, &ds)
+	err := fn(ctx, ds)
 	if err != nil {
 		return err
 	}
 
-	err = it.repo.ListDataSets(ctx, &ds, func(ctx context.Context, entity *org.GcpOrgEntity, dataset *bigquery.Dataset) error {
-		err := fn(ctx, entity)
-		if err != nil {
-			return err
+	err = it.repo.ListDataSets(ctx, ds, func(ctx context.Context, entity *org.GcpOrgEntity, dataset *bigquery.Dataset) error {
+		err2 := fn(ctx, entity)
+		if err2 != nil {
+			return err2
 		}
 
-		err = it.repo.ListTables(ctx, dataset, entity, func(ctx context.Context, entity *org.GcpOrgEntity, table *bigquery.Table) error {
-			err = fn(ctx, entity)
-			if err != nil {
-				return err
+		err2 = it.repo.ListTables(ctx, dataset, entity, func(ctx context.Context, entity *org.GcpOrgEntity, table *bigquery.Table) error {
+			err2 = fn(ctx, entity)
+			if err2 != nil {
+				return err2
 			}
 
-			err = it.repo.ListColumns(ctx, table, entity, func(ctx context.Context, entity *org.GcpOrgEntity) error {
-				err = fn(ctx, entity)
+			err2 = it.repo.ListColumns(ctx, table, entity, func(ctx context.Context, entity *org.GcpOrgEntity) error {
+				err2 = fn(ctx, entity)
 				if err != nil {
-					return err
+					return err2
 				}
 
 				return nil
 			})
-			if err != nil {
-				return err
+			if err2 != nil {
+				return err2
 			}
 
 			return nil
 		})
 
-		if err != nil {
-			return err
+		if err2 != nil {
+			return err2
 		}
 
 		return nil
@@ -84,7 +73,7 @@ func (it *DataObjectIterator) DataObjects(ctx context.Context, fn func(ctx conte
 	return nil
 }
 
-func (it *DataObjectIterator) Bindings(ctx context.Context, fn func(ctx context.Context, dataObject *org.GcpOrgEntity, bindings []types.IamBinding) error) error {
+func (it *DataObjectIterator) Bindings(ctx context.Context, fn func(ctx context.Context, dataObject *org.GcpOrgEntity, bindings []iam.IamBinding) error) error {
 	return it.DataObjects(ctx, func(ctx context.Context, object *org.GcpOrgEntity) error {
 		bindings, err := it.repo.GetBindings(ctx, object)
 		if err != nil {
@@ -98,4 +87,12 @@ func (it *DataObjectIterator) Bindings(ctx context.Context, fn func(ctx context.
 
 		return nil
 	})
+}
+
+func (it *DataObjectIterator) AddBinding(ctx context.Context, binding *iam.IamBinding) error {
+	return it.repo.AddBinding(ctx, binding)
+}
+
+func (it *DataObjectIterator) RemoveBinding(ctx context.Context, binding *iam.IamBinding) error {
+	return it.repo.RemoveBinding(ctx, binding)
 }

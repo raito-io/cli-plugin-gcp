@@ -9,9 +9,14 @@ import (
 
 var Wired = wire.NewSet(
 	NewBiqQueryClient,
+	NewPolicyTagClient,
+	NewDataPolicyClient,
 
 	NewRepository,
+	NewDataCatalogRepository,
 	NewDataObjectIterator,
+
+	NewBqMaskingService,
 
 	NewDataSourceMetaData,
 	NewIdentityStoreMetadata,

@@ -7,7 +7,7 @@ import (
 	ds "github.com/raito-io/cli/base/data_source"
 
 	"github.com/raito-io/cli-plugin-gcp/internal/common/roles"
-	"github.com/raito-io/cli-plugin-gcp/internal/iam/types"
+	"github.com/raito-io/cli-plugin-gcp/internal/iam"
 )
 
 func NewDataSourceMetaData() *ds.MetaData {
@@ -34,9 +34,9 @@ func NewDataSourceMetaData() *ds.MetaData {
 		roles.RolesBigQueryCatalogFineGrainedAccess.ToDataObjectTypePermission(roles.ServiceGcp),
 	}
 
-	org := strings.ToLower(types.Organization.String())
-	project := strings.ToLower(types.Project.String())
-	folder := strings.ToLower(types.Folder.String())
+	org := strings.ToLower(iam.Organization.String())
+	project := strings.ToLower(iam.Project.String())
+	folder := strings.ToLower(iam.Folder.String())
 
 	return &ds.MetaData{
 		Type:                  "gcp",

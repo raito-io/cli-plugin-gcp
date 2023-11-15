@@ -11,7 +11,7 @@ import (
 	"github.com/raito-io/cli/base/wrappers"
 
 	"github.com/raito-io/cli-plugin-gcp/internal/common"
-	"github.com/raito-io/cli-plugin-gcp/internal/iam/types"
+	"github.com/raito-io/cli-plugin-gcp/internal/iam"
 	"github.com/raito-io/cli-plugin-gcp/internal/org"
 
 	is "github.com/raito-io/cli/base/identity_store"
@@ -19,13 +19,13 @@ import (
 
 //go:generate go run github.com/vektra/mockery/v2 --name=AdminRepository --with-expecter --inpackage
 type AdminRepository interface {
-	GetUsers(ctx context.Context, fn func(ctx context.Context, entity *types.UserEntity) error) error
-	GetGroups(ctx context.Context, fn func(ctx context.Context, entity *types.GroupEntity) error) error
+	GetUsers(ctx context.Context, fn func(ctx context.Context, entity *iam.UserEntity) error) error
+	GetGroups(ctx context.Context, fn func(ctx context.Context, entity *iam.GroupEntity) error) error
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name=DataObjectRepository --with-expecter --inpackage
 type DataObjectRepository interface {
-	Bindings(ctx context.Context, fn func(ctx context.Context, dataObject *org.GcpOrgEntity, bindings []types.IamBinding) error) error
+	Bindings(ctx context.Context, fn func(ctx context.Context, dataObject *org.GcpOrgEntity, bindings []iam.IamBinding) error) error
 }
 
 type IdentityStoreSyncer struct {
@@ -84,11 +84,14 @@ func (s *IdentityStoreSyncer) SyncIdentityStore(ctx context.Context, identityHan
 }
 
 func (s *IdentityStoreSyncer) syncBindingUsersAndGroups(ctx context.Context, identityHandler wrappers.IdentityStoreIdentityHandler, userIds set.Set[string], groups map[string]*is.Group) error {
-	err := s.dataObjectRepo.Bindings(ctx, func(ctx context.Context, dataObject *org.GcpOrgEntity, bindings []types.IamBinding) error {
+	err := s.dataObjectRepo.Bindings(ctx, func(ctx context.Context, dataObject *org.GcpOrgEntity, bindings []iam.IamBinding) error {
 		for _, binding := range bindings {
-			email := strings.SplitN(binding.Member, ":", 2)[1]
+			memberParts := strings.SplitN(binding.Member, ":", 2)
+			email := memberParts[1]
+			memberPrefix := memberParts[0]
 
-			if strings.HasPrefix(binding.Member, "user:") || strings.HasPrefix(binding.Member, "serviceAccount:") {
+			switch memberPrefix {
+			case "user", "serviceAccount":
 				if userIds.Contains(binding.Member) {
 					continue
 				}
@@ -108,7 +111,7 @@ func (s *IdentityStoreSyncer) syncBindingUsersAndGroups(ctx context.Context, ide
 				if err != nil {
 					common.Logger.Error(fmt.Sprintf("Failed to add user %q: %s", binding.Member, err.Error()))
 				}
-			} else if strings.HasPrefix(binding.Member, "group:") {
+			case "group":
 				if _, found := groups[binding.Member]; found {
 					continue
 				}
@@ -127,7 +130,9 @@ func (s *IdentityStoreSyncer) syncBindingUsersAndGroups(ctx context.Context, ide
 				if err != nil {
 					common.Logger.Error(fmt.Sprintf("Failed to add group %q: %s", binding.Member, err.Error()))
 				}
-			} else {
+			case "special_group":
+				common.Logger.Info(fmt.Sprintf("Ignore special group %q", binding.Member))
+			default:
 				common.Logger.Warn(fmt.Sprintf("Ignore unknown member type: %s", binding.Member))
 			}
 		}
@@ -144,7 +149,7 @@ func (s *IdentityStoreSyncer) syncBindingUsersAndGroups(ctx context.Context, ide
 func (s *IdentityStoreSyncer) syncGcpUsers(ctx context.Context, identityHandler wrappers.IdentityStoreIdentityHandler, groupMembership map[string]set.Set[string]) (set.Set[string], error) {
 	userIds := set.NewSet[string]()
 
-	err := s.adminRepository.GetUsers(ctx, func(ctx context.Context, entity *types.UserEntity) error {
+	err := s.adminRepository.GetUsers(ctx, func(ctx context.Context, entity *iam.UserEntity) error {
 		common.Logger.Debug(fmt.Sprintf("Found GCP user: %s", entity.ExternalId))
 
 		userIds.Add(entity.ExternalId)
@@ -160,7 +165,12 @@ func (s *IdentityStoreSyncer) syncGcpUsers(ctx context.Context, identityHandler 
 			user.GroupExternalIds = groupMembership[entity.ExternalId].Slice()
 		}
 
-		return identityHandler.AddUsers(&user)
+		err := identityHandler.AddUsers(&user)
+		if err != nil {
+			return fmt.Errorf("add user to handler: %w", err)
+		}
+
+		return nil
 	})
 
 	if err != nil {
@@ -175,7 +185,7 @@ func (s *IdentityStoreSyncer) syncGcpGroups(ctx context.Context, identityHandler
 	groups := map[string]*is.Group{}
 
 	// Get GCP groups
-	err := s.adminRepository.GetGroups(ctx, func(ctx context.Context, entity *types.GroupEntity) error {
+	err := s.adminRepository.GetGroups(ctx, func(ctx context.Context, entity *iam.GroupEntity) error {
 		common.Logger.Debug(fmt.Sprintf("Found GCP group: %s", entity.ExternalId))
 
 		groups[entity.ExternalId] = &is.Group{
@@ -209,7 +219,7 @@ func (s *IdentityStoreSyncer) syncGcpGroups(ctx context.Context, identityHandler
 		err = identityHandler.AddGroups(g)
 
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, fmt.Errorf("add group to handler: %w", err)
 		}
 	}
 

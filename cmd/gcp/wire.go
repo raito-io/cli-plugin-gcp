@@ -48,10 +48,12 @@ func InitializeDataAccessSyncer(ctx context.Context, configMap *config.ConfigMap
 	wire.Build(
 		gcp.Wired,
 		org.Wired,
+		syncer.Wired,
 
-		wire.Bind(new(wrappers.AccessProviderSyncer), new(*gcp.AccessSyncer)),
-		wire.Bind(new(gcp.ProjectRepo), new(*org.ProjectRepository)),
-		wire.Bind(new(gcp.GcpBindingRepository), new(*org.GcpDataObjectIterator)),
+		wire.Bind(new(wrappers.AccessProviderSyncer), new(*syncer.AccessSyncer)),
+		wire.Bind(new(syncer.ProjectRepo), new(*org.ProjectRepository)),
+		wire.Bind(new(syncer.BindingRepository), new(*org.GcpDataObjectIterator)),
+		wire.Bind(new(syncer.MaskingService), new(*gcp.NoMasking)),
 	)
 
 	return nil, nil, nil

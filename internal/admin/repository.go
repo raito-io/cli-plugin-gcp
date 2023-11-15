@@ -9,7 +9,7 @@ import (
 	gcpadmin "google.golang.org/api/admin/directory/v1"
 
 	"github.com/raito-io/cli-plugin-gcp/internal/common"
-	"github.com/raito-io/cli-plugin-gcp/internal/iam/types"
+	"github.com/raito-io/cli-plugin-gcp/internal/iam"
 )
 
 const maxPageItems = 100
@@ -28,7 +28,7 @@ func NewAdminRepository(client *gcpadmin.Service, configMap *config.ConfigMap) *
 	}
 }
 
-func (r *AdminRepository) GetUsers(ctx context.Context, fn func(ctx context.Context, entity *types.UserEntity) error) error {
+func (r *AdminRepository) GetUsers(ctx context.Context, fn func(ctx context.Context, entity *iam.UserEntity) error) error {
 	nextPageToken := ""
 
 	for {
@@ -48,7 +48,7 @@ func (r *AdminRepository) GetUsers(ctx context.Context, fn func(ctx context.Cont
 				continue
 			}
 
-			err = fn(ctx, &types.UserEntity{ExternalId: fmt.Sprintf("user:%s", u.PrimaryEmail), Name: u.Name.FullName, Email: u.PrimaryEmail})
+			err = fn(ctx, &iam.UserEntity{ExternalId: fmt.Sprintf("user:%s", u.PrimaryEmail), Name: u.Name.FullName, Email: u.PrimaryEmail})
 			if err != nil {
 				return err
 			}
@@ -64,7 +64,7 @@ func (r *AdminRepository) GetUsers(ctx context.Context, fn func(ctx context.Cont
 	return nil
 }
 
-func (r *AdminRepository) GetGroups(ctx context.Context, fn func(ctx context.Context, entity *types.GroupEntity) error) error {
+func (r *AdminRepository) GetGroups(ctx context.Context, fn func(ctx context.Context, entity *iam.GroupEntity) error) error {
 	nextPageToken := ""
 
 	for {
@@ -85,7 +85,7 @@ func (r *AdminRepository) GetGroups(ctx context.Context, fn func(ctx context.Con
 				return fmt.Errorf("group members of group %q: %w", g.Id, err2)
 			}
 
-			err2 = fn(ctx, &types.GroupEntity{ExternalId: fmt.Sprintf("group:%s", g.Email), Email: g.Email, Members: groupMembers})
+			err2 = fn(ctx, &iam.GroupEntity{ExternalId: fmt.Sprintf("group:%s", g.Email), Email: g.Email, Members: groupMembers})
 			if err2 != nil {
 				return err2
 			}
