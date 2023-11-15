@@ -6,7 +6,7 @@ before:
     - make wire
 builds:
   - id: "gcp"
-    main: ./cmd/gcp/main.go
+    main: ./cmd/gcp/...
     env:
       - CGO_ENABLED=0
     goos:
@@ -15,7 +15,7 @@ builds:
     ldflags:
       - -X version.Version={{.Version}}
   - id: "bigquery"
-    main: ./cmd/bq/main.go
+    main: ./cmd/bq/...
     env:
       - CGO_ENABLED=0
     goos:
