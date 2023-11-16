@@ -546,7 +546,7 @@ func (c *Repository) getTableBindings(ctx context.Context, entity *org.GcpOrgEnt
 				Role:         string(role),
 				Member:       m,
 				Resource:     entity.Id,
-				ResourceType: "table",
+				ResourceType: entity.Type,
 			})
 		}
 	}
