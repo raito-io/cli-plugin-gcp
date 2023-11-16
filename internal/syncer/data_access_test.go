@@ -13,6 +13,7 @@ import (
 	"github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/raito-io/cli/base/wrappers/mocks"
+	"github.com/raito-io/golang-set/set"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -350,7 +351,7 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 	type fields struct {
 		mocksSetup           func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, mockMaskingService *MockMaskingService)
 		metadata             *data_source.MetaData
-		raitoManagedBindings []iam.IamBinding
+		raitoManagedBindings set.Set[iam.IamBinding]
 	}
 	type args struct {
 		ctx       context.Context
@@ -371,7 +372,7 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 
 				},
 				metadata:             gcp.NewDataSourceMetaData(),
-				raitoManagedBindings: []iam.IamBinding{},
+				raitoManagedBindings: set.NewSet[iam.IamBinding](),
 			},
 			args: args{
 				ctx:       context.Background(),
@@ -468,20 +469,20 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 
 				},
 				metadata: gcp.NewDataSourceMetaData(),
-				raitoManagedBindings: []iam.IamBinding{
-					{
+				raitoManagedBindings: set.NewSet[iam.IamBinding](
+					iam.IamBinding{
 						Member:       "user:ruben@raito.io",
 						Resource:     "project1",
 						ResourceType: "project",
 						Role:         "roles/owner",
 					},
-					{
+					iam.IamBinding{
 						Member:       "group:sales@raito.io",
 						Resource:     "folder1",
 						ResourceType: "folder",
 						Role:         "roles/viewer",
 					},
-				},
+				),
 			},
 			args: args{
 				ctx:       context.Background(),
@@ -578,7 +579,7 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 
 				},
 				metadata:             gcp.NewDataSourceMetaData(),
-				raitoManagedBindings: []iam.IamBinding{},
+				raitoManagedBindings: set.NewSet[iam.IamBinding](),
 			},
 			args: args{
 				ctx: context.Background(),
@@ -666,7 +667,7 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 					projectRepo.EXPECT().GetProjectOwner(mock.Anything, mock.Anything).Return([]string{"user:owner@raito.io"}, []string{"user:editor@raito.io"}, []string{"user:viewer@raito.io"}, nil).Once()
 				},
 				metadata:             gcp.NewDataSourceMetaData(),
-				raitoManagedBindings: []iam.IamBinding{},
+				raitoManagedBindings: set.NewSet[iam.IamBinding](),
 			},
 			args: args{
 				ctx: context.Background(),
@@ -782,7 +783,7 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 
 				},
 				metadata:             gcp.NewDataSourceMetaData(),
-				raitoManagedBindings: []iam.IamBinding{},
+				raitoManagedBindings: set.NewSet[iam.IamBinding](),
 			},
 			args: args{
 				ctx: context.Background(),
@@ -943,7 +944,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 		fields           fields
 		args             args
 		want             []importer.AccessProviderSyncFeedback
-		expectedBindings []iam.IamBinding
+		expectedBindings set.Set[iam.IamBinding]
 		wantErr          assert.ErrorAssertionFunc
 	}{
 		{
@@ -960,7 +961,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 				configMap:       &config.ConfigMap{Parameters: map[string]string{}},
 			},
 			want:             []importer.AccessProviderSyncFeedback{},
-			expectedBindings: []iam.IamBinding{},
+			expectedBindings: set.NewSet[iam.IamBinding](),
 			wantErr:          assert.NoError,
 		},
 		{
@@ -1059,44 +1060,44 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 					Type:           ptr.String(access_provider.AclSet),
 				},
 			},
-			expectedBindings: []iam.IamBinding{
-				{
+			expectedBindings: set.NewSet[iam.IamBinding](
+				iam.IamBinding{
 					Member:       "group:sales@raito.io",
 					Role:         "roles/owner",
 					Resource:     "project1",
 					ResourceType: "project",
 				},
-				{
+				iam.IamBinding{
 					Member:       "user:ruben@raito.io",
 					Role:         "roles/owner",
 					Resource:     "project1",
 					ResourceType: "project",
 				},
-				{
+				iam.IamBinding{
 					Member:       "serviceAccount:sa@raito.gserviceaccount.com",
 					Role:         "roles/owner",
 					Resource:     "project1",
 					ResourceType: "project",
 				},
-				{
+				iam.IamBinding{
 					Member:       "group:sales@raito.io",
 					Role:         "roles/editor",
 					Resource:     "folder1",
 					ResourceType: "folder",
 				},
-				{
+				iam.IamBinding{
 					Member:       "user:ruben@raito.io",
 					Role:         "roles/editor",
 					Resource:     "folder1",
 					ResourceType: "folder",
 				},
-				{
+				iam.IamBinding{
 					Member:       "serviceAccount:sa@raito.gserviceaccount.com",
 					Role:         "roles/editor",
 					Resource:     "folder1",
 					ResourceType: "folder",
 				},
-			},
+			),
 			wantErr: assert.NoError,
 		},
 	}
@@ -1112,7 +1113,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 			}
 
 			assert.ElementsMatch(t, tt.want, feedbackHandler.AccessProviderFeedback)
-			assert.ElementsMatch(t, tt.expectedBindings, a.raitoManagedBindings)
+			assert.Equal(t, tt.expectedBindings, a.raitoManagedBindings)
 		})
 	}
 }
