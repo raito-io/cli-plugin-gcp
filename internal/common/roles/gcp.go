@@ -25,8 +25,8 @@ var RolesOwner = GcpRole{
 var RolesEditor = GcpRole{
 	Name:                   "roles/editor",
 	Description:            "View, create, update, and delete most Google Cloud resources. See the list of included permissions.",
-	GlobalPermissions:      map[Service][]string{ServiceGcp: {ds.Read, ds.Write}},
-	UsageGlobalPermissions: map[Service][]string{ServiceGcp: {ds.Write}},
+	GlobalPermissions:      map[Service][]string{ServiceGcp: {ds.Write}},
+	UsageGlobalPermissions: map[Service][]string{ServiceGcp: {ds.Read, ds.Write}},
 }
 
 // RolesViewer Permissions for read-only actions that don't affect state, such as viewing (but not modifying) existing resources.
