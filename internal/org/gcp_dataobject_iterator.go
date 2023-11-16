@@ -58,6 +58,8 @@ func (r *GcpDataObjectIterator) DataObjects(ctx context.Context, fn func(ctx con
 
 func (r *GcpDataObjectIterator) Bindings(ctx context.Context, fn func(ctx context.Context, dataObject *GcpOrgEntity, bindings []iam.IamBinding) error) error {
 	return r.sync(ctx, func(ctx context.Context, dataObject *GcpOrgEntity) error {
+		common.Logger.Debug(fmt.Sprintf("Fetch bindings for %s", dataObject.Id))
+
 		var bindings []iam.IamBinding
 		var err error
 

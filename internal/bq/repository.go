@@ -27,6 +27,8 @@ const (
 	specialGroupPrefix   = "special_group:"
 )
 
+var bqPolicyCache = make(map[string][]iam2.IamBinding)
+
 type ProjectClient interface {
 	GetIamPolicy(ctx context.Context, projectId string) ([]iam2.IamBinding, error)
 	UpdateBinding(ctx context.Context, dataObject *iam2.DataObjectReference, bindingsToAdd []iam2.IamBinding, bindingsToDelete []iam2.IamBinding) error
@@ -219,18 +221,39 @@ func (c *Repository) ListViews(ctx context.Context, ds *bigquery.Dataset, parent
 }
 
 func (c *Repository) GetBindings(ctx context.Context, entity *org.GcpOrgEntity) ([]iam2.IamBinding, error) {
+	if bindings, found := bqPolicyCache[entity.Id]; found {
+		common.Logger.Debug(fmt.Sprintf("Found cached bindings for entity %s", entity.Id))
+
+		return bindings, nil
+	}
+
+	common.Logger.Info(fmt.Sprintf("Fetching BigQuery IAM Policy for %s", entity.Id))
+
 	entityIdParts := strings.Split(entity.Id, ".")
+
+	var bindings []iam2.IamBinding
+	var err error
 
 	switch entity.Type {
 	case "project":
-		return c.projectClient.GetIamPolicy(ctx, c.projectId)
+		bindings, err = c.projectClient.GetIamPolicy(ctx, c.projectId)
 	case data_source.Dataset:
-		return c.getDataSetBindings(ctx, entity, entityIdParts)
+		bindings, err = c.getDataSetBindings(ctx, entity, entityIdParts)
 	case data_source.Table, data_source.View:
-		return c.getTableBindings(ctx, entity, entityIdParts)
+		bindings, err = c.getTableBindings(ctx, entity, entityIdParts)
 	}
 
-	return nil, nil
+	if err != nil && strings.Contains(err.Error(), "404") {
+		common.Logger.Warn(fmt.Sprintf("Encountered error while fetching IAM Policy for %s: %s", entity.FullName, err.Error()))
+
+		return bindings, nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	bqPolicyCache[entity.Id] = bindings
+
+	return bindings, nil
 }
 
 func (c Repository) UpdateBindings(ctx context.Context, dataObject *iam2.DataObjectReference, addBindings []iam2.IamBinding, removeBindings []iam2.IamBinding) error {
