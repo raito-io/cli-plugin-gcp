@@ -36,7 +36,7 @@ func (r *OrganizationRepository) GetOrganization(ctx context.Context) (*GcpOrgEn
 		Name: fmt.Sprintf("organizations/%s", r.organizationId),
 	})
 
-	name := fmt.Sprintf("gcp-org-%s", r.organizationId)
+	name := r.raitoOrgId()
 
 	if err != nil {
 		return nil, fmt.Errorf("get organization %q: %w", r.organizationId, err)
@@ -53,17 +53,32 @@ func (r *OrganizationRepository) GetOrganization(ctx context.Context) (*GcpOrgEn
 }
 
 func (r *OrganizationRepository) GetIamPolicy(ctx context.Context, _ string) ([]iam.IamBinding, error) {
-	return getAndParseBindings(ctx, r.organizationClient, "organization", r.organizationId)
+	bindings, err := getAndParseBindings(ctx, r.organizationClient, "organization", r.organizationId)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range bindings {
+		bindings[i].Resource = r.raitoOrgId()
+	}
+
+	return bindings, nil
 }
 
 func (r *OrganizationRepository) AddBinding(ctx context.Context, binding *iam.IamBinding) error {
-	binding.Resource = r.organizationId
+	b := *binding
+	b.Resource = r.organizationId
 
-	return addBinding(ctx, r.organizationClient, binding)
+	return addBinding(ctx, r.organizationClient, &b)
 }
 
 func (r *OrganizationRepository) RemoveBinding(ctx context.Context, binding *iam.IamBinding) error {
-	binding.Resource = r.organizationId
+	b := *binding
+	b.Resource = r.organizationId
 
-	return removeBinding(ctx, r.organizationClient, binding)
+	return removeBinding(ctx, r.organizationClient, &b)
+}
+
+func (r *OrganizationRepository) raitoOrgId() string {
+	return fmt.Sprintf("gcp-org-%s", r.organizationId)
 }

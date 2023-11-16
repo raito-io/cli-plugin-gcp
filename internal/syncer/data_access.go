@@ -51,7 +51,7 @@ type AccessSyncer struct {
 	addMaskedReader bool
 
 	// cache
-	raitoManagedBindings []iam.IamBinding
+	raitoManagedBindings set.Set[iam.IamBinding]
 	raitoMasks           set.Set[string]
 }
 
@@ -66,13 +66,14 @@ func NewDataAccessSyncer(bindingRepo BindingRepository, projectRepo ProjectRepo,
 	}
 
 	return &AccessSyncer{
-		bindingRepo:     bindingRepo,
-		projectRepo:     projectRepo,
-		maskingService:  maskingService,
-		metadata:        metadata,
-		maskingSupport:  maskingSupport,
-		addMaskedReader: configmap.GetBoolWithDefault(common.GcpMaskedReader, false) || configmap.GetBoolWithDefault(common.BqCatalogEnabled, false),
-		raitoMasks:      set.NewSet[string](),
+		bindingRepo:          bindingRepo,
+		projectRepo:          projectRepo,
+		maskingService:       maskingService,
+		metadata:             metadata,
+		maskingSupport:       maskingSupport,
+		addMaskedReader:      configmap.GetBoolWithDefault(common.GcpMaskedReader, false) || configmap.GetBoolWithDefault(common.BqCatalogEnabled, false),
+		raitoManagedBindings: set.NewSet[iam.IamBinding](),
+		raitoMasks:           set.NewSet[string](),
 	}
 }
 
@@ -166,17 +167,17 @@ func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessPro
 	}
 
 	for b, aps := range bindingsToDelete {
-		common.Logger.Info(fmt.Sprintf("Revoking binding %+v", b))
+		common.Logger.Debug(fmt.Sprintf("Revoking binding %+v", b))
 
 		a.handleErrors(a.bindingRepo.RemoveBinding(ctx, &b), apFeedback, aps)
 	}
 
 	for b, aps := range bindingsToAdd {
-		common.Logger.Info(fmt.Sprintf("Granting binding %+v", b))
+		common.Logger.Debug(fmt.Sprintf("Granting binding %+v", b))
 
 		a.handleErrors(a.bindingRepo.AddBinding(ctx, &b), apFeedback, aps)
 
-		a.raitoManagedBindings = append(a.raitoManagedBindings, b)
+		a.raitoManagedBindings.Add(b)
 	}
 
 	var merr error
@@ -215,9 +216,6 @@ func (a *AccessSyncer) ConvertBindingsToAccessProviders(ctx context.Context, con
 	}
 
 	for _, binding := range bindings {
-		if strings.EqualFold(binding.ResourceType, iam.Organization.String()) {
-			binding.Resource = GetOrgDataObjectName(configMap)
-		}
 
 		managed := a.isRaitoManagedBinding(binding)
 
@@ -226,16 +224,8 @@ func (a *AccessSyncer) ConvertBindingsToAccessProviders(ctx context.Context, con
 			continue
 		}
 
-		ignore := false
-
-		for _, ignoredBinding := range a.raitoManagedBindings {
-			if ignoredBinding.Equals(binding) {
-				ignore = true
-				break
-			}
-		}
-
-		if ignore {
+		if a.raitoManagedBindings.Contains(binding) {
+			common.Logger.Debug(fmt.Sprintf("Skipping role %s for %s on %s %s as it is managed by raito", binding.Role, binding.Member, binding.Resource, binding.ResourceType))
 			continue
 		}
 
