@@ -68,10 +68,6 @@ func (r *FolderRepository) GetIamPolicy(ctx context.Context, folderId string) ([
 	return getAndParseBindings(ctx, r.folderClient, "folder", folderId)
 }
 
-func (r *FolderRepository) AddBinding(ctx context.Context, binding *iam.IamBinding) error {
-	return addBinding(ctx, r.folderClient, binding)
-}
-
-func (r *FolderRepository) RemoveBinding(ctx context.Context, binding *iam.IamBinding) error {
-	return removeBinding(ctx, r.folderClient, binding)
+func (r *FolderRepository) UpdateBinding(ctx context.Context, dataObject *iam.DataObjectReference, bindingsToAdd []iam.IamBinding, bindingsToDelete []iam.IamBinding) error {
+	return updateBindings(ctx, r.folderClient, dataObject, bindingsToAdd, bindingsToDelete)
 }

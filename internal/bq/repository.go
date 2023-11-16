@@ -27,17 +27,24 @@ const (
 	specialGroupPrefix   = "special_group:"
 )
 
-type Repository struct {
-	client     *bigquery.Client
-	projectId  string
-	listHidden bool
+type ProjectClient interface {
+	GetIamPolicy(ctx context.Context, projectId string) ([]iam2.IamBinding, error)
+	UpdateBinding(ctx context.Context, dataObject *iam2.DataObjectReference, bindingsToAdd []iam2.IamBinding, bindingsToDelete []iam2.IamBinding) error
 }
 
-func NewRepository(client *bigquery.Client, configMap *config.ConfigMap) *Repository {
+type Repository struct {
+	projectClient ProjectClient
+	client        *bigquery.Client
+	projectId     string
+	listHidden    bool
+}
+
+func NewRepository(projectClient ProjectClient, client *bigquery.Client, configMap *config.ConfigMap) *Repository {
 	return &Repository{
-		client:     client,
-		projectId:  configMap.GetString(common.GcpProjectId),
-		listHidden: configMap.GetBool(common.BqIncludeHiddenDatasets),
+		projectClient: projectClient,
+		client:        client,
+		projectId:     configMap.GetString(common.GcpProjectId),
+		listHidden:    configMap.GetBool(common.BqIncludeHiddenDatasets),
 	}
 }
 
@@ -215,21 +222,29 @@ func (c *Repository) GetBindings(ctx context.Context, entity *org.GcpOrgEntity) 
 	entityIdParts := strings.Split(entity.Id, ".")
 
 	switch entity.Type {
+	case "project":
+		return c.projectClient.GetIamPolicy(ctx, c.projectId)
 	case data_source.Dataset:
 		return c.getDataSetBindings(ctx, entity, entityIdParts)
-	case data_source.Table:
+	case data_source.Table, data_source.View:
 		return c.getTableBindings(ctx, entity, entityIdParts)
 	}
 
 	return nil, nil
 }
 
-func (c *Repository) AddBinding(ctx context.Context, binding *iam2.IamBinding) error {
-	return c.updateBinding(ctx, binding, false)
-}
+func (c Repository) UpdateBindings(ctx context.Context, dataObject *iam2.DataObjectReference, addBindings []iam2.IamBinding, removeBindings []iam2.IamBinding) error {
+	entityIdParts := strings.Split(dataObject.FullName, ".")
 
-func (c *Repository) RemoveBinding(ctx context.Context, binding *iam2.IamBinding) error {
-	return c.updateBinding(ctx, binding, true)
+	if len(entityIdParts) == 1 {
+		return c.projectClient.UpdateBinding(ctx, dataObject, addBindings, removeBindings)
+	} else if len(entityIdParts) == 2 {
+		return c.updateDatasetBindings(ctx, entityIdParts[1], addBindings, removeBindings)
+	} else if len(entityIdParts) == 3 {
+		return c.updateTableBindings(ctx, entityIdParts[1], entityIdParts[2], addBindings, removeBindings)
+	}
+
+	return fmt.Errorf("unknown entity type for %s (%s)", dataObject.FullName, dataObject.ObjectType)
 }
 
 func (c *Repository) GetDataUsage(ctx context.Context, windowStart *time.Time, usageFirstUsed *time.Time, usageLastUsed *time.Time, fn func(ctx context.Context, entity *BQInformationSchemaEntity) error) error {
@@ -406,19 +421,6 @@ func (c *Repository) getDataUsage(ctx context.Context, region string, windowStar
 	return nil
 }
 
-func (c *Repository) updateBinding(ctx context.Context, binding *iam2.IamBinding, revoke bool) error {
-	entityParts := strings.Split(binding.Resource, ".")
-
-	switch binding.ResourceType {
-	case data_source.Dataset:
-		return c.setDataSetBinding(ctx, entityParts[1], binding, revoke)
-	case data_source.Table:
-		return c.setTableBinding(ctx, entityParts[1], entityParts[2], binding, revoke)
-	}
-
-	return nil
-}
-
 func (c *Repository) getDataSetBindings(ctx context.Context, entity *org.GcpOrgEntity, entityIdParts []string) ([]iam2.IamBinding, error) {
 	ds := c.client.Dataset(entityIdParts[1])
 
@@ -453,35 +455,48 @@ func (c *Repository) getDataSetBindings(ctx context.Context, entity *org.GcpOrgE
 	return resultBindings, nil
 }
 
-func (c *Repository) setDataSetBinding(ctx context.Context, dataset string, binding *iam2.IamBinding, revoke bool) error {
+func (c *Repository) updateDatasetBindings(ctx context.Context, dataset string, bindingsToAdd []iam2.IamBinding, bindingsToRemove []iam2.IamBinding) error {
 	ds := c.client.Dataset(dataset)
+
+	bindingsToRemoveMap := make(map[string]set.Set[string]) //Role -> Members
+	for i := range bindingsToRemove {
+		if _, found := bindingsToRemoveMap[bindingsToRemove[i].Role]; !found {
+			bindingsToRemoveMap[bindingsToRemove[i].Role] = set.NewSet[string]()
+		}
+		bindingsToRemoveMap[bindingsToRemove[i].Role].Add(bindingsToRemove[i].Member)
+	}
 
 	dsMeta, err := ds.Metadata(ctx)
 	if err != nil {
 		return fmt.Errorf("metadata of dataset %q: %w", dataset, err)
 	}
 
-	update := bigquery.DatasetMetadataToUpdate{}
-
-	memberEntityType, memberEntityId, err := parseMember(binding.Member)
-	if err != nil {
-		return fmt.Errorf("parse member: %w", err)
+	update := bigquery.DatasetMetadataToUpdate{
+		Access: []*bigquery.AccessEntry{},
 	}
 
-	if !revoke {
-		update.Access = dsMeta.Access
-		update.Access = append(update.Access, &bigquery.AccessEntry{
-			Role:       getBQEntityForRole(binding.Role),
-			EntityType: memberEntityType,
-			Entity:     memberEntityId,
-		})
-	} else {
-		update.Access = []*bigquery.AccessEntry{}
-		for _, a := range dsMeta.Access {
-			if a.Entity != memberEntityId && a.EntityType != memberEntityType && a.Role != getBQEntityForRole(binding.Role) {
+	// Remove old bindings
+	for _, a := range dsMeta.Access {
+		memberId := fmt.Sprintf("%s:%s", entityToString(a.EntityType), a.Entity)
+		if membersEntities, found := bindingsToRemoveMap[string(a.Role)]; found {
+			if !membersEntities.Contains(memberId) {
 				update.Access = append(update.Access, a)
 			}
 		}
+	}
+
+	// Add new bindings
+	for i := range bindingsToAdd {
+		memberEntityType, memberEntityId, err2 := parseMember(bindingsToAdd[i].Member)
+		if err2 != nil {
+			return fmt.Errorf("parse member %q: %w", bindingsToAdd[i].Member, err2)
+		}
+
+		update.Access = append(update.Access, &bigquery.AccessEntry{
+			Role:       getBQEntityForRole(bindingsToAdd[i].Role),
+			EntityType: memberEntityType,
+			Entity:     memberEntityId,
+		})
 	}
 
 	_, err = ds.Update(ctx, update, dsMeta.ETag)
@@ -516,7 +531,7 @@ func (c *Repository) getTableBindings(ctx context.Context, entity *org.GcpOrgEnt
 	return bindings, nil
 }
 
-func (c *Repository) setTableBinding(ctx context.Context, dataset, table string, binding *iam2.IamBinding, revoke bool) error {
+func (c *Repository) updateTableBindings(ctx context.Context, dataset, table string, bindingsToAdd []iam2.IamBinding, bindingsToRemove []iam2.IamBinding) error {
 	t := c.client.Dataset(dataset).Table(table)
 
 	policy, err := t.IAM().Policy(ctx)
@@ -524,15 +539,19 @@ func (c *Repository) setTableBinding(ctx context.Context, dataset, table string,
 		return fmt.Errorf("policy of table '%s.%s': %w", dataset, table, err)
 	}
 
-	if !revoke {
-		policy.Add(binding.Member, iam.RoleName(binding.Role))
-	} else {
-		policy.Remove(binding.Member, iam.RoleName(binding.Role))
+	for i := range bindingsToRemove {
+		b := &bindingsToRemove[i]
+		policy.Remove(b.Member, iam.RoleName(b.Role))
+	}
+
+	for i := range bindingsToAdd {
+		b := &bindingsToAdd[i]
+		policy.Add(b.Member, iam.RoleName(b.Role))
 	}
 
 	err = t.IAM().SetPolicy(ctx, policy)
 	if err != nil {
-		return fmt.Errorf("set policy of table '%s.%s': %w", dataset, table, err)
+		return fmt.Errorf("set policy of '%s.%s': %w", dataset, table, err)
 	}
 
 	return nil
@@ -571,4 +590,19 @@ func parseMember(m string) (bigquery.EntityType, string, error) {
 	}
 
 	return bigquery.UserEmailEntity, "", fmt.Errorf("unknown member type: %s", m)
+}
+
+func entityToString(entity bigquery.EntityType) string {
+	switch entity {
+	case bigquery.DomainEntity:
+		return "domain"
+	case bigquery.GroupEmailEntity:
+		return "group"
+	case bigquery.UserEmailEntity:
+		return "user"
+	case bigquery.SpecialGroupEntity:
+		return "special_group"
+	default:
+		return "other"
+	}
 }

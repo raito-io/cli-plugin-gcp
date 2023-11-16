@@ -968,47 +968,56 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 			name: "Access provider to binding",
 			fields: fields{
 				mocksSetup: func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
-					gcpRepo.EXPECT().AddBinding(mock.Anything, &iam.IamBinding{
-						Member:       "serviceAccount:sa@raito.gserviceaccount.com",
-						Resource:     "project1",
-						ResourceType: "project",
-						Role:         "roles/owner",
-					}).Return(nil).Once()
-
-					gcpRepo.EXPECT().AddBinding(mock.Anything, &iam.IamBinding{
-						Member:       "user:ruben@raito.io",
-						Resource:     "project1",
-						ResourceType: "project",
-						Role:         "roles/owner",
-					}).Return(nil).Once()
-
-					gcpRepo.EXPECT().AddBinding(mock.Anything, &iam.IamBinding{
-						Member:       "group:sales@raito.io",
-						Resource:     "project1",
-						ResourceType: "project",
-						Role:         "roles/owner",
-					}).Return(nil).Once()
-
-					gcpRepo.EXPECT().AddBinding(mock.Anything, &iam.IamBinding{
-						Member:       "serviceAccount:sa@raito.gserviceaccount.com",
-						Resource:     "folder1",
-						ResourceType: "folder",
-						Role:         "roles/editor",
-					}).Return(nil).Once()
-
-					gcpRepo.EXPECT().AddBinding(mock.Anything, &iam.IamBinding{
-						Member:       "user:ruben@raito.io",
-						Resource:     "folder1",
-						ResourceType: "folder",
-						Role:         "roles/editor",
-					}).Return(nil).Once()
-
-					gcpRepo.EXPECT().AddBinding(mock.Anything, &iam.IamBinding{
-						Member:       "group:sales@raito.io",
-						Resource:     "folder1",
-						ResourceType: "folder",
-						Role:         "roles/editor",
-					}).Return(nil).Once()
+					gcpRepo.EXPECT().UpdateBindings(mock.Anything, &iam.DataObjectReference{
+						FullName:   "project1",
+						ObjectType: "project",
+					}, mock.Anything, []iam.IamBinding{}).Run(func(ctx context.Context, dataObject *iam.DataObjectReference, addBindings []iam.IamBinding, removeBindings []iam.IamBinding) {
+						assert.ElementsMatch(t, []iam.IamBinding{
+							{
+								Member:       "serviceAccount:sa@raito.gserviceaccount.com",
+								Resource:     "project1",
+								ResourceType: "project",
+								Role:         "roles/owner",
+							},
+							{
+								Member:       "group:sales@raito.io",
+								Resource:     "project1",
+								ResourceType: "project",
+								Role:         "roles/owner",
+							},
+							{
+								Member:       "user:ruben@raito.io",
+								Resource:     "project1",
+								ResourceType: "project",
+								Role:         "roles/owner",
+							},
+						}, addBindings)
+					}).Return(nil)
+					gcpRepo.EXPECT().UpdateBindings(mock.Anything, &iam.DataObjectReference{
+						FullName:   "folder1",
+						ObjectType: "folder",
+					}, mock.Anything, []iam.IamBinding{}).Run(func(ctx context.Context, dataObject *iam.DataObjectReference, addBindings []iam.IamBinding, removeBindings []iam.IamBinding) {
+						assert.ElementsMatch(t, []iam.IamBinding{
+							{
+								Member:       "serviceAccount:sa@raito.gserviceaccount.com",
+								Resource:     "folder1",
+								ResourceType: "folder",
+								Role:         "roles/editor",
+							},
+							{
+								Member:       "user:ruben@raito.io",
+								Resource:     "folder1",
+								ResourceType: "folder",
+								Role:         "roles/editor",
+							},
+							{
+								Member:       "group:sales@raito.io",
+								Resource:     "folder1",
+								ResourceType: "folder",
+								Role:         "roles/editor",
+							},
+						}, addBindings)
+					}).Return(nil)
 				},
 				metadata: gcp.NewDataSourceMetaData(),
 			},
@@ -1031,6 +1040,151 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 							Groups: []string{"sales@raito.io"},
 						},
 						Delete: false,
+						What: []importer.WhatItem{
+							{
+								DataObject: &data_source.DataObjectReference{
+									FullName: "project1",
+									Type:     "project",
+								},
+								Permissions: []string{"roles/owner"},
+							},
+							{
+								DataObject: &data_source.DataObjectReference{
+									FullName: "folder1",
+									Type:     "folder",
+								},
+								Permissions: []string{"roles/editor"},
+							},
+						},
+						DeleteWhat: nil,
+					},
+				}},
+				configMap: &config.ConfigMap{Parameters: map[string]string{}},
+			},
+			want: []importer.AccessProviderSyncFeedback{
+				{
+					AccessProvider: "apId1",
+					ActualName:     "apId1",
+					ExternalId:     nil,
+					Type:           ptr.String(access_provider.AclSet),
+				},
+			},
+			expectedBindings: set.NewSet[iam.IamBinding](
+				iam.IamBinding{
+					Member:       "group:sales@raito.io",
+					Role:         "roles/owner",
+					Resource:     "project1",
+					ResourceType: "project",
+				},
+				iam.IamBinding{
+					Member:       "user:ruben@raito.io",
+					Role:         "roles/owner",
+					Resource:     "project1",
+					ResourceType: "project",
+				},
+				iam.IamBinding{
+					Member:       "serviceAccount:sa@raito.gserviceaccount.com",
+					Role:         "roles/owner",
+					Resource:     "project1",
+					ResourceType: "project",
+				},
+				iam.IamBinding{
+					Member:       "group:sales@raito.io",
+					Role:         "roles/editor",
+					Resource:     "folder1",
+					ResourceType: "folder",
+				},
+				iam.IamBinding{
+					Member:       "user:ruben@raito.io",
+					Role:         "roles/editor",
+					Resource:     "folder1",
+					ResourceType: "folder",
+				},
+				iam.IamBinding{
+					Member:       "serviceAccount:sa@raito.gserviceaccount.com",
+					Role:         "roles/editor",
+					Resource:     "folder1",
+					ResourceType: "folder",
+				},
+			),
+			wantErr: assert.NoError,
+		},
+		{
+			name: "Deleted access provider",
+			fields: fields{
+				mocksSetup: func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
+					gcpRepo.EXPECT().UpdateBindings(mock.Anything, &iam.DataObjectReference{
+						FullName:   "project1",
+						ObjectType: "project",
+					}, []iam.IamBinding{}, mock.Anything).Run(func(ctx context.Context, dataObject *iam.DataObjectReference, addBindings []iam.IamBinding, removeBindings []iam.IamBinding) {
+						assert.ElementsMatch(t, []iam.IamBinding{
+							{
+								Member:       "serviceAccount:sa@raito.gserviceaccount.com",
+								Resource:     "project1",
+								ResourceType: "project",
+								Role:         "roles/owner",
+							},
+							{
+								Member:       "group:sales@raito.io",
+								Resource:     "project1",
+								ResourceType: "project",
+								Role:         "roles/owner",
+							},
+							{
+								Member:       "user:ruben@raito.io",
+								Resource:     "project1",
+								ResourceType: "project",
+								Role:         "roles/owner",
+							},
+						}, removeBindings)
+					}).Return(nil)
+					gcpRepo.EXPECT().UpdateBindings(mock.Anything, &iam.DataObjectReference{
+						FullName:   "folder1",
+						ObjectType: "folder",
+					}, []iam.IamBinding{}, mock.Anything).Run(func(ctx context.Context, dataObject *iam.DataObjectReference, addBindings []iam.IamBinding, removeBindings []iam.IamBinding) {
+						assert.ElementsMatch(t, []iam.IamBinding{
+							{
+								Member:       "serviceAccount:sa@raito.gserviceaccount.com",
+								Resource:     "folder1",
+								ResourceType: "folder",
+								Role:         "roles/editor",
+							},
+							{
+								Member:       "user:ruben@raito.io",
+								Resource:     "folder1",
+								ResourceType: "folder",
+								Role:         "roles/editor",
+							},
+							{
+								Member:       "group:sales@raito.io",
+								Resource:     "folder1",
+								ResourceType: "folder",
+								Role:         "roles/editor",
+							},
+						}, removeBindings)
+					}).Return(nil)
+				},
+				metadata: gcp.NewDataSourceMetaData(),
+			},
+			args: args{
+				ctx: context.Background(),
+				accessProviders: &importer.AccessProviderImport{AccessProviders: []*importer.AccessProvider{
+					{
+						Id:          "apId1",
+						Name:        "ap1",
+						Description: "some description",
+						NamingHint:  "ap1",
+						Type:        nil,
+						ExternalId:  nil,
+						Action:      importer.Grant,
+						Who: importer.WhoItem{
+							Users: []string{
+								"ruben@raito.io",
+								"sa@raito.gserviceaccount.com",
+							},
+							Groups: []string{"sales@raito.io"},
+						},
+						Delete: true,
 						What: []importer.WhatItem{
 							{
 								DataObject: &data_source.DataObjectReference{

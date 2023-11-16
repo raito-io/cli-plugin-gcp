@@ -6,6 +6,7 @@ import (
 
 	"cloud.google.com/go/iam/apiv1/iampb"
 	"github.com/googleapis/gax-go/v2"
+	"github.com/raito-io/golang-set/set"
 
 	"github.com/raito-io/cli-plugin-gcp/internal/iam"
 )
@@ -43,40 +44,25 @@ func getAndParseBindings(ctx context.Context, policyClient getPolicyClient, reso
 	return result, nil
 }
 
-func addBinding(ctx context.Context, policyClient setPolicyClient, binding *iam.IamBinding) error {
-	resourceName := _resourceName(binding.ResourceType, binding.Resource)
+func updateBindings(ctx context.Context, policyClient setPolicyClient, dataObject *iam.DataObjectReference, bindingsToAdd []iam.IamBinding, bindingsToDelete []iam.IamBinding) error {
+	membersToRemoveFromRole := map[string]set.Set[string]{} // Role -> Member
+	membersToAddToRole := map[string][]string{}             // Role -> Member
+	rolesToAdd := set.Set[string]{}
 
-	resourcePolicy, err := policyClient.GetIamPolicy(ctx, &iampb.GetIamPolicyRequest{Resource: resourceName})
-	if err != nil {
-		return fmt.Errorf("get iam policy for %q: %w", resourceName, err)
+	for _, binding := range bindingsToAdd {
+		membersToAddToRole[binding.Role] = append(membersToAddToRole[binding.Role], binding.Member)
+		rolesToAdd.Add(binding.Role)
 	}
 
-	updateExistingBinding := false
-
-	for i := range resourcePolicy.Bindings {
-		if resourcePolicy.Bindings[i].Role == binding.Role {
-			resourcePolicy.Bindings[i].Members = append(resourcePolicy.Bindings[i].Members, binding.Member)
-			updateExistingBinding = true
+	for _, binding := range bindingsToDelete {
+		if _, found := membersToRemoveFromRole[binding.Role]; !found {
+			membersToRemoveFromRole[binding.Role] = set.Set[string]{}
 		}
+
+		membersToRemoveFromRole[binding.Role].Add(binding.Member)
 	}
 
-	if !updateExistingBinding {
-		resourcePolicy.Bindings = append(resourcePolicy.Bindings, &iampb.Binding{
-			Role:    binding.Role,
-			Members: []string{binding.Member},
-		})
-	}
-
-	_, err = policyClient.SetIamPolicy(ctx, &iampb.SetIamPolicyRequest{Resource: resourceName, Policy: resourcePolicy})
-	if err != nil {
-		return fmt.Errorf("set iam policy for %q: %w", resourceName, err)
-	}
-
-	return nil
-}
-
-func removeBinding(ctx context.Context, policyClient setPolicyClient, binding *iam.IamBinding) error {
-	resourceName := _resourceName(binding.ResourceType, binding.Resource)
+	resourceName := _resourceName(dataObject.ObjectType, dataObject.FullName)
 
 	resourcePolicy, err := policyClient.GetIamPolicy(ctx, &iampb.GetIamPolicyRequest{Resource: resourceName})
 	if err != nil {
@@ -84,22 +70,36 @@ func removeBinding(ctx context.Context, policyClient setPolicyClient, binding *i
 	}
 
 	for i := range resourcePolicy.Bindings {
-		if resourcePolicy.Bindings[i].Role == binding.Role {
+		// Remove old assignees
+		if members, found := membersToRemoveFromRole[resourcePolicy.Bindings[i].Role]; found {
 			updatedMembers := make([]string, 0, len(resourcePolicy.Bindings[i].Members))
 
-			for j := range resourcePolicy.Bindings[i].Members {
-				if resourcePolicy.Bindings[i].Members[j] != binding.Member {
-					updatedMembers = append(updatedMembers, resourcePolicy.Bindings[i].Members[j])
+			for _, m := range resourcePolicy.Bindings[i].Members {
+				if !members.Contains(m) {
+					updatedMembers = append(updatedMembers, m)
 				}
 			}
 
 			resourcePolicy.Bindings[i].Members = updatedMembers
 		}
+
+		// Add new assignees
+		if members, found := membersToAddToRole[resourcePolicy.Bindings[i].Role]; found {
+			resourcePolicy.Bindings[i].Members = append(resourcePolicy.Bindings[i].Members, members...)
+			rolesToAdd.Remove(resourcePolicy.Bindings[i].Role)
+		}
+	}
+
+	for role := range rolesToAdd {
+		resourcePolicy.Bindings = append(resourcePolicy.Bindings, &iampb.Binding{
+			Role:    role,
+			Members: membersToAddToRole[role],
+		})
 	}
 
 	_, err = policyClient.SetIamPolicy(ctx, &iampb.SetIamPolicyRequest{Resource: resourceName, Policy: resourcePolicy})
 	if err != nil {
-		return fmt.Errorf("set iam policy for %q: %w", resourceName, err)
+		return fmt.Errorf("update iam policy for %q: %w", resourceName, err)
 	}
 
 	return nil

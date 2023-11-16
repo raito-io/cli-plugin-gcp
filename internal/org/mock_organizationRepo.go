@@ -22,49 +22,6 @@ func (_m *mockOrganizationRepo) EXPECT() *mockOrganizationRepo_Expecter {
 	return &mockOrganizationRepo_Expecter{mock: &_m.Mock}
 }
 
-// AddBinding provides a mock function with given fields: ctx, binding
-func (_m *mockOrganizationRepo) AddBinding(ctx context.Context, binding *iam.IamBinding) error {
-	ret := _m.Called(ctx, binding)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *iam.IamBinding) error); ok {
-		r0 = rf(ctx, binding)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// mockOrganizationRepo_AddBinding_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddBinding'
-type mockOrganizationRepo_AddBinding_Call struct {
-	*mock.Call
-}
-
-// AddBinding is a helper method to define mock.On call
-//   - ctx context.Context
-//   - binding *iam.IamBinding
-func (_e *mockOrganizationRepo_Expecter) AddBinding(ctx interface{}, binding interface{}) *mockOrganizationRepo_AddBinding_Call {
-	return &mockOrganizationRepo_AddBinding_Call{Call: _e.mock.On("AddBinding", ctx, binding)}
-}
-
-func (_c *mockOrganizationRepo_AddBinding_Call) Run(run func(ctx context.Context, binding *iam.IamBinding)) *mockOrganizationRepo_AddBinding_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*iam.IamBinding))
-	})
-	return _c
-}
-
-func (_c *mockOrganizationRepo_AddBinding_Call) Return(_a0 error) *mockOrganizationRepo_AddBinding_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *mockOrganizationRepo_AddBinding_Call) RunAndReturn(run func(context.Context, *iam.IamBinding) error) *mockOrganizationRepo_AddBinding_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // GetIamPolicy provides a mock function with given fields: ctx, projectId
 func (_m *mockOrganizationRepo) GetIamPolicy(ctx context.Context, projectId string) ([]iam.IamBinding, error) {
 	ret := _m.Called(ctx, projectId)
@@ -174,13 +131,13 @@ func (_c *mockOrganizationRepo_GetOrganization_Call) RunAndReturn(run func(conte
 	return _c
 }
 
-// RemoveBinding provides a mock function with given fields: ctx, binding
-func (_m *mockOrganizationRepo) RemoveBinding(ctx context.Context, binding *iam.IamBinding) error {
-	ret := _m.Called(ctx, binding)
+// UpdateBinding provides a mock function with given fields: ctx, dataObject, bindingsToAdd, bindingsToDelete
+func (_m *mockOrganizationRepo) UpdateBinding(ctx context.Context, dataObject *iam.DataObjectReference, bindingsToAdd []iam.IamBinding, bindingsToDelete []iam.IamBinding) error {
+	ret := _m.Called(ctx, dataObject, bindingsToAdd, bindingsToDelete)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *iam.IamBinding) error); ok {
-		r0 = rf(ctx, binding)
+	if rf, ok := ret.Get(0).(func(context.Context, *iam.DataObjectReference, []iam.IamBinding, []iam.IamBinding) error); ok {
+		r0 = rf(ctx, dataObject, bindingsToAdd, bindingsToDelete)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -188,31 +145,33 @@ func (_m *mockOrganizationRepo) RemoveBinding(ctx context.Context, binding *iam.
 	return r0
 }
 
-// mockOrganizationRepo_RemoveBinding_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RemoveBinding'
-type mockOrganizationRepo_RemoveBinding_Call struct {
+// mockOrganizationRepo_UpdateBinding_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateBinding'
+type mockOrganizationRepo_UpdateBinding_Call struct {
 	*mock.Call
 }
 
-// RemoveBinding is a helper method to define mock.On call
+// UpdateBinding is a helper method to define mock.On call
 //   - ctx context.Context
-//   - binding *iam.IamBinding
-func (_e *mockOrganizationRepo_Expecter) RemoveBinding(ctx interface{}, binding interface{}) *mockOrganizationRepo_RemoveBinding_Call {
-	return &mockOrganizationRepo_RemoveBinding_Call{Call: _e.mock.On("RemoveBinding", ctx, binding)}
+//   - dataObject *iam.DataObjectReference
+//   - bindingsToAdd []iam.IamBinding
+//   - bindingsToDelete []iam.IamBinding
+func (_e *mockOrganizationRepo_Expecter) UpdateBinding(ctx interface{}, dataObject interface{}, bindingsToAdd interface{}, bindingsToDelete interface{}) *mockOrganizationRepo_UpdateBinding_Call {
+	return &mockOrganizationRepo_UpdateBinding_Call{Call: _e.mock.On("UpdateBinding", ctx, dataObject, bindingsToAdd, bindingsToDelete)}
 }
 
-func (_c *mockOrganizationRepo_RemoveBinding_Call) Run(run func(ctx context.Context, binding *iam.IamBinding)) *mockOrganizationRepo_RemoveBinding_Call {
+func (_c *mockOrganizationRepo_UpdateBinding_Call) Run(run func(ctx context.Context, dataObject *iam.DataObjectReference, bindingsToAdd []iam.IamBinding, bindingsToDelete []iam.IamBinding)) *mockOrganizationRepo_UpdateBinding_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*iam.IamBinding))
+		run(args[0].(context.Context), args[1].(*iam.DataObjectReference), args[2].([]iam.IamBinding), args[3].([]iam.IamBinding))
 	})
 	return _c
 }
 
-func (_c *mockOrganizationRepo_RemoveBinding_Call) Return(_a0 error) *mockOrganizationRepo_RemoveBinding_Call {
+func (_c *mockOrganizationRepo_UpdateBinding_Call) Return(_a0 error) *mockOrganizationRepo_UpdateBinding_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *mockOrganizationRepo_RemoveBinding_Call) RunAndReturn(run func(context.Context, *iam.IamBinding) error) *mockOrganizationRepo_RemoveBinding_Call {
+func (_c *mockOrganizationRepo_UpdateBinding_Call) RunAndReturn(run func(context.Context, *iam.DataObjectReference, []iam.IamBinding, []iam.IamBinding) error) *mockOrganizationRepo_UpdateBinding_Call {
 	_c.Call.Return(run)
 	return _c
 }

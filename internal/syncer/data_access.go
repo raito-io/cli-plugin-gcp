@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/raito-io/golang-set/set"
@@ -25,8 +26,9 @@ import (
 //go:generate go run github.com/vektra/mockery/v2 --name=BindingRepository --with-expecter --inpackage
 type BindingRepository interface {
 	Bindings(ctx context.Context, fn func(ctx context.Context, dataObject *org.GcpOrgEntity, bindings []iam.IamBinding) error) error
-	AddBinding(ctx context.Context, binding *iam.IamBinding) error
-	RemoveBinding(ctx context.Context, binding *iam.IamBinding) error
+	UpdateBindings(ctx context.Context, dataObject *iam.DataObjectReference, addBindings []iam.IamBinding, removeBindings []iam.IamBinding) error
+
+	DataSourceType() string
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name=ProjectRepo --with-expecter --inpackage
@@ -129,12 +131,15 @@ func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessPro
 	common.Logger.Info(fmt.Sprintf("Start converting %d access providers to bindings", len(accessProviders.AccessProviders)))
 
 	grants := make([]*importer.AccessProvider, 0, len(accessProviders.AccessProviders))
+	masks := make([]*importer.AccessProvider, 0, len(accessProviders.AccessProviders))
 
 	// Handle masks
 	for _, ap := range accessProviders.AccessProviders {
 		if ap.Action == importer.Grant {
 			grants = append(grants, ap)
 		} else if ap.Action == importer.Mask {
+			masks = append(masks, ap)
+
 			raitoMask, err := a.maskingService.ExportMasks(ctx, ap, accessProviderFeedbackHandler)
 			if err != nil {
 				return fmt.Errorf("export masks: %w", err)
@@ -156,9 +161,9 @@ func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessPro
 	}
 
 	// Handle grants
-	bindingsToAdd, bindingsToDelete := a.convertAccessProviderToBindings(ctx, grants)
+	bindings := a.convertAccessProviderToBindings(ctx, grants)
 
-	common.Logger.Info(fmt.Sprintf("Done converting access providers to bindings: %d bindings to add, %d bindings to remove", len(bindingsToAdd), len(bindingsToDelete)))
+	common.Logger.Info("Done converting access providers to bindings.")
 
 	apFeedback := make(map[string]*importer.AccessProviderSyncFeedback)
 
@@ -166,19 +171,35 @@ func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessPro
 		apFeedback[ap.Id] = &importer.AccessProviderSyncFeedback{AccessProvider: ap.Id, ActualName: ap.Id, Type: ptr.String(access_provider.AclSet)}
 	}
 
-	for b, aps := range bindingsToDelete {
-		common.Logger.Debug(fmt.Sprintf("Revoking binding %+v", b))
+	wg := sync.WaitGroup{}
+	mutex := sync.Mutex{}
 
-		a.handleErrors(a.bindingRepo.RemoveBinding(ctx, &b), apFeedback, aps)
+	for do := range bindings.bindings {
+		wg.Add(1)
+		go func(do iam.DataObjectReference) {
+			defer wg.Done()
+
+			common.Logger.Debug(fmt.Sprintf("Update bindings for %s %q", do.ObjectType, do.FullName))
+
+			bindingsToAdd := bindings.bindings[do].bindingsToAdd.Slice()
+			bindingsToDelete := bindings.bindings[do].bindingsToDelete.Slice()
+
+			err := a.bindingRepo.UpdateBindings(ctx, &do, bindingsToAdd, bindingsToDelete)
+
+			// LOCKED part!
+			mutex.Lock()
+			defer mutex.Unlock()
+
+			if err != nil {
+				a.handleErrors(fmt.Errorf("update bindings of %s %q: %w", do.ObjectType, do.FullName, err), apFeedback, bindings.bindings[do].GetAllAccessProviders())
+			}
+
+			a.raitoManagedBindings.Add(bindingsToAdd...)
+			a.raitoManagedBindings.Add(bindingsToDelete...) // Add also bindings to delete as if an AP failed to delete we do not want those bindings to be importer as external AP
+		}(do)
 	}
 
-	for b, aps := range bindingsToAdd {
-		common.Logger.Debug(fmt.Sprintf("Granting binding %+v", b))
-
-		a.handleErrors(a.bindingRepo.AddBinding(ctx, &b), apFeedback, aps)
-
-		a.raitoManagedBindings.Add(b)
-	}
+	wg.Wait()
 
 	var merr error
 
@@ -447,9 +468,8 @@ func (a *AccessSyncer) isRaitoManagedBinding(binding iam.IamBinding) bool {
 	return false
 }
 
-func (a *AccessSyncer) convertAccessProviderToBindings(ctx context.Context, accessProviders []*importer.AccessProvider) (map[iam.IamBinding][]*importer.AccessProvider, map[iam.IamBinding][]*importer.AccessProvider) {
-	bindingsToAdd := make(map[iam.IamBinding][]*importer.AccessProvider)
-	bindingsToDelete := make(map[iam.IamBinding][]*importer.AccessProvider)
+func (a *AccessSyncer) convertAccessProviderToBindings(ctx context.Context, accessProviders []*importer.AccessProvider) *BindingContainer {
+	bindings := NewBindingContainer()
 
 	for _, ap := range accessProviders {
 		// Process the Who items
@@ -485,6 +505,16 @@ func (a *AccessSyncer) convertAccessProviderToBindings(ctx context.Context, acce
 
 		// Process the What Items
 		for _, w := range ap.What {
+			objectType := w.DataObject.Type
+			if objectType == data_source.Datasource {
+				objectType = a.bindingRepo.DataSourceType()
+			}
+
+			objectReference := iam.DataObjectReference{
+				FullName:   w.DataObject.FullName,
+				ObjectType: objectType,
+			}
+
 			for _, p := range w.Permissions {
 				// for active members add bindings (except if AP gets deleted)
 				for _, m := range members {
@@ -496,9 +526,9 @@ func (a *AccessSyncer) convertAccessProviderToBindings(ctx context.Context, acce
 					}
 
 					if ap.Delete {
-						bindingsToDelete[binding] = append(bindingsToDelete[binding], ap)
+						bindings.BindingToDelete(objectReference, binding, ap)
 					} else {
-						bindingsToAdd[binding] = append(bindingsToAdd[binding], ap)
+						bindings.BindingToAdd(objectReference, binding, ap)
 					}
 				}
 
@@ -511,7 +541,7 @@ func (a *AccessSyncer) convertAccessProviderToBindings(ctx context.Context, acce
 						ResourceType: w.DataObject.Type,
 					}
 
-					bindingsToDelete[binding] = append(bindingsToDelete[binding], ap)
+					bindings.BindingToDelete(objectReference, binding, ap)
 				}
 			}
 		}
@@ -523,13 +553,23 @@ func (a *AccessSyncer) convertAccessProviderToBindings(ctx context.Context, acce
 			}
 
 			for _, b := range additionalMaskBindings {
-				bindingsToAdd[b] = append(bindingsToAdd[b], ap)
+				dataObjectReference := iam.DataObjectReference{
+					FullName:   b.Resource,
+					ObjectType: b.ResourceType,
+				}
+
+				bindings.BindingToAdd(dataObjectReference, b, ap)
 			}
 		}
 
 		// process the Deleted WhatItems
 		if ap.DeleteWhat != nil {
 			for _, w := range ap.DeleteWhat {
+				dataObjectReference := iam.DataObjectReference{
+					FullName:   w.DataObject.FullName,
+					ObjectType: w.DataObject.Type,
+				}
+
 				for _, p := range w.Permissions {
 					// for ALL members delete the bindings
 					for _, m := range append(members, deleteMembers...) {
@@ -540,19 +580,14 @@ func (a *AccessSyncer) convertAccessProviderToBindings(ctx context.Context, acce
 							ResourceType: w.DataObject.Type,
 						}
 
-						bindingsToDelete[binding] = append(bindingsToDelete[binding], ap)
+						bindings.BindingToDelete(dataObjectReference, binding, ap)
 					}
 				}
 			}
 		}
 	}
 
-	// Go over all the ones in the add list and remove them from the delete list
-	for addBinding := range bindingsToAdd {
-		delete(bindingsToDelete, addBinding)
-	}
-
-	return bindingsToAdd, bindingsToDelete
+	return bindings
 }
 
 func generateNamingHint(name string) string {

@@ -19,10 +19,12 @@ import (
 func InitializeDataSourceSyncer(ctx context.Context, configMap *config.ConfigMap) (wrappers.DataSourceSyncer, func(), error) {
 	wire.Build(
 		bigquery.Wired,
+		org.Wired,
 		syncer.Wired,
 
 		wire.Bind(new(wrappers.DataSourceSyncer), new(*syncer.DataSourceSyncer)),
 		wire.Bind(new(syncer.DataSourceRepository), new(*bigquery.DataObjectIterator)),
+		wire.Bind(new(bigquery.ProjectClient), new(*org.ProjectRepository)),
 	)
 
 	return nil, nil, nil
@@ -31,12 +33,14 @@ func InitializeDataSourceSyncer(ctx context.Context, configMap *config.ConfigMap
 func InitializeIdentityStoreSyncer(ctx context.Context, configMap *config.ConfigMap) (wrappers.IdentityStoreSyncer, func(), error) {
 	wire.Build(
 		bigquery.Wired,
+		org.Wired,
 		admin.Wired,
 		syncer.Wired,
 
 		wire.Bind(new(wrappers.IdentityStoreSyncer), new(*syncer.IdentityStoreSyncer)),
 		wire.Bind(new(syncer.AdminRepository), new(*admin.AdminRepository)),
 		wire.Bind(new(syncer.DataObjectRepository), new(*bigquery.DataObjectIterator)),
+		wire.Bind(new(bigquery.ProjectClient), new(*org.ProjectRepository)),
 	)
 
 	return nil, nil, nil
@@ -52,6 +56,7 @@ func InitializeDataAccessSyncer(ctx context.Context, configMap *config.ConfigMap
 		wire.Bind(new(syncer.ProjectRepo), new(*org.ProjectRepository)),
 		wire.Bind(new(syncer.BindingRepository), new(*bigquery.DataObjectIterator)),
 		wire.Bind(new(syncer.MaskingService), new(*bigquery.BqMaskingService)),
+		wire.Bind(new(bigquery.ProjectClient), new(*org.ProjectRepository)),
 	)
 
 	return nil, nil, nil
@@ -61,9 +66,11 @@ func InitializeDataUsageSyncer(ctx context.Context, configMap *config.ConfigMap)
 	wire.Build(
 		bigquery.Wired,
 		syncer.Wired,
+		org.Wired,
 
 		wire.Bind(new(wrappers.DataUsageSyncer), new(*syncer.DataUsageSyncer)),
 		wire.Bind(new(syncer.DataUsageRepository), new(*bigquery.Repository)),
+		wire.Bind(new(bigquery.ProjectClient), new(*org.ProjectRepository)),
 	)
 
 	return nil, nil, nil

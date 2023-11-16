@@ -88,10 +88,6 @@ func (r *ProjectRepository) GetIamPolicy(ctx context.Context, projectId string) 
 	return getAndParseBindings(ctx, r.projectClient, "project", projectId)
 }
 
-func (r *ProjectRepository) AddBinding(ctx context.Context, binding *iam.IamBinding) error {
-	return addBinding(ctx, r.projectClient, binding)
-}
-
-func (r *ProjectRepository) RemoveBinding(ctx context.Context, binding *iam.IamBinding) error {
-	return removeBinding(ctx, r.projectClient, binding)
+func (r *ProjectRepository) UpdateBinding(ctx context.Context, dataObject *iam.DataObjectReference, bindingsToAdd []iam.IamBinding, bindingsToDelete []iam.IamBinding) error {
+	return updateBindings(ctx, r.projectClient, dataObject, bindingsToAdd, bindingsToDelete)
 }

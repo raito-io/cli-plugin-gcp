@@ -89,10 +89,10 @@ func (it *DataObjectIterator) Bindings(ctx context.Context, fn func(ctx context.
 	})
 }
 
-func (it *DataObjectIterator) AddBinding(ctx context.Context, binding *iam.IamBinding) error {
-	return it.repo.AddBinding(ctx, binding)
+func (it *DataObjectIterator) UpdateBindings(ctx context.Context, dataObject *iam.DataObjectReference, addBindings []iam.IamBinding, removeBindings []iam.IamBinding) error {
+	return it.repo.UpdateBindings(ctx, dataObject, addBindings, removeBindings)
 }
 
-func (it *DataObjectIterator) RemoveBinding(ctx context.Context, binding *iam.IamBinding) error {
-	return it.repo.RemoveBinding(ctx, binding)
+func (it *DataObjectIterator) DataSourceType() string {
+	return "project"
 }

@@ -65,18 +65,23 @@ func (r *OrganizationRepository) GetIamPolicy(ctx context.Context, _ string) ([]
 	return bindings, nil
 }
 
-func (r *OrganizationRepository) AddBinding(ctx context.Context, binding *iam.IamBinding) error {
-	b := *binding
-	b.Resource = r.organizationId
+func (r *OrganizationRepository) UpdateBinding(ctx context.Context, dataObject *iam.DataObjectReference, bindingsToAdd []iam.IamBinding, bindingsToDelete []iam.IamBinding) error {
+	updatedBindingsToAdd := make([]iam.IamBinding, len(bindingsToAdd))
+	for i := range bindingsToAdd {
+		updatedBindingsToAdd[i] = bindingsToAdd[i]
+		updatedBindingsToAdd[i].Resource = r.organizationId
+	}
 
-	return addBinding(ctx, r.organizationClient, &b)
-}
+	updatedBindingsToRemove := make([]iam.IamBinding, len(bindingsToDelete))
+	for i := range bindingsToDelete {
+		updatedBindingsToRemove[i] = bindingsToDelete[i]
+		updatedBindingsToRemove[i].Resource = r.organizationId
+	}
 
-func (r *OrganizationRepository) RemoveBinding(ctx context.Context, binding *iam.IamBinding) error {
-	b := *binding
-	b.Resource = r.organizationId
+	do := *dataObject
+	do.FullName = r.organizationId
 
-	return removeBinding(ctx, r.organizationClient, &b)
+	return updateBindings(ctx, r.organizationClient, &do, updatedBindingsToAdd, updatedBindingsToRemove)
 }
 
 func (r *OrganizationRepository) raitoOrgId() string {

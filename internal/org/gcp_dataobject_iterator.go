@@ -13,8 +13,7 @@ import (
 
 type iamRepo interface {
 	GetIamPolicy(ctx context.Context, projectId string) ([]iam.IamBinding, error)
-	AddBinding(ctx context.Context, binding *iam.IamBinding) error
-	RemoveBinding(ctx context.Context, binding *iam.IamBinding) error
+	UpdateBinding(ctx context.Context, dataObject *iam.DataObjectReference, bindingsToAdd []iam.IamBinding, bindingsToDelete []iam.IamBinding) error
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name=projectRepo --with-expecter --inpackage
@@ -76,32 +75,22 @@ func (r *GcpDataObjectIterator) Bindings(ctx context.Context, fn func(ctx contex
 	})
 }
 
-func (r *GcpDataObjectIterator) AddBinding(ctx context.Context, binding *iam.IamBinding) error {
-	repo := r.getIamRepository(binding.ResourceType)
+func (r *GcpDataObjectIterator) UpdateBindings(ctx context.Context, dataObject *iam.DataObjectReference, addBindings []iam.IamBinding, removeBindings []iam.IamBinding) error {
+	repo := r.getIamRepository(dataObject.ObjectType)
 	if repo == nil {
-		return fmt.Errorf("unknown data object type: %s", binding.ResourceType)
+		return fmt.Errorf("unknown data object type: %s", dataObject.ObjectType)
 	}
 
-	err := repo.AddBinding(ctx, binding)
+	err := repo.UpdateBinding(ctx, dataObject, addBindings, removeBindings)
 	if err != nil {
-		return fmt.Errorf("add gcp binding: %w", err)
+		return fmt.Errorf("update bindings of %s: %w", dataObject.FullName, err)
 	}
 
 	return nil
 }
 
-func (r *GcpDataObjectIterator) RemoveBinding(ctx context.Context, binding *iam.IamBinding) error {
-	repo := r.getIamRepository(binding.ResourceType)
-	if repo == nil {
-		return fmt.Errorf("unknown data object type: %s", binding.ResourceType)
-	}
-
-	err := repo.RemoveBinding(ctx, binding)
-	if err != nil {
-		return fmt.Errorf("remove gcp binding: %w", err)
-	}
-
-	return nil
+func (r *GcpDataObjectIterator) DataSourceType() string {
+	return "organization"
 }
 
 func (r *GcpDataObjectIterator) sync(ctx context.Context, fn func(ctx context.Context, dataObject *GcpOrgEntity) error) error {
