@@ -5,6 +5,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/raito-io/cli-plugin-gcp/internal/common"
+	ds "github.com/raito-io/cli/base/data_source"
+
 	"cloud.google.com/go/iam/apiv1/iampb"
 	resourcemanager "cloud.google.com/go/resourcemanager/apiv3"
 	"cloud.google.com/go/resourcemanager/apiv3/resourcemanagerpb"
@@ -34,7 +37,7 @@ func NewProjectRepository(projectClient projectClient) *ProjectRepository {
 	}
 }
 
-func (r *ProjectRepository) GetProjects(ctx context.Context, parentName string, parent *GcpOrgEntity, fn func(ctx context.Context, project *GcpOrgEntity) error) error {
+func (r *ProjectRepository) GetProjects(ctx context.Context, config *ds.DataSourceSyncConfig, parentName string, parent *GcpOrgEntity, fn func(ctx context.Context, project *GcpOrgEntity) error) error {
 	projectIterator := r.projectClient.ListProjects(ctx, &resourcemanagerpb.ListProjectsRequest{
 		Parent: parentName,
 	})
@@ -47,18 +50,20 @@ func (r *ProjectRepository) GetProjects(ctx context.Context, parentName string, 
 			return fmt.Errorf("project iterator: %w", err)
 		}
 
-		res := GcpOrgEntity{
-			EntryName: project.Name,
-			Name:      project.DisplayName,
-			Id:        project.ProjectId,
-			FullName:  project.ProjectId,
-			Type:      "project",
-			Parent:    parent,
-		}
+		if common.ShouldHandle(project.ProjectId, config) {
+			res := GcpOrgEntity{
+				EntryName: project.Name,
+				Name:      project.DisplayName,
+				Id:        project.ProjectId,
+				FullName:  project.ProjectId,
+				Type:      "project",
+				Parent:    parent,
+			}
 
-		err = fn(ctx, &res)
-		if err != nil {
-			return err
+			err = fn(ctx, &res)
+			if err != nil {
+				return err
+			}
 		}
 	}
 

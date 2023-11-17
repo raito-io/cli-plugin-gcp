@@ -1,11 +1,10 @@
 package bigquery
 
 import (
+	"cloud.google.com/go/bigquery"
 	"context"
 	"fmt"
 	ds "github.com/raito-io/cli/base/data_source"
-
-	"cloud.google.com/go/bigquery"
 	"github.com/raito-io/cli/base/util/config"
 
 	"github.com/raito-io/cli-plugin-gcp/internal/common"
@@ -26,56 +25,69 @@ func NewDataObjectIterator(repo *Repository, configMap *config.ConfigMap) *DataO
 }
 
 func (it *DataObjectIterator) DataObjects(ctx context.Context, config *ds.DataSourceSyncConfig, fn func(ctx context.Context, object *org.GcpOrgEntity) error) error {
+	return it.sync(ctx, config, false, fn)
+}
+
+func (it *DataObjectIterator) sync(ctx context.Context, config *ds.DataSourceSyncConfig, skipColumns bool, fn func(ctx context.Context, object *org.GcpOrgEntity) error) error {
 	ds := it.repo.Project()
 
-	err := fn(ctx, ds)
-	if err != nil {
-		return err
+	if common.ShouldHandle(ds.FullName, config) {
+		err := fn(ctx, ds)
+		if err != nil {
+			return err
+		}
 	}
 
-	err = it.repo.ListDataSets(ctx, ds, func(ctx context.Context, entity *org.GcpOrgEntity, dataset *bigquery.Dataset) error {
-		err2 := fn(ctx, entity)
-		if err2 != nil {
-			return err2
-		}
+	if !common.ShouldGoInto(ds.FullName, config) {
+		return nil
+	}
 
-		err2 = it.repo.ListTables(ctx, dataset, entity, func(ctx context.Context, entity *org.GcpOrgEntity, table *bigquery.Table) error {
-			err2 = fn(ctx, entity)
+	err := it.repo.ListDataSets(ctx, ds, func(ctx context.Context, entity *org.GcpOrgEntity, dataset *bigquery.Dataset) error {
+		if common.ShouldHandle(entity.FullName, config) {
+			err2 := fn(ctx, entity)
 			if err2 != nil {
 				return err2
 			}
+		}
 
-			err2 = it.repo.ListColumns(ctx, table, entity, func(ctx context.Context, entity *org.GcpOrgEntity) error {
-				err2 = fn(ctx, entity)
-				if err != nil {
+		if !common.ShouldGoInto(entity.FullName, config) {
+			return nil
+		}
+
+		err2 := it.repo.ListTables(ctx, dataset, entity, func(ctx context.Context, entity *org.GcpOrgEntity, table *bigquery.Table) error {
+			if common.ShouldHandle(entity.FullName, config) {
+				err2 := fn(ctx, entity)
+				if err2 != nil {
 					return err2
+				}
+			}
+
+			if skipColumns || !common.ShouldGoInto(entity.FullName, config) {
+				return nil
+			}
+
+			err2 := it.repo.ListColumns(ctx, table, entity, func(ctx context.Context, entity *org.GcpOrgEntity) error {
+				if common.ShouldHandle(entity.FullName, config) {
+					err2 := fn(ctx, entity)
+					if err2 != nil {
+						return err2
+					}
 				}
 
 				return nil
 			})
-			if err2 != nil {
-				return err2
-			}
 
-			return nil
+			return err2
 		})
 
-		if err2 != nil {
-			return err2
-		}
-
-		return nil
+		return err2
 	})
 
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 func (it *DataObjectIterator) Bindings(ctx context.Context, config *ds.DataSourceSyncConfig, fn func(ctx context.Context, dataObject *org.GcpOrgEntity, bindings []iam.IamBinding) error) error {
-	return it.DataObjects(ctx, config, func(ctx context.Context, object *org.GcpOrgEntity) error {
+	return it.sync(ctx, config, true, func(ctx context.Context, object *org.GcpOrgEntity) error {
 		bindings, err := it.repo.GetBindings(ctx, object)
 		if err != nil {
 			return fmt.Errorf("get bq bindings: %w", err)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	ds "github.com/raito-io/cli/base/data_source"
 
 	"github.com/raito-io/cli/base/util/config"
@@ -20,7 +21,7 @@ type iamRepo interface {
 //go:generate go run github.com/vektra/mockery/v2 --name=projectRepo --with-expecter --inpackage
 type projectRepo interface {
 	iamRepo
-	GetProjects(ctx context.Context, parentName string, parent *GcpOrgEntity, fn func(ctx context.Context, project *GcpOrgEntity) error) error
+	GetProjects(ctx context.Context, config *ds.DataSourceSyncConfig, parentName string, parent *GcpOrgEntity, fn func(ctx context.Context, project *GcpOrgEntity) error) error
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name=folderRepo --with-expecter --inpackage
@@ -106,27 +107,39 @@ func (r *GcpDataObjectIterator) sync(ctx context.Context, config *ds.DataSourceS
 		return errors.New("organization not found")
 	}
 
-	err = fn(ctx, organization)
-	if err != nil {
-		return err
+	if common.ShouldHandle(organization.FullName, config) {
+		err = fn(ctx, organization)
+		if err != nil {
+			return err
+		}
 	}
 
-	return r.syncFolder(ctx, organization.EntryName, organization, fn)
+	if !common.ShouldGoInto(organization.FullName, config) {
+		return nil
+	}
+
+	return r.syncFolder(ctx, config, organization.EntryName, organization, fn)
 }
 
-func (r *GcpDataObjectIterator) syncFolder(ctx context.Context, parentId string, parent *GcpOrgEntity, fn func(ctx context.Context, dataObject *GcpOrgEntity) error) error {
-	err := r.projectRepo.GetProjects(ctx, parentId, parent, fn)
+func (r *GcpDataObjectIterator) syncFolder(ctx context.Context, config *ds.DataSourceSyncConfig, parentId string, parent *GcpOrgEntity, fn func(ctx context.Context, dataObject *GcpOrgEntity) error) error {
+	err := r.projectRepo.GetProjects(ctx, config, parentId, parent, fn)
 	if err != nil {
 		return fmt.Errorf("project syncs of %q: %w", parentId, err)
 	}
 
 	err = r.folderRepo.GetFolders(ctx, parentId, parent, func(ctx context.Context, folder *GcpOrgEntity) error {
-		err2 := fn(ctx, folder)
-		if err2 != nil {
-			return fmt.Errorf("folder syncs of %q: %w", parentId, err2)
+		if common.ShouldHandle(folder.FullName, config) {
+			err2 := fn(ctx, folder)
+			if err2 != nil {
+				return fmt.Errorf("folder syncs of %q: %w", parentId, err2)
+			}
 		}
 
-		return r.syncFolder(ctx, folder.EntryName, folder, fn)
+		if !common.ShouldGoInto(folder.FullName, config) {
+			return nil
+		}
+
+		return r.syncFolder(ctx, config, folder.EntryName, folder, fn)
 	})
 	if err != nil {
 		return fmt.Errorf("folder syncs of %q: %w", parentId, err)

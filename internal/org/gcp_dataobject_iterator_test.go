@@ -38,7 +38,7 @@ func TestGcpDataObjectIterator_DataObjects(t *testing.T) {
 				mockSetup: func(projectRepo *mockProjectRepo, folderRepo *mockFolderRepo, orgRepo *mockOrganizationRepo) {
 					orgRepo.EXPECT().GetOrganization(mock.Anything).Return(&org, nil)
 
-					projectRepo.EXPECT().GetProjects(mock.Anything, org.EntryName, &org, mock.Anything).RunAndReturn(func(ctx context.Context, s string, entity *GcpOrgEntity, f func(context.Context, *GcpOrgEntity) error) error {
+					projectRepo.EXPECT().GetProjects(mock.Anything, mock.Anything, org.EntryName, &org, mock.Anything).RunAndReturn(func(ctx context.Context, config *data_source.DataSourceSyncConfig, s string, entity *GcpOrgEntity, f func(context.Context, *GcpOrgEntity) error) error {
 						return nil
 					})
 
@@ -57,7 +57,7 @@ func TestGcpDataObjectIterator_DataObjects(t *testing.T) {
 				mockSetup: func(projectRepo *mockProjectRepo, folderRepo *mockFolderRepo, orgRepo *mockOrganizationRepo) {
 					orgRepo.EXPECT().GetOrganization(mock.Anything).Return(&org, nil)
 
-					projectRepo.EXPECT().GetProjects(mock.Anything, org.EntryName, &org, mock.Anything).RunAndReturn(func(ctx context.Context, s string, entity *GcpOrgEntity, f func(context.Context, *GcpOrgEntity) error) error {
+					projectRepo.EXPECT().GetProjects(mock.Anything, mock.Anything, org.EntryName, &org, mock.Anything).RunAndReturn(func(ctx context.Context, config *data_source.DataSourceSyncConfig, s string, entity *GcpOrgEntity, f func(context.Context, *GcpOrgEntity) error) error {
 						err := f(ctx,
 							&GcpOrgEntity{
 								EntryName: "projects/projectId1",
@@ -113,7 +113,7 @@ func TestGcpDataObjectIterator_DataObjects(t *testing.T) {
 				mockSetup: func(projectRepo *mockProjectRepo, folderRepo *mockFolderRepo, orgRepo *mockOrganizationRepo) {
 					orgRepo.EXPECT().GetOrganization(mock.Anything).Return(&org, nil)
 
-					projectRepo.EXPECT().GetProjects(mock.Anything, org.EntryName, &org, mock.Anything).RunAndReturn(func(ctx context.Context, s string, entity *GcpOrgEntity, f func(context.Context, *GcpOrgEntity) error) error {
+					projectRepo.EXPECT().GetProjects(mock.Anything, mock.Anything, org.EntryName, &org, mock.Anything).RunAndReturn(func(ctx context.Context, config *data_source.DataSourceSyncConfig, s string, entity *GcpOrgEntity, f func(context.Context, *GcpOrgEntity) error) error {
 						return f(ctx,
 							&GcpOrgEntity{
 								EntryName: "projects/projectId1",
@@ -150,7 +150,7 @@ func TestGcpDataObjectIterator_DataObjects(t *testing.T) {
 						)
 					})
 
-					projectRepo.EXPECT().GetProjects(mock.Anything, "folders/folder1", &GcpOrgEntity{EntryName: "folders/folder1", Id: "folderId1", Name: "folderName1", Type: "folder", Parent: &org}, mock.Anything).RunAndReturn(func(ctx context.Context, s string, entity *GcpOrgEntity, f func(context.Context, *GcpOrgEntity) error) error {
+					projectRepo.EXPECT().GetProjects(mock.Anything, mock.Anything, "folders/folder1", &GcpOrgEntity{EntryName: "folders/folder1", Id: "folderId1", Name: "folderName1", Type: "folder", Parent: &org}, mock.Anything).RunAndReturn(func(ctx context.Context, config *data_source.DataSourceSyncConfig, s string, entity *GcpOrgEntity, f func(context.Context, *GcpOrgEntity) error) error {
 						return f(ctx,
 							&GcpOrgEntity{
 								EntryName: "projects/projectId2",
@@ -174,7 +174,7 @@ func TestGcpDataObjectIterator_DataObjects(t *testing.T) {
 						)
 					})
 
-					projectRepo.EXPECT().GetProjects(mock.Anything, "folders/folder2", &GcpOrgEntity{EntryName: "folders/folder2", Id: "folderId2", Name: "folderName2", Type: "folder", Parent: &org}, mock.Anything).RunAndReturn(func(ctx context.Context, s string, entity *GcpOrgEntity, f func(context.Context, *GcpOrgEntity) error) error {
+					projectRepo.EXPECT().GetProjects(mock.Anything, mock.Anything, "folders/folder2", &GcpOrgEntity{EntryName: "folders/folder2", Id: "folderId2", Name: "folderName2", Type: "folder", Parent: &org}, mock.Anything).RunAndReturn(func(ctx context.Context, config *data_source.DataSourceSyncConfig, s string, entity *GcpOrgEntity, f func(context.Context, *GcpOrgEntity) error) error {
 						return nil
 					})
 
@@ -182,7 +182,7 @@ func TestGcpDataObjectIterator_DataObjects(t *testing.T) {
 						return nil
 					})
 
-					projectRepo.EXPECT().GetProjects(mock.Anything, "folders/folder3", &GcpOrgEntity{EntryName: "folders/folder3", Id: "folderId3", Name: "folderName3", Type: "folder", Parent: &GcpOrgEntity{EntryName: "folders/folder1", Id: "folderId1", Name: "folderName1", Type: "folder", Parent: &org}}, mock.Anything).RunAndReturn(func(ctx context.Context, s string, entity *GcpOrgEntity, f func(context.Context, *GcpOrgEntity) error) error {
+					projectRepo.EXPECT().GetProjects(mock.Anything, mock.Anything, "folders/folder3", &GcpOrgEntity{EntryName: "folders/folder3", Id: "folderId3", Name: "folderName3", Type: "folder", Parent: &GcpOrgEntity{EntryName: "folders/folder1", Id: "folderId1", Name: "folderName1", Type: "folder", Parent: &org}}, mock.Anything).RunAndReturn(func(ctx context.Context, config *data_source.DataSourceSyncConfig, s string, entity *GcpOrgEntity, f func(context.Context, *GcpOrgEntity) error) error {
 						return f(ctx, &GcpOrgEntity{
 							EntryName: "projects/projectId3",
 							Id:        "projectId3",
@@ -251,7 +251,7 @@ func TestGcpDataObjectIterator_DataObjects(t *testing.T) {
 				mockSetup: func(projectRepo *mockProjectRepo, folderRepo *mockFolderRepo, orgRepo *mockOrganizationRepo) {
 					orgRepo.EXPECT().GetOrganization(mock.Anything).Return(&org, nil)
 
-					projectRepo.EXPECT().GetProjects(mock.Anything, org.EntryName, &org, mock.Anything).RunAndReturn(func(ctx context.Context, s string, entity *GcpOrgEntity, f func(context.Context, *GcpOrgEntity) error) error {
+					projectRepo.EXPECT().GetProjects(mock.Anything, mock.Anything, org.EntryName, &org, mock.Anything).RunAndReturn(func(ctx context.Context, config *data_source.DataSourceSyncConfig, s string, entity *GcpOrgEntity, f func(context.Context, *GcpOrgEntity) error) error {
 						return nil
 					})
 
@@ -267,7 +267,7 @@ func TestGcpDataObjectIterator_DataObjects(t *testing.T) {
 						)
 					})
 
-					projectRepo.EXPECT().GetProjects(mock.Anything, "folders/folder1", &GcpOrgEntity{EntryName: "folders/folder1", Id: "folderId1", Name: "folderName1", Type: "folder", Parent: &org}, mock.Anything).RunAndReturn(func(ctx context.Context, s string, entity *GcpOrgEntity, f func(context.Context, *GcpOrgEntity) error) error {
+					projectRepo.EXPECT().GetProjects(mock.Anything, mock.Anything, "folders/folder1", &GcpOrgEntity{EntryName: "folders/folder1", Id: "folderId1", Name: "folderName1", Type: "folder", Parent: &org}, mock.Anything).RunAndReturn(func(ctx context.Context, config *data_source.DataSourceSyncConfig, s string, entity *GcpOrgEntity, f func(context.Context, *GcpOrgEntity) error) error {
 						return errors.New("boom")
 					})
 				},
