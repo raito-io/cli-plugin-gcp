@@ -131,15 +131,12 @@ func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessPro
 	common.Logger.Info(fmt.Sprintf("Start converting %d access providers to bindings", len(accessProviders.AccessProviders)))
 
 	grants := make([]*importer.AccessProvider, 0, len(accessProviders.AccessProviders))
-	masks := make([]*importer.AccessProvider, 0, len(accessProviders.AccessProviders))
 
 	// Handle masks
 	for _, ap := range accessProviders.AccessProviders {
 		if ap.Action == importer.Grant {
 			grants = append(grants, ap)
 		} else if ap.Action == importer.Mask {
-			masks = append(masks, ap)
-
 			raitoMask, err := a.maskingService.ExportMasks(ctx, ap, accessProviderFeedbackHandler)
 			if err != nil {
 				return fmt.Errorf("export masks: %w", err)
@@ -176,6 +173,7 @@ func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessPro
 
 	for do := range bindings.bindings {
 		wg.Add(1)
+
 		go func(do iam.DataObjectReference) {
 			defer wg.Done()
 
@@ -237,7 +235,6 @@ func (a *AccessSyncer) ConvertBindingsToAccessProviders(ctx context.Context, con
 	}
 
 	for _, binding := range bindings {
-
 		managed := a.isRaitoManagedBinding(binding)
 
 		if configMap.GetBoolWithDefault(common.ExcludeNonAplicablePermissions, true) && !managed {

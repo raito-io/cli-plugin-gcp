@@ -260,11 +260,24 @@ func (c Repository) UpdateBindings(ctx context.Context, dataObject *iam2.DataObj
 	entityIdParts := strings.Split(dataObject.FullName, ".")
 
 	if len(entityIdParts) == 1 {
-		return c.projectClient.UpdateBinding(ctx, dataObject, addBindings, removeBindings)
+		err := c.projectClient.UpdateBinding(ctx, dataObject, addBindings, removeBindings)
+		if err != nil {
+			return fmt.Errorf("update project bindings for %q: %w", dataObject.FullName, err)
+		}
+
+		return nil
 	} else if len(entityIdParts) == 2 {
-		return c.updateDatasetBindings(ctx, entityIdParts[1], addBindings, removeBindings)
+		err := c.updateDatasetBindings(ctx, entityIdParts[1], addBindings, removeBindings)
+		if err != nil {
+			return fmt.Errorf("update dataset bindings for %q: %w", dataObject.FullName, err)
+		}
+
+		return nil
 	} else if len(entityIdParts) == 3 {
-		return c.updateTableBindings(ctx, entityIdParts[1], entityIdParts[2], addBindings, removeBindings)
+		err := c.updateTableBindings(ctx, entityIdParts[1], entityIdParts[2], addBindings, removeBindings)
+		if err != nil {
+			return fmt.Errorf("update table bindings for %q: %w", dataObject.FullName, err)
+		}
 	}
 
 	return fmt.Errorf("unknown entity type for %s (%s)", dataObject.FullName, dataObject.ObjectType)
@@ -486,6 +499,7 @@ func (c *Repository) updateDatasetBindings(ctx context.Context, dataset string, 
 		if _, found := bindingsToRemoveMap[bindingsToRemove[i].Role]; !found {
 			bindingsToRemoveMap[bindingsToRemove[i].Role] = set.NewSet[string]()
 		}
+
 		bindingsToRemoveMap[bindingsToRemove[i].Role].Add(bindingsToRemove[i].Member)
 	}
 
@@ -616,7 +630,7 @@ func parseMember(m string) (bigquery.EntityType, string, error) {
 }
 
 func entityToString(entity bigquery.EntityType) string {
-	switch entity {
+	switch entity { //nolint:exhaustive
 	case bigquery.DomainEntity:
 		return "domain"
 	case bigquery.GroupEmailEntity:
