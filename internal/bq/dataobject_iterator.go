@@ -1,9 +1,10 @@
 package bigquery
 
 import (
-	"cloud.google.com/go/bigquery"
 	"context"
 	"fmt"
+
+	"cloud.google.com/go/bigquery"
 	ds "github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/cli/base/util/config"
 

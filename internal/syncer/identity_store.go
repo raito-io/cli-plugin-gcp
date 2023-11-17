@@ -3,8 +3,9 @@ package syncer
 import (
 	"context"
 	"fmt"
-	"github.com/raito-io/cli/base/data_source"
 	"strings"
+
+	"github.com/raito-io/cli/base/data_source"
 
 	"github.com/raito-io/golang-set/set"
 
