@@ -1,8 +1,16 @@
 package org
 
 type GcpOrgEntity struct {
-	Id     string
-	Name   string
-	Type   string
-	Parent *GcpOrgEntity
+	// GcpDetails
+	EntryName string
+
+	// RaitoDetails
+	Id          string
+	Name        string
+	FullName    string
+	Type        string
+	Location    string
+	Description string
+	PolicyTags  []string
+	Parent      *GcpOrgEntity
 }

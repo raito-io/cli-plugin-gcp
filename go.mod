@@ -6,13 +6,17 @@ require (
 	cloud.google.com/go/bigquery v1.53.0
 	cloud.google.com/go/datacatalog v1.16.0
 	cloud.google.com/go/iam v1.1.1
+	cloud.google.com/go/resourcemanager v1.9.1
 	github.com/aws/smithy-go v1.16.0
 	github.com/gogo/protobuf v1.3.2
 	github.com/google/uuid v1.3.1
+	github.com/google/wire v0.5.0
+	github.com/googleapis/gax-go/v2 v2.12.0
 	github.com/hashicorp/go-hclog v1.5.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/matoous/go-nanoid/v2 v2.0.0
 	github.com/raito-io/cli v0.53.2
+	github.com/raito-io/enumer v0.1.3
 	github.com/raito-io/golang-set v0.0.4
 	github.com/stretchr/testify v1.8.4
 	github.com/vektra/mockery/v2 v2.36.1
@@ -52,8 +56,8 @@ require (
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/flatbuffers v2.0.8+incompatible // indirect
 	github.com/google/s2a-go v0.1.7 // indirect
+	github.com/google/subcommands v1.0.1 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.1 // indirect
-	github.com/googleapis/gax-go/v2 v2.12.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-plugin v1.5.2 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
@@ -75,6 +79,7 @@ require (
 	github.com/mitchellh/go-testing-interface v1.14.1 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/oklog/run v1.1.0 // indirect
+	github.com/pascaldekloe/name v1.0.1 // indirect
 	github.com/pelletier/go-toml/v2 v2.1.0 // indirect
 	github.com/pierrec/lz4/v4 v4.1.15 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect

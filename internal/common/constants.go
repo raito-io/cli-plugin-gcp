@@ -9,4 +9,10 @@ const (
 	GsuiteCustomerId               = "gsuite-customer-id"
 	ExcludeNonAplicablePermissions = "skip-non-applicable-permissions"
 	GcpRolesToGroupByIdentity      = "gcp-roles-to-group-by-identity"
+	GcpMaskedReader                = "gcp-masked-reader"
+
+	BqExcludedDatasets      = "bq-excluded-datasets"
+	BqIncludeHiddenDatasets = "bq-include-hidden-datasets"
+	BqDataUsageWindow       = "bq-data-usage-window"
+	BqCatalogEnabled        = "bq-catalog-enabled"
 )

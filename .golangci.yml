@@ -59,6 +59,24 @@ linters-settings:
     skip-tests: true
     package-average: 0.0
 
+  errorlint:
+    errorf: true
+    errorf-multi: true
+    asserts: true
+    comparison: true
+
+  wrapcheck:
+    ignoreSigs:
+      - .Errorf(
+      - errors.New(
+      - errors.Unwrap(
+      - .Wrap(
+      - .Wrapf(
+      - .WithMessage(
+      - .WithMessagef(
+      - .WithStack(
+      - go-multierror.Append(
+
 linters:
   disable-all: true
   enable:
@@ -71,6 +89,7 @@ linters:
     - dupword
     - durationcheck
     - errcheck
+    - errorlint
     - exportloopref
     - exhaustive
     - forbidigo
@@ -85,6 +104,7 @@ linters:
     - govet
     - ineffassign
     - misspell
+    - nilerr
     - nolintlint
     - nakedret
     - prealloc
@@ -99,7 +119,7 @@ linters:
     - unparam
     - unused
     - whitespace
-    # - wrapcheck # 3th party errors should be wrapped to not lose context
+    - wrapcheck
     - wsl
 
 run:

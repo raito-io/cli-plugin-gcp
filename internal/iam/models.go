@@ -50,3 +50,8 @@ type IAMBindings struct {
 func (a IamBinding) Equals(b IamBinding) bool {
 	return strings.EqualFold(a.Member, b.Member) && strings.EqualFold(a.Role, b.Role) && strings.EqualFold(a.Resource, b.Resource) && strings.EqualFold(a.ResourceType, b.ResourceType)
 }
+
+type DataObjectReference struct {
+	FullName   string
+	ObjectType string
+}
