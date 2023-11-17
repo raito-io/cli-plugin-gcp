@@ -3,6 +3,7 @@ package syncer
 import (
 	"context"
 	"fmt"
+	"github.com/raito-io/cli/base/data_source"
 	"strings"
 
 	"github.com/raito-io/golang-set/set"
@@ -25,7 +26,7 @@ type AdminRepository interface {
 
 //go:generate go run github.com/vektra/mockery/v2 --name=DataObjectRepository --with-expecter --inpackage
 type DataObjectRepository interface {
-	Bindings(ctx context.Context, fn func(ctx context.Context, dataObject *org.GcpOrgEntity, bindings []iam.IamBinding) error) error
+	Bindings(ctx context.Context, config *data_source.DataSourceSyncConfig, fn func(ctx context.Context, dataObject *org.GcpOrgEntity, bindings []iam.IamBinding) error) error
 }
 
 type IdentityStoreSyncer struct {
@@ -75,7 +76,7 @@ func (s *IdentityStoreSyncer) SyncIdentityStore(ctx context.Context, identityHan
 	// Load users and groups from binding
 	common.Logger.Info("Syncing groups and users from bindings in gcp")
 
-	err := s.syncBindingUsersAndGroups(ctx, identityHandler, userIds, groups)
+	err := s.syncBindingUsersAndGroups(ctx, configMap, identityHandler, userIds, groups)
 	if err != nil {
 		return err
 	}
@@ -83,8 +84,8 @@ func (s *IdentityStoreSyncer) SyncIdentityStore(ctx context.Context, identityHan
 	return nil
 }
 
-func (s *IdentityStoreSyncer) syncBindingUsersAndGroups(ctx context.Context, identityHandler wrappers.IdentityStoreIdentityHandler, userIds set.Set[string], groups map[string]*is.Group) error {
-	err := s.dataObjectRepo.Bindings(ctx, func(ctx context.Context, dataObject *org.GcpOrgEntity, bindings []iam.IamBinding) error {
+func (s *IdentityStoreSyncer) syncBindingUsersAndGroups(ctx context.Context, configMap *config.ConfigMap, identityHandler wrappers.IdentityStoreIdentityHandler, userIds set.Set[string], groups map[string]*is.Group) error {
+	err := s.dataObjectRepo.Bindings(ctx, &data_source.DataSourceSyncConfig{ConfigMap: configMap}, func(ctx context.Context, dataObject *org.GcpOrgEntity, bindings []iam.IamBinding) error {
 		for _, binding := range bindings {
 			memberParts := strings.SplitN(binding.Member, ":", 2)
 			email := memberParts[1]

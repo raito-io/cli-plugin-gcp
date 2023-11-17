@@ -44,7 +44,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			name: "No access providers",
 			fields: fields{
 				mockSetup: func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
-					gcpRepo.EXPECT().Bindings(mock.Anything, mock.Anything).Return(nil)
+					gcpRepo.EXPECT().Bindings(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 				},
 				metadata: gcp.NewDataSourceMetaData(),
 			},
@@ -59,7 +59,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			name: "Single access provider",
 			fields: fields{
 				mockSetup: func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
-					gcpRepo.EXPECT().Bindings(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, f func(context.Context, *org.GcpOrgEntity, []iam.IamBinding) error) error {
+					gcpRepo.EXPECT().Bindings(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, config *data_source.DataSourceSyncConfig, f func(context.Context, *org.GcpOrgEntity, []iam.IamBinding) error) error {
 						return f(ctx, &org.GcpOrgEntity{
 							EntryName: "projects/project1",
 							Id:        "project1",
@@ -130,7 +130,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			name: "Multiple access provider",
 			fields: fields{
 				mockSetup: func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
-					gcpRepo.EXPECT().Bindings(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, f func(context.Context, *org.GcpOrgEntity, []iam.IamBinding) error) error {
+					gcpRepo.EXPECT().Bindings(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, config *data_source.DataSourceSyncConfig, f func(context.Context, *org.GcpOrgEntity, []iam.IamBinding) error) error {
 						err := f(ctx, &org.GcpOrgEntity{
 							EntryName: "projects/project1",
 							Id:        "project1",
@@ -300,7 +300,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			name: "processing error",
 			fields: fields{
 				mockSetup: func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
-					gcpRepo.EXPECT().Bindings(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, f func(context.Context, *org.GcpOrgEntity, []iam.IamBinding) error) error {
+					gcpRepo.EXPECT().Bindings(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, config *data_source.DataSourceSyncConfig, f func(context.Context, *org.GcpOrgEntity, []iam.IamBinding) error) error {
 						err := f(ctx, &org.GcpOrgEntity{
 							EntryName: "projects/project1",
 							Id:        "project1",

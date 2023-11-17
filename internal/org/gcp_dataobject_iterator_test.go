@@ -3,6 +3,7 @@ package org
 import (
 	"context"
 	"errors"
+	"github.com/raito-io/cli/base/data_source"
 	"testing"
 
 	"github.com/raito-io/cli/base/util/config"
@@ -292,7 +293,7 @@ func TestGcpDataObjectIterator_DataObjects(t *testing.T) {
 
 			var actualDataObjects []*GcpOrgEntity
 
-			err := iterator.DataObjects(context.Background(), func(ctx context.Context, object *GcpOrgEntity) error {
+			err := iterator.DataObjects(context.Background(), &data_source.DataSourceSyncConfig{}, func(ctx context.Context, object *GcpOrgEntity) error {
 				actualDataObjects = append(actualDataObjects, object)
 
 				return nil

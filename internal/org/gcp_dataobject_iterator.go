@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	ds "github.com/raito-io/cli/base/data_source"
 
 	"github.com/raito-io/cli/base/util/config"
 
@@ -52,12 +53,12 @@ func NewGcpDataObjectIterator(projectRepo projectRepo, folderRepo folderRepo, or
 	}
 }
 
-func (r *GcpDataObjectIterator) DataObjects(ctx context.Context, fn func(ctx context.Context, object *GcpOrgEntity) error) error {
-	return r.sync(ctx, fn)
+func (r *GcpDataObjectIterator) DataObjects(ctx context.Context, config *ds.DataSourceSyncConfig, fn func(ctx context.Context, object *GcpOrgEntity) error) error {
+	return r.sync(ctx, config, fn)
 }
 
-func (r *GcpDataObjectIterator) Bindings(ctx context.Context, fn func(ctx context.Context, dataObject *GcpOrgEntity, bindings []iam.IamBinding) error) error {
-	return r.sync(ctx, func(ctx context.Context, dataObject *GcpOrgEntity) error {
+func (r *GcpDataObjectIterator) Bindings(ctx context.Context, config *ds.DataSourceSyncConfig, fn func(ctx context.Context, dataObject *GcpOrgEntity, bindings []iam.IamBinding) error) error {
+	return r.sync(ctx, config, func(ctx context.Context, dataObject *GcpOrgEntity) error {
 		common.Logger.Debug(fmt.Sprintf("Fetch bindings for %s", dataObject.Id))
 
 		var bindings []iam.IamBinding
@@ -95,7 +96,7 @@ func (r *GcpDataObjectIterator) DataSourceType() string {
 	return "organization"
 }
 
-func (r *GcpDataObjectIterator) sync(ctx context.Context, fn func(ctx context.Context, dataObject *GcpOrgEntity) error) error {
+func (r *GcpDataObjectIterator) sync(ctx context.Context, config *ds.DataSourceSyncConfig, fn func(ctx context.Context, dataObject *GcpOrgEntity) error) error {
 	organization, err := r.organizationRepo.GetOrganization(ctx)
 	if err != nil {
 		return fmt.Errorf("get organization: %w", err)

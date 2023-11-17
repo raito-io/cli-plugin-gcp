@@ -3,6 +3,7 @@ package bigquery
 import (
 	"context"
 	"fmt"
+	ds "github.com/raito-io/cli/base/data_source"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/raito-io/cli/base/util/config"
@@ -24,7 +25,7 @@ func NewDataObjectIterator(repo *Repository, configMap *config.ConfigMap) *DataO
 	}
 }
 
-func (it *DataObjectIterator) DataObjects(ctx context.Context, fn func(ctx context.Context, object *org.GcpOrgEntity) error) error {
+func (it *DataObjectIterator) DataObjects(ctx context.Context, config *ds.DataSourceSyncConfig, fn func(ctx context.Context, object *org.GcpOrgEntity) error) error {
 	ds := it.repo.Project()
 
 	err := fn(ctx, ds)
@@ -73,8 +74,8 @@ func (it *DataObjectIterator) DataObjects(ctx context.Context, fn func(ctx conte
 	return nil
 }
 
-func (it *DataObjectIterator) Bindings(ctx context.Context, fn func(ctx context.Context, dataObject *org.GcpOrgEntity, bindings []iam.IamBinding) error) error {
-	return it.DataObjects(ctx, func(ctx context.Context, object *org.GcpOrgEntity) error {
+func (it *DataObjectIterator) Bindings(ctx context.Context, config *ds.DataSourceSyncConfig, fn func(ctx context.Context, dataObject *org.GcpOrgEntity, bindings []iam.IamBinding) error) error {
+	return it.DataObjects(ctx, config, func(ctx context.Context, object *org.GcpOrgEntity) error {
 		bindings, err := it.repo.GetBindings(ctx, object)
 		if err != nil {
 			return fmt.Errorf("get bq bindings: %w", err)

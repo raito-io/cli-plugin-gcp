@@ -15,7 +15,7 @@ import (
 
 //go:generate go run github.com/vektra/mockery/v2 --name=DataSourceRepository --with-expecter --inpackage
 type DataSourceRepository interface {
-	DataObjects(ctx context.Context, fn func(ctx context.Context, object *org.GcpOrgEntity) error) error
+	DataObjects(ctx context.Context, config *ds.DataSourceSyncConfig, fn func(ctx context.Context, object *org.GcpOrgEntity) error) error
 }
 
 type DataSourceSyncer struct {
@@ -31,8 +31,8 @@ func GetOrgDataObjectName(configmap *config.ConfigMap) string {
 	return fmt.Sprintf("gcp-org-%s", configmap.GetString(common.GcpOrgId))
 }
 
-func (s *DataSourceSyncer) SyncDataSource(ctx context.Context, dataSourceHandler wrappers.DataSourceObjectHandler, _ *config.ConfigMap) error {
-	err := s.repoProvider.DataObjects(ctx, func(_ context.Context, object *org.GcpOrgEntity) error {
+func (s *DataSourceSyncer) SyncDataSource(ctx context.Context, dataSourceHandler wrappers.DataSourceObjectHandler, config *ds.DataSourceSyncConfig) error {
+	err := s.repoProvider.DataObjects(ctx, config, func(_ context.Context, object *org.GcpOrgEntity) error {
 		err := dataSourceHandler.AddDataObjects(handleGcpOrgEntities(object))
 		if err != nil {
 			return fmt.Errorf("add data object to handler: %w", err)

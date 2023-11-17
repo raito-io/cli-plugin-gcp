@@ -34,8 +34,8 @@ func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 		mocksSetup func(repository *MockDataSourceRepository)
 	}
 	type args struct {
-		ctx       context.Context
-		configMap *config.ConfigMap
+		ctx    context.Context
+		config *data_source.DataSourceSyncConfig
 	}
 	tests := []struct {
 		name                string
@@ -48,7 +48,7 @@ func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 			name: "Successfully synced data source",
 			fields: fields{
 				mocksSetup: func(repository *MockDataSourceRepository) {
-					repository.EXPECT().DataObjects(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, f func(context.Context, *org.GcpOrgEntity) error) error {
+					repository.EXPECT().DataObjects(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, config *data_source.DataSourceSyncConfig, f func(context.Context, *org.GcpOrgEntity) error) error {
 						err := f(ctx, &org.GcpOrgEntity{
 							EntryName: "projects/projectId1",
 							Id:        "projectId1",
@@ -85,8 +85,8 @@ func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 				},
 			},
 			args: args{
-				ctx:       context.Background(),
-				configMap: &config.ConfigMap{Parameters: map[string]string{common.GcpOrgId: "orgId"}},
+				ctx:    context.Background(),
+				config: &data_source.DataSourceSyncConfig{ConfigMap: &config.ConfigMap{Parameters: map[string]string{common.GcpOrgId: "orgId"}}},
 			},
 			expectedDataObjects: []data_source.DataObject{
 				{
@@ -117,7 +117,7 @@ func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 			name: "processing error",
 			fields: fields{
 				mocksSetup: func(repository *MockDataSourceRepository) {
-					repository.EXPECT().DataObjects(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, f func(context.Context, *org.GcpOrgEntity) error) error {
+					repository.EXPECT().DataObjects(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, config *data_source.DataSourceSyncConfig, f func(context.Context, *org.GcpOrgEntity) error) error {
 						err := f(ctx, &org.GcpOrgEntity{
 							EntryName: "projects/projectId1",
 							Id:        "projectId1",
@@ -147,8 +147,8 @@ func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 				},
 			},
 			args: args{
-				ctx:       context.Background(),
-				configMap: &config.ConfigMap{Parameters: map[string]string{common.GcpOrgId: "orgId"}},
+				ctx:    context.Background(),
+				config: &data_source.DataSourceSyncConfig{ConfigMap: &config.ConfigMap{Parameters: map[string]string{common.GcpOrgId: "orgId"}}},
 			},
 			expectedDataObjects: []data_source.DataObject{
 				{
@@ -175,7 +175,7 @@ func TestDataSourceSyncer_SyncDataSource(t *testing.T) {
 			tt.fields.mocksSetup(repo)
 
 			dataSourceObjectHandler := mocks.NewSimpleDataSourceObjectHandler(t, 1)
-			err := s.SyncDataSource(tt.args.ctx, dataSourceObjectHandler, tt.args.configMap)
+			err := s.SyncDataSource(tt.args.ctx, dataSourceObjectHandler, tt.args.config)
 
 			tt.wantErr(t, err)
 
