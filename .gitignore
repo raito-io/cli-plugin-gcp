@@ -27,3 +27,6 @@ raito*.yml
 *raito*.json
 .idea
 *coverage.*
+
+# Generated wire files
+*wire_gen.go

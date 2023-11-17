@@ -3,14 +3,27 @@ project_name: cli-plugin-gcp
 before:
   hooks:
     - go mod tidy
+    - make wire
 builds:
-  - env:
+  - id: "gcp"
+    main: ./cmd/gcp
+    env:
       - CGO_ENABLED=0
     goos:
       - linux
       - darwin
     ldflags:
-      - -X main.version={{.Version}}
+      - -X version.Version={{.Version}}
+  - id: "bigquery"
+    main: ./cmd/bq
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    ldflags:
+      - -X version.Version={{.Version}}
+
 checksum:
   name_template: 'checksums.txt'
 changelog:
@@ -20,7 +33,19 @@ changelog:
       - '^docs:'
       - '^test:'
 archives:
-  -
+  - id: "gcp"
+    builds:
+      - "gcp"
+    format: 'tar.gz'
+    name_template: '{{ .ProjectName }}-gcp-{{ .Version }}-{{ .Os }}_{{ .Arch }}'
+  - id: "bigquery"
+    builds:
+      - "bigquery"
+    format: 'tar.gz'
+    name_template: '{{ .ProjectName }}-bigquery-{{ .Version }}-{{ .Os }}_{{ .Arch }}'
+  - id: "backwards-compatible-gcp"
+    builds:
+    - "gcp"
     format: 'tar.gz'
     name_template: '{{ .ProjectName }}-{{ .Version }}-{{ .Os }}_{{ .Arch }}'
 release:

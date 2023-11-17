@@ -1,0 +1,18 @@
+package common
+
+const (
+	GcpSAFileLocation              = "gcp-serviceaccount-json-location"
+	GcpOrgId                       = "gcp-organization-id"
+	GcpProjectId                   = "gcp-project-id"
+	GsuiteIdentityStoreSync        = "gsuite-identity-store-sync"
+	GsuiteImpersonateSubject       = "gsuite-impersonate-subject"
+	GsuiteCustomerId               = "gsuite-customer-id"
+	ExcludeNonAplicablePermissions = "skip-non-applicable-permissions"
+	GcpRolesToGroupByIdentity      = "gcp-roles-to-group-by-identity"
+	GcpMaskedReader                = "gcp-masked-reader"
+
+	BqExcludedDatasets      = "bq-excluded-datasets"
+	BqIncludeHiddenDatasets = "bq-include-hidden-datasets"
+	BqDataUsageWindow       = "bq-data-usage-window"
+	BqCatalogEnabled        = "bq-catalog-enabled"
+)
