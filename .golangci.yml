@@ -65,6 +65,9 @@ linters-settings:
     asserts: true
     comparison: true
 
+  exhaustive:
+    default-signifies-exhaustive: true
+
   wrapcheck:
     ignoreSigs:
       - .Errorf(

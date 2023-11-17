@@ -630,7 +630,7 @@ func parseMember(m string) (bigquery.EntityType, string, error) {
 }
 
 func entityToString(entity bigquery.EntityType) string {
-	switch entity { //nolint:exhaustive
+	switch entity {
 	case bigquery.DomainEntity:
 		return "domain"
 	case bigquery.GroupEmailEntity:

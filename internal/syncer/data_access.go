@@ -134,9 +134,10 @@ func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessPro
 
 	// Handle masks
 	for _, ap := range accessProviders.AccessProviders {
-		if ap.Action == importer.Grant {
+		switch ap.Action {
+		case importer.Grant, importer.Purpose:
 			grants = append(grants, ap)
-		} else if ap.Action == importer.Mask {
+		case importer.Mask:
 			raitoMask, err := a.maskingService.ExportMasks(ctx, ap, accessProviderFeedbackHandler)
 			if err != nil {
 				return fmt.Errorf("export masks: %w", err)
@@ -145,7 +146,7 @@ func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessPro
 			if raitoMask != nil {
 				a.raitoMasks.Add(raitoMask...)
 			}
-		} else {
+		default:
 			err := accessProviderFeedbackHandler.AddAccessProviderFeedback(importer.AccessProviderSyncFeedback{
 				AccessProvider: ap.Id,
 				ActualName:     ap.Id,
