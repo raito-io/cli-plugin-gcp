@@ -55,6 +55,10 @@ func NewGcpDataObjectIterator(projectRepo projectRepo, folderRepo folderRepo, or
 }
 
 func (r *GcpDataObjectIterator) DataObjects(ctx context.Context, config *ds.DataSourceSyncConfig, fn func(ctx context.Context, object *GcpOrgEntity) error) error {
+	if config.DataObjectParent != "" {
+		common.Logger.Warn("The GCP plugin currently doesn't support partial data source syncs. A full sync will be performed instead.")
+	}
+
 	return r.sync(ctx, config, fn)
 }
 
@@ -107,15 +111,9 @@ func (r *GcpDataObjectIterator) sync(ctx context.Context, config *ds.DataSourceS
 		return errors.New("organization not found")
 	}
 
-	if common.ShouldHandle(organization.FullName, config) {
-		err = fn(ctx, organization)
-		if err != nil {
-			return err
-		}
-	}
-
-	if !common.ShouldGoInto(organization.FullName, config) {
-		return nil
+	err = fn(ctx, organization)
+	if err != nil {
+		return err
 	}
 
 	return r.syncFolder(ctx, config, organization.EntryName, organization, fn)
@@ -128,15 +126,9 @@ func (r *GcpDataObjectIterator) syncFolder(ctx context.Context, config *ds.DataS
 	}
 
 	err = r.folderRepo.GetFolders(ctx, parentId, parent, func(ctx context.Context, folder *GcpOrgEntity) error {
-		if common.ShouldHandle(folder.FullName, config) {
-			err2 := fn(ctx, folder)
-			if err2 != nil {
-				return fmt.Errorf("folder syncs of %q: %w", parentId, err2)
-			}
-		}
-
-		if !common.ShouldGoInto(folder.FullName, config) {
-			return nil
+		err2 := fn(ctx, folder)
+		if err2 != nil {
+			return fmt.Errorf("folder syncs of %q: %w", parentId, err2)
 		}
 
 		return r.syncFolder(ctx, config, folder.EntryName, folder, fn)

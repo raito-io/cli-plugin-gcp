@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/raito-io/cli-plugin-gcp/internal/common"
 	ds "github.com/raito-io/cli/base/data_source"
 
 	"cloud.google.com/go/iam/apiv1/iampb"
@@ -50,20 +49,18 @@ func (r *ProjectRepository) GetProjects(ctx context.Context, config *ds.DataSour
 			return fmt.Errorf("project iterator: %w", err)
 		}
 
-		if common.ShouldHandle(project.ProjectId, config) {
-			res := GcpOrgEntity{
-				EntryName: project.Name,
-				Name:      project.DisplayName,
-				Id:        project.ProjectId,
-				FullName:  project.ProjectId,
-				Type:      "project",
-				Parent:    parent,
-			}
+		res := GcpOrgEntity{
+			EntryName: project.Name,
+			Name:      project.DisplayName,
+			Id:        project.ProjectId,
+			FullName:  project.ProjectId,
+			Type:      "project",
+			Parent:    parent,
+		}
 
-			err = fn(ctx, &res)
-			if err != nil {
-				return err
-			}
+		err = fn(ctx, &res)
+		if err != nil {
+			return err
 		}
 	}
 
