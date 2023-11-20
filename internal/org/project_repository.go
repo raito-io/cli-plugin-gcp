@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	ds "github.com/raito-io/cli/base/data_source"
+
 	"cloud.google.com/go/iam/apiv1/iampb"
 	resourcemanager "cloud.google.com/go/resourcemanager/apiv3"
 	"cloud.google.com/go/resourcemanager/apiv3/resourcemanagerpb"
@@ -34,7 +36,7 @@ func NewProjectRepository(projectClient projectClient) *ProjectRepository {
 	}
 }
 
-func (r *ProjectRepository) GetProjects(ctx context.Context, parentName string, parent *GcpOrgEntity, fn func(ctx context.Context, project *GcpOrgEntity) error) error {
+func (r *ProjectRepository) GetProjects(ctx context.Context, config *ds.DataSourceSyncConfig, parentName string, parent *GcpOrgEntity, fn func(ctx context.Context, project *GcpOrgEntity) error) error {
 	projectIterator := r.projectClient.ListProjects(ctx, &resourcemanagerpb.ListProjectsRequest{
 		Parent: parentName,
 	})

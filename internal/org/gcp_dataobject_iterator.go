@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	ds "github.com/raito-io/cli/base/data_source"
+
 	"github.com/raito-io/cli/base/util/config"
 
 	"github.com/raito-io/cli-plugin-gcp/internal/common"
@@ -19,7 +21,7 @@ type iamRepo interface {
 //go:generate go run github.com/vektra/mockery/v2 --name=projectRepo --with-expecter --inpackage
 type projectRepo interface {
 	iamRepo
-	GetProjects(ctx context.Context, parentName string, parent *GcpOrgEntity, fn func(ctx context.Context, project *GcpOrgEntity) error) error
+	GetProjects(ctx context.Context, config *ds.DataSourceSyncConfig, parentName string, parent *GcpOrgEntity, fn func(ctx context.Context, project *GcpOrgEntity) error) error
 }
 
 //go:generate go run github.com/vektra/mockery/v2 --name=folderRepo --with-expecter --inpackage
@@ -52,12 +54,16 @@ func NewGcpDataObjectIterator(projectRepo projectRepo, folderRepo folderRepo, or
 	}
 }
 
-func (r *GcpDataObjectIterator) DataObjects(ctx context.Context, fn func(ctx context.Context, object *GcpOrgEntity) error) error {
-	return r.sync(ctx, fn)
+func (r *GcpDataObjectIterator) DataObjects(ctx context.Context, config *ds.DataSourceSyncConfig, fn func(ctx context.Context, object *GcpOrgEntity) error) error {
+	if config.DataObjectParent != "" {
+		common.Logger.Warn("The GCP plugin currently doesn't support partial data source syncs. A full sync will be performed instead.")
+	}
+
+	return r.sync(ctx, config, fn)
 }
 
-func (r *GcpDataObjectIterator) Bindings(ctx context.Context, fn func(ctx context.Context, dataObject *GcpOrgEntity, bindings []iam.IamBinding) error) error {
-	return r.sync(ctx, func(ctx context.Context, dataObject *GcpOrgEntity) error {
+func (r *GcpDataObjectIterator) Bindings(ctx context.Context, config *ds.DataSourceSyncConfig, fn func(ctx context.Context, dataObject *GcpOrgEntity, bindings []iam.IamBinding) error) error {
+	return r.sync(ctx, config, func(ctx context.Context, dataObject *GcpOrgEntity) error {
 		common.Logger.Debug(fmt.Sprintf("Fetch bindings for %s", dataObject.Id))
 
 		var bindings []iam.IamBinding
@@ -95,7 +101,7 @@ func (r *GcpDataObjectIterator) DataSourceType() string {
 	return "organization"
 }
 
-func (r *GcpDataObjectIterator) sync(ctx context.Context, fn func(ctx context.Context, dataObject *GcpOrgEntity) error) error {
+func (r *GcpDataObjectIterator) sync(ctx context.Context, config *ds.DataSourceSyncConfig, fn func(ctx context.Context, dataObject *GcpOrgEntity) error) error {
 	organization, err := r.organizationRepo.GetOrganization(ctx)
 	if err != nil {
 		return fmt.Errorf("get organization: %w", err)
@@ -110,11 +116,11 @@ func (r *GcpDataObjectIterator) sync(ctx context.Context, fn func(ctx context.Co
 		return err
 	}
 
-	return r.syncFolder(ctx, organization.EntryName, organization, fn)
+	return r.syncFolder(ctx, config, organization.EntryName, organization, fn)
 }
 
-func (r *GcpDataObjectIterator) syncFolder(ctx context.Context, parentId string, parent *GcpOrgEntity, fn func(ctx context.Context, dataObject *GcpOrgEntity) error) error {
-	err := r.projectRepo.GetProjects(ctx, parentId, parent, fn)
+func (r *GcpDataObjectIterator) syncFolder(ctx context.Context, config *ds.DataSourceSyncConfig, parentId string, parent *GcpOrgEntity, fn func(ctx context.Context, dataObject *GcpOrgEntity) error) error {
+	err := r.projectRepo.GetProjects(ctx, config, parentId, parent, fn)
 	if err != nil {
 		return fmt.Errorf("project syncs of %q: %w", parentId, err)
 	}
@@ -125,7 +131,7 @@ func (r *GcpDataObjectIterator) syncFolder(ctx context.Context, parentId string,
 			return fmt.Errorf("folder syncs of %q: %w", parentId, err2)
 		}
 
-		return r.syncFolder(ctx, folder.EntryName, folder, fn)
+		return r.syncFolder(ctx, config, folder.EntryName, folder, fn)
 	})
 	if err != nil {
 		return fmt.Errorf("folder syncs of %q: %w", parentId, err)

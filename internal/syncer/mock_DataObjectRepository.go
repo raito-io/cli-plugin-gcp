@@ -6,6 +6,8 @@ import (
 	context "context"
 
 	iam "github.com/raito-io/cli-plugin-gcp/internal/iam"
+	data_source "github.com/raito-io/cli/base/data_source"
+
 	mock "github.com/stretchr/testify/mock"
 
 	org "github.com/raito-io/cli-plugin-gcp/internal/org"
@@ -24,13 +26,13 @@ func (_m *MockDataObjectRepository) EXPECT() *MockDataObjectRepository_Expecter 
 	return &MockDataObjectRepository_Expecter{mock: &_m.Mock}
 }
 
-// Bindings provides a mock function with given fields: ctx, fn
-func (_m *MockDataObjectRepository) Bindings(ctx context.Context, fn func(context.Context, *org.GcpOrgEntity, []iam.IamBinding) error) error {
-	ret := _m.Called(ctx, fn)
+// Bindings provides a mock function with given fields: ctx, config, fn
+func (_m *MockDataObjectRepository) Bindings(ctx context.Context, config *data_source.DataSourceSyncConfig, fn func(context.Context, *org.GcpOrgEntity, []iam.IamBinding) error) error {
+	ret := _m.Called(ctx, config, fn)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, func(context.Context, *org.GcpOrgEntity, []iam.IamBinding) error) error); ok {
-		r0 = rf(ctx, fn)
+	if rf, ok := ret.Get(0).(func(context.Context, *data_source.DataSourceSyncConfig, func(context.Context, *org.GcpOrgEntity, []iam.IamBinding) error) error); ok {
+		r0 = rf(ctx, config, fn)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -45,14 +47,15 @@ type MockDataObjectRepository_Bindings_Call struct {
 
 // Bindings is a helper method to define mock.On call
 //   - ctx context.Context
+//   - config *data_source.DataSourceSyncConfig
 //   - fn func(context.Context , *org.GcpOrgEntity , []iam.IamBinding) error
-func (_e *MockDataObjectRepository_Expecter) Bindings(ctx interface{}, fn interface{}) *MockDataObjectRepository_Bindings_Call {
-	return &MockDataObjectRepository_Bindings_Call{Call: _e.mock.On("Bindings", ctx, fn)}
+func (_e *MockDataObjectRepository_Expecter) Bindings(ctx interface{}, config interface{}, fn interface{}) *MockDataObjectRepository_Bindings_Call {
+	return &MockDataObjectRepository_Bindings_Call{Call: _e.mock.On("Bindings", ctx, config, fn)}
 }
 
-func (_c *MockDataObjectRepository_Bindings_Call) Run(run func(ctx context.Context, fn func(context.Context, *org.GcpOrgEntity, []iam.IamBinding) error)) *MockDataObjectRepository_Bindings_Call {
+func (_c *MockDataObjectRepository_Bindings_Call) Run(run func(ctx context.Context, config *data_source.DataSourceSyncConfig, fn func(context.Context, *org.GcpOrgEntity, []iam.IamBinding) error)) *MockDataObjectRepository_Bindings_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(func(context.Context, *org.GcpOrgEntity, []iam.IamBinding) error))
+		run(args[0].(context.Context), args[1].(*data_source.DataSourceSyncConfig), args[2].(func(context.Context, *org.GcpOrgEntity, []iam.IamBinding) error))
 	})
 	return _c
 }
@@ -62,7 +65,7 @@ func (_c *MockDataObjectRepository_Bindings_Call) Return(_a0 error) *MockDataObj
 	return _c
 }
 
-func (_c *MockDataObjectRepository_Bindings_Call) RunAndReturn(run func(context.Context, func(context.Context, *org.GcpOrgEntity, []iam.IamBinding) error) error) *MockDataObjectRepository_Bindings_Call {
+func (_c *MockDataObjectRepository_Bindings_Call) RunAndReturn(run func(context.Context, *data_source.DataSourceSyncConfig, func(context.Context, *org.GcpOrgEntity, []iam.IamBinding) error) error) *MockDataObjectRepository_Bindings_Call {
 	_c.Call.Return(run)
 	return _c
 }

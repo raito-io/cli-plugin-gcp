@@ -15,7 +15,7 @@ require (
 	github.com/hashicorp/go-hclog v1.5.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/matoous/go-nanoid/v2 v2.0.0
-	github.com/raito-io/cli v0.53.2
+	github.com/raito-io/cli v0.54.1
 	github.com/raito-io/enumer v0.1.3
 	github.com/raito-io/golang-set v0.0.4
 	github.com/stretchr/testify v1.8.4

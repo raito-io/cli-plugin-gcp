@@ -6,6 +6,8 @@ import (
 	context "context"
 
 	iam "github.com/raito-io/cli-plugin-gcp/internal/iam"
+	data_source "github.com/raito-io/cli/base/data_source"
+
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -77,13 +79,13 @@ func (_c *mockProjectRepo_GetIamPolicy_Call) RunAndReturn(run func(context.Conte
 	return _c
 }
 
-// GetProjects provides a mock function with given fields: ctx, parentName, parent, fn
-func (_m *mockProjectRepo) GetProjects(ctx context.Context, parentName string, parent *GcpOrgEntity, fn func(context.Context, *GcpOrgEntity) error) error {
-	ret := _m.Called(ctx, parentName, parent, fn)
+// GetProjects provides a mock function with given fields: ctx, config, parentName, parent, fn
+func (_m *mockProjectRepo) GetProjects(ctx context.Context, config *data_source.DataSourceSyncConfig, parentName string, parent *GcpOrgEntity, fn func(context.Context, *GcpOrgEntity) error) error {
+	ret := _m.Called(ctx, config, parentName, parent, fn)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, *GcpOrgEntity, func(context.Context, *GcpOrgEntity) error) error); ok {
-		r0 = rf(ctx, parentName, parent, fn)
+	if rf, ok := ret.Get(0).(func(context.Context, *data_source.DataSourceSyncConfig, string, *GcpOrgEntity, func(context.Context, *GcpOrgEntity) error) error); ok {
+		r0 = rf(ctx, config, parentName, parent, fn)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -98,16 +100,17 @@ type mockProjectRepo_GetProjects_Call struct {
 
 // GetProjects is a helper method to define mock.On call
 //   - ctx context.Context
+//   - config *data_source.DataSourceSyncConfig
 //   - parentName string
 //   - parent *GcpOrgEntity
 //   - fn func(context.Context , *GcpOrgEntity) error
-func (_e *mockProjectRepo_Expecter) GetProjects(ctx interface{}, parentName interface{}, parent interface{}, fn interface{}) *mockProjectRepo_GetProjects_Call {
-	return &mockProjectRepo_GetProjects_Call{Call: _e.mock.On("GetProjects", ctx, parentName, parent, fn)}
+func (_e *mockProjectRepo_Expecter) GetProjects(ctx interface{}, config interface{}, parentName interface{}, parent interface{}, fn interface{}) *mockProjectRepo_GetProjects_Call {
+	return &mockProjectRepo_GetProjects_Call{Call: _e.mock.On("GetProjects", ctx, config, parentName, parent, fn)}
 }
 
-func (_c *mockProjectRepo_GetProjects_Call) Run(run func(ctx context.Context, parentName string, parent *GcpOrgEntity, fn func(context.Context, *GcpOrgEntity) error)) *mockProjectRepo_GetProjects_Call {
+func (_c *mockProjectRepo_GetProjects_Call) Run(run func(ctx context.Context, config *data_source.DataSourceSyncConfig, parentName string, parent *GcpOrgEntity, fn func(context.Context, *GcpOrgEntity) error)) *mockProjectRepo_GetProjects_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(*GcpOrgEntity), args[3].(func(context.Context, *GcpOrgEntity) error))
+		run(args[0].(context.Context), args[1].(*data_source.DataSourceSyncConfig), args[2].(string), args[3].(*GcpOrgEntity), args[4].(func(context.Context, *GcpOrgEntity) error))
 	})
 	return _c
 }
@@ -117,7 +120,7 @@ func (_c *mockProjectRepo_GetProjects_Call) Return(_a0 error) *mockProjectRepo_G
 	return _c
 }
 
-func (_c *mockProjectRepo_GetProjects_Call) RunAndReturn(run func(context.Context, string, *GcpOrgEntity, func(context.Context, *GcpOrgEntity) error) error) *mockProjectRepo_GetProjects_Call {
+func (_c *mockProjectRepo_GetProjects_Call) RunAndReturn(run func(context.Context, *data_source.DataSourceSyncConfig, string, *GcpOrgEntity, func(context.Context, *GcpOrgEntity) error) error) *mockProjectRepo_GetProjects_Call {
 	_c.Call.Return(run)
 	return _c
 }

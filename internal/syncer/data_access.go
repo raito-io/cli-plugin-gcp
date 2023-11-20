@@ -25,7 +25,7 @@ import (
 
 //go:generate go run github.com/vektra/mockery/v2 --name=BindingRepository --with-expecter --inpackage
 type BindingRepository interface {
-	Bindings(ctx context.Context, fn func(ctx context.Context, dataObject *org.GcpOrgEntity, bindings []iam.IamBinding) error) error
+	Bindings(ctx context.Context, config *data_source.DataSourceSyncConfig, fn func(ctx context.Context, dataObject *org.GcpOrgEntity, bindings []iam.IamBinding) error) error
 	UpdateBindings(ctx context.Context, dataObject *iam.DataObjectReference, addBindings []iam.IamBinding, removeBindings []iam.IamBinding) error
 
 	DataSourceType() string
@@ -84,7 +84,7 @@ func (a *AccessSyncer) SyncAccessProvidersFromTarget(ctx context.Context, access
 	locations := set.NewSet[string]()
 	maskingTags := make(map[string][]string)
 
-	err := a.bindingRepo.Bindings(ctx, func(ctx context.Context, dataObject *org.GcpOrgEntity, bindings []iam.IamBinding) error {
+	err := a.bindingRepo.Bindings(ctx, &data_source.DataSourceSyncConfig{ConfigMap: configMap}, func(ctx context.Context, dataObject *org.GcpOrgEntity, bindings []iam.IamBinding) error {
 		if len(bindings) == 0 {
 			return nil
 		}
