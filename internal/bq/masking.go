@@ -259,9 +259,12 @@ func (m *BqMaskingService) exportMasks(ctx context.Context, accessProvider *impo
 func (m *BqMaskingService) exportRaitoMaskCreateAndUpdateDataPolicies(ctx context.Context, accessProvider *importer.AccessProvider, doLocations map[string][]string, dataPolicyLocations map[string]string) (*string, map[string]BQMaskingInformation, error) {
 	common.Logger.Debug(fmt.Sprintf("Create or update data policies for mask %s", accessProvider.Name))
 
-	maskingTypeInt, found := datapoliciespb.DataMaskingPolicy_PredefinedExpression_value[GetValueIfExists(accessProvider.Type, "ALWAYS_NULL")]
-	if !found {
-		maskingTypeInt = int32(datapoliciespb.DataMaskingPolicy_ALWAYS_NULL)
+	maskingTypeInt := int32(datapoliciespb.DataMaskingPolicy_ALWAYS_NULL)
+
+	if accessProvider.Type != nil {
+		if accessProviderMaskType, found := datapoliciespb.DataMaskingPolicy_PredefinedExpression_value[*accessProvider.Type]; found {
+			maskingTypeInt = accessProviderMaskType
+		}
 	}
 
 	maskingType := datapoliciespb.DataMaskingPolicy_PredefinedExpression(maskingTypeInt)
@@ -323,9 +326,11 @@ func (m *BqMaskingService) exportRaitoMaskRemoveOldPolicies(ctx context.Context,
 
 func (m *BqMaskingService) exportRaitoMaskListAllDoLocations(ctx context.Context, accessProvider *importer.AccessProvider) (map[string]string, map[string][]string, map[string][]string, error) {
 	var dataPolicies []string
-	if accessProvider.ExternalId != nil {
+	if accessProvider.ExternalId != nil && *accessProvider.ExternalId != "" {
 		dataPolicies = strings.Split(*accessProvider.ExternalId, ",")
 	}
+
+	common.Logger.Debug(fmt.Sprintf("List all data policies for mask %s: %+v (%d)", accessProvider.Name, dataPolicies, len(dataPolicies)))
 
 	dataPolicyLocations := map[string]string{}
 
