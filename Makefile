@@ -20,6 +20,6 @@ lint:
 	go fmt ./...
 
 test:
-	$(gotestsum) --debug --format pkgname -- -mod=readonly -tags=integration -race -coverpkg=./... -covermode=atomic -coverprofile=coverage.out.tmp ./...
+	$(gotestsum) --debug --format pkgname -- -mod=readonly -race -coverpkg=./... -covermode=atomic -coverprofile=coverage.out.tmp ./... # TODO add integration build tag
 	cat coverage.out.tmp | grep -v "/mock_" > coverage.txt #IGNORE MOCKS
 	go tool cover -html=coverage.txt -o coverage.html

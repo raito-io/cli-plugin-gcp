@@ -3,6 +3,7 @@ package bigquery
 import (
 	"context"
 
+	"cloud.google.com/go/bigquery/datapolicies/apiv1/datapoliciespb"
 	ds "github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/cli/base/util/config"
 
@@ -168,6 +169,46 @@ func NewDataSourceMetaData(_ context.Context, configParams *config.ConfigMap) (*
 					DataObjectTypes: []string{ds.Dataset},
 				},
 			},
+		},
+		MaskingMetadata: &ds.MaskingMetadata{
+			MaskTypes: []*ds.MaskingType{
+				{
+					DisplayName: "NULL",
+					ExternalId:  datapoliciespb.DataMaskingPolicy_PredefinedExpression_name[int32(datapoliciespb.DataMaskingPolicy_ALWAYS_NULL)],
+					Description: "Returns NULL instead of the column value. Use this when you want to hide both the value and the data type of the column. When this data masking rule is applied to a column, it makes it less useful in query JOIN operations for users with Masked Reader access. This is because a NULL value isn't sufficiently unique to be useful when joining tables.",
+				},
+				{
+					DisplayName: "Hash (SHA-256)",
+					ExternalId:  datapoliciespb.DataMaskingPolicy_PredefinedExpression_name[int32(datapoliciespb.DataMaskingPolicy_SHA256)],
+					Description: "Returns the SHA-256 hash of the column's value. You can only use this rule with columns that use the STRING data type.",
+				},
+				{
+					DisplayName: "Last four characters",
+					ExternalId:  datapoliciespb.DataMaskingPolicy_PredefinedExpression_name[int32(datapoliciespb.DataMaskingPolicy_LAST_FOUR_CHARACTERS)],
+					Description: "Returns the last 4 characters of the column's value, replacing the rest of the string with XXXXX. If the column's value is equal to or less than 4 characters in length, then it returns the column's value after it has been run through the SHA-256 hash function. You can only use this rule with columns that use the STRING data type.",
+				},
+				{
+					DisplayName: "First four characters",
+					ExternalId:  datapoliciespb.DataMaskingPolicy_PredefinedExpression_name[int32(datapoliciespb.DataMaskingPolicy_FIRST_FOUR_CHARACTERS)],
+					Description: "Returns the first 4 characters of the column's value, replacing the rest of the string with XXXXX. If the column's value is equal to or less than 4 characters in length, then it returns the column's value after it has been run through the SHA-256 hash function. You can only use this rule with columns that use the STRING data type.",
+				},
+				{
+					DisplayName: "Email mask",
+					ExternalId:  datapoliciespb.DataMaskingPolicy_PredefinedExpression_name[int32(datapoliciespb.DataMaskingPolicy_EMAIL_MASK)],
+					Description: "Returns the column's value after replacing the username of a valid email with XXXXX. If the column's value is not a valid email address, then it returns the column's value after it has been run through the SHA-256 hash function. You can only use this rule with columns that use the STRING data type.",
+				},
+				{
+					DisplayName: "Default masking value",
+					ExternalId:  datapoliciespb.DataMaskingPolicy_PredefinedExpression_name[int32(datapoliciespb.DataMaskingPolicy_DEFAULT_MASKING_VALUE)],
+					Description: "Returns a default masking value for the column based on the column's data type. Use this when you want to hide the value of the column but reveal the data type. When this data masking rule is applied to a column, it makes it less useful in query JOIN operations for users with Masked Reader access. This is because a default value isn't sufficiently unique to be useful when joining tables.",
+				},
+				{
+					DisplayName: "Date year mask",
+					ExternalId:  datapoliciespb.DataMaskingPolicy_PredefinedExpression_name[int32(datapoliciespb.DataMaskingPolicy_DATE_YEAR_MASK)],
+					Description: "Returns the column's value after truncating the value to its year, setting all non-year parts of the value to the beginning of the year. You can only use this rule with columns that use the DATE, DATETIME, and TIMESTAMP data types.",
+				},
+			},
+			DefaultMaskExternalName: datapoliciespb.DataMaskingPolicy_PredefinedExpression_name[int32(datapoliciespb.DataMaskingPolicy_ALWAYS_NULL)],
 		},
 	}
 
