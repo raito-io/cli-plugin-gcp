@@ -2,8 +2,6 @@ module github.com/raito-io/cli-plugin-gcp
 
 go 1.21
 
-replace github.com/raito-io/cli => ../cli
-
 require (
 	cloud.google.com/go/bigquery v1.57.1
 	cloud.google.com/go/datacatalog v1.19.0
@@ -17,7 +15,7 @@ require (
 	github.com/hashicorp/go-hclog v1.5.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/matoous/go-nanoid/v2 v2.0.0
-	github.com/raito-io/cli v0.55.0-dev0
+	github.com/raito-io/cli v0.55.0-dev2
 	github.com/raito-io/enumer v0.1.3
 	github.com/raito-io/golang-set v0.0.4
 	github.com/stretchr/testify v1.8.4
