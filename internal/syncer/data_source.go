@@ -61,6 +61,7 @@ func handleGcpOrgEntities(entity *org.GcpOrgEntity) *ds.DataObject {
 		ExternalId:       entity.Id,
 		Description:      entity.Description,
 		ParentExternalId: parent,
+		DataType:         entity.DataType,
 	}
 }
 
