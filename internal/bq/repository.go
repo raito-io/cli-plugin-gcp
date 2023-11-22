@@ -10,6 +10,7 @@ import (
 
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/iam"
+	"github.com/aws/smithy-go/ptr"
 	"github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/raito-io/golang-set/set"
@@ -168,6 +169,7 @@ func (c *Repository) ListColumns(ctx context.Context, tab *bigquery.Table, paren
 			Description: c.description("column"),
 			Location:    tMeta.Location,
 			PolicyTags:  policyTags,
+			DataType:    ptr.String(string(col.Type)),
 		}
 
 		err = fn(ctx, &entity)
