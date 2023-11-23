@@ -32,12 +32,6 @@ func NewGcpAdminService(ctx context.Context, configMap *config.ConfigMap) (*gcpa
 
 	config.Subject = configMap.GetString(common.GsuiteImpersonateSubject)
 
-	customerId := configMap.GetString(common.GsuiteCustomerId)
-
-	if customerId == "" || config.Subject == "" {
-		return nil, fmt.Errorf("for GSuite identity store sync please configure %s and %s", common.GsuiteCustomerId, common.GsuiteImpersonateSubject)
-	}
-
 	service, err := gcpadmin.NewService(ctx, option.WithHTTPClient(config.Client(ctx)))
 	if err != nil {
 		return nil, fmt.Errorf("create gcp admin service: %w", err)
