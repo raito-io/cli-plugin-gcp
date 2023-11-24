@@ -41,7 +41,7 @@ func (r *OrganizationRepository) GetOrganization(ctx context.Context) (*GcpOrgEn
 	if common.HandleApiError(err) {
 		common.Logger.Warn(fmt.Sprintf("Ecountered 4xx error while fetching organisation information: %s", err.Error()))
 
-        return nil, nil
+		return nil, nil
 	} else if err != nil {
 		return nil, fmt.Errorf("get organization %q: %w", r.organizationId, err)
 	}
