@@ -29,6 +29,7 @@ const (
 )
 
 var bqPolicyCache = make(map[string][]iam2.IamBinding)
+var bqDataObjectCache = make(map[string][]*org.GcpOrgEntity)
 
 type ProjectClient interface {
 	GetIamPolicy(ctx context.Context, projectId string) ([]iam2.IamBinding, error)
@@ -66,8 +67,16 @@ func (c *Repository) Project() *org.GcpOrgEntity {
 }
 
 func (c *Repository) ListDataSets(ctx context.Context, parent *org.GcpOrgEntity, fn func(ctx context.Context, entity *org.GcpOrgEntity, dataset *bigquery.Dataset) error) error {
+	if err, done := c.loadDataObjectsFromCache(ctx, parent, func(ctx context.Context, item *org.GcpOrgEntity) error {
+		return fn(ctx, item, nil)
+	}); done {
+		return err
+	}
+
 	dsIterator := c.client.Datasets(ctx)
 	dsIterator.ListHidden = c.listHidden
+
+	var dataObjects []*org.GcpOrgEntity
 
 	for {
 		ds, err := dsIterator.Next()
@@ -98,13 +107,29 @@ func (c *Repository) ListDataSets(ctx context.Context, parent *org.GcpOrgEntity,
 		if err != nil {
 			return err
 		}
+
+		dataObjects = append(dataObjects, &entity)
 	}
+
+	bqDataObjectCache[parent.FullName] = dataObjects
 
 	return nil
 }
 
 func (c *Repository) ListTables(ctx context.Context, ds *bigquery.Dataset, parent *org.GcpOrgEntity, fn func(ctx context.Context, entity *org.GcpOrgEntity, tab *bigquery.Table) error) error {
+	if err, done := c.loadDataObjectsFromCache(ctx, parent, func(ctx context.Context, item *org.GcpOrgEntity) error {
+		return fn(ctx, item, nil)
+	}); done {
+		return err
+	}
+
+	if ds == nil {
+		ds = c.client.Dataset(parent.Id)
+	}
+
 	tIterator := ds.Tables(ctx)
+
+	var dataObjects []*org.GcpOrgEntity
 
 	for {
 		tab, err := tIterator.Next()
@@ -141,16 +166,31 @@ func (c *Repository) ListTables(ctx context.Context, ds *bigquery.Dataset, paren
 		if err != nil {
 			return err
 		}
+
+		dataObjects = append(dataObjects, &entity)
 	}
+
+	bqDataObjectCache[parent.FullName] = dataObjects
 
 	return nil
 }
 
 func (c *Repository) ListColumns(ctx context.Context, tab *bigquery.Table, parent *org.GcpOrgEntity, fn func(ctx context.Context, entity *org.GcpOrgEntity) error) error {
+	if err, done := c.loadDataObjectsFromCache(ctx, parent, fn); done {
+		return err
+	}
+
+	if tab == nil {
+		ds := c.client.Dataset(parent.Parent.Id)
+		tab = ds.Table(parent.Name)
+	}
+
 	tMeta, err := tab.Metadata(ctx)
 	if err != nil {
 		return fmt.Errorf("table metadata: %w", err)
 	}
+
+	dataObjects := make([]*org.GcpOrgEntity, 0, len(tMeta.Schema))
 
 	for _, col := range tMeta.Schema {
 		var policyTags []string
@@ -176,12 +216,30 @@ func (c *Repository) ListColumns(ctx context.Context, tab *bigquery.Table, paren
 		if err != nil {
 			return err
 		}
+
+		dataObjects = append(dataObjects, &entity)
 	}
+
+	bqDataObjectCache[parent.FullName] = dataObjects
 
 	return nil
 }
 
 func (c *Repository) ListViews(ctx context.Context, ds *bigquery.Dataset, parent *org.GcpOrgEntity, fn func(ctx context.Context, entity *org.GcpOrgEntity) error) error {
+	if err, done := c.loadDataObjectsFromCache(ctx, parent, func(ctx context.Context, item *org.GcpOrgEntity) error {
+		if item.Type == data_source.View {
+			return fn(ctx, item)
+		}
+
+		return nil
+	}); done {
+		return err
+	}
+
+	if ds == nil {
+		ds = c.client.Dataset(parent.Id)
+	}
+
 	tIterator := ds.Tables(ctx)
 
 	for {
@@ -280,6 +338,8 @@ func (c Repository) UpdateBindings(ctx context.Context, dataObject *iam2.DataObj
 		if err != nil {
 			return fmt.Errorf("update table bindings for %q: %w", dataObject.FullName, err)
 		}
+
+		return nil
 	}
 
 	return fmt.Errorf("unknown entity type for %s (%s)", dataObject.FullName, dataObject.ObjectType)
@@ -598,6 +658,21 @@ func (c *Repository) updateTableBindings(ctx context.Context, dataset, table str
 
 func (c *Repository) description(doType string) string {
 	return fmt.Sprintf("BigQuery project %s %s", c.projectId, doType)
+}
+
+func (c *Repository) loadDataObjectsFromCache(ctx context.Context, parent *org.GcpOrgEntity, fn func(ctx context.Context, item *org.GcpOrgEntity) error) (error, bool) {
+	if result, found := bqDataObjectCache[parent.FullName]; found {
+		for _, entity := range result {
+			err := fn(ctx, entity)
+			if err != nil {
+				return err, true
+			}
+		}
+
+		return nil, true
+	}
+
+	return nil, false
 }
 
 func getBQEntityForRole(t string) bigquery.AccessRole {

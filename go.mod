@@ -5,8 +5,8 @@ go 1.21
 require (
 	cloud.google.com/go/bigquery v1.57.1
 	cloud.google.com/go/datacatalog v1.19.0
-	cloud.google.com/go/iam v1.1.3
-	cloud.google.com/go/resourcemanager v1.9.2
+	cloud.google.com/go/iam v1.1.5
+	cloud.google.com/go/resourcemanager v1.9.4
 	github.com/aws/smithy-go v1.17.0
 	github.com/gogo/protobuf v1.3.2
 	github.com/google/uuid v1.4.0
