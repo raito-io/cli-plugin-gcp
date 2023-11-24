@@ -17,7 +17,7 @@ func init() {
 	Logger = base.Logger()
 }
 
-func HandleApiError(err error) bool {
+func IsGoogle400Error(err error) bool {
 	var apiError *googleapi.Error
 	if !errors.As(err, &apiError) {
 		return false

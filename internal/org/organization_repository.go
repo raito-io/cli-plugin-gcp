@@ -38,8 +38,8 @@ func (r *OrganizationRepository) GetOrganization(ctx context.Context) (*GcpOrgEn
 
 	name := r.raitoOrgId()
 
-	if common.HandleApiError(err) {
-		common.Logger.Warn(fmt.Sprintf("Ecountered 4xx error while fetching organisation information: %s", err.Error()))
+	if common.IsGoogle400Error(err) {
+		common.Logger.Warn(fmt.Sprintf("Encountered 4xx error while fetching organisation information: %s", err.Error()))
 
 		return nil, nil
 	} else if err != nil {

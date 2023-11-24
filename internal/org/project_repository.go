@@ -46,8 +46,8 @@ func (r *ProjectRepository) GetProjects(ctx context.Context, config *ds.DataSour
 		project, err := projectIterator.Next()
 		if errors.Is(err, iterator.Done) {
 			break
-		} else if common.HandleApiError(err) {
-			common.Logger.Warn(fmt.Sprintf("Ecountered 4xx error while fetching project in %q: %s", parentName, err.Error()))
+		} else if common.IsGoogle400Error(err) {
+			common.Logger.Warn(fmt.Sprintf("Encountered 4xx error while fetching project in %q: %s", parentName, err.Error()))
 
 			continue
 		} else if err != nil {

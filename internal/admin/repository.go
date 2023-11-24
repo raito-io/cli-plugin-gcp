@@ -39,8 +39,8 @@ func (r *AdminRepository) GetUsers(ctx context.Context, fn func(ctx context.Cont
 		}
 
 		users, err := usersCall.Do()
-		if common.HandleApiError(err) {
-			common.Logger.Warn(fmt.Sprintf("Ecountered 4xx error while fetching users: %s", err.Error()))
+		if common.IsGoogle400Error(err) {
+			common.Logger.Warn(fmt.Sprintf("Encountered 4xx error while fetching users: %s", err.Error()))
 
 			continue
 		} else if err != nil {
@@ -79,8 +79,8 @@ func (r *AdminRepository) GetGroups(ctx context.Context, fn func(ctx context.Con
 		}
 
 		groups, err := groupsCall.Do()
-		if common.HandleApiError(err) {
-			common.Logger.Warn(fmt.Sprintf("Ecountered 4xx error while fetching groups: %s", err.Error()))
+		if common.IsGoogle400Error(err) {
+			common.Logger.Warn(fmt.Sprintf("Encountered 4xx error while fetching groups: %s", err.Error()))
 
 			continue
 		} else if err != nil {

@@ -78,7 +78,7 @@ func (c *Repository) ListDataSets(ctx context.Context, parent *org.GcpOrgEntity,
 		}
 
 		md, err := ds.Metadata(ctx)
-		if common.HandleApiError(err) {
+		if common.IsGoogle400Error(err) {
 			common.Logger.Warn(fmt.Sprintf("Encountered 4xx error while fetching metadata for dataset %q: %s", ds.DatasetID, err))
 
 			continue
@@ -114,7 +114,7 @@ func (c *Repository) ListTables(ctx context.Context, ds *bigquery.Dataset, paren
 		tab, err := tIterator.Next()
 		if errors.Is(err, iterator.Done) {
 			break
-		} else if common.HandleApiError(err) {
+		} else if common.IsGoogle400Error(err) {
 			common.Logger.Warn(fmt.Sprintf("Encountered 4xx error while fetching table in dataset %q: %s", ds.DatasetID, err.Error()))
 
 			continue
@@ -126,7 +126,7 @@ func (c *Repository) ListTables(ctx context.Context, ds *bigquery.Dataset, paren
 
 		meta, err := tab.Metadata(ctx)
 
-		if common.HandleApiError(err) {
+		if common.IsGoogle400Error(err) {
 			common.Logger.Warn(fmt.Sprintf("Encountered 4xx error while fetching metadata for table %q: %s", tab.TableID, err.Error()))
 
 			continue
@@ -161,7 +161,7 @@ func (c *Repository) ListTables(ctx context.Context, ds *bigquery.Dataset, paren
 
 func (c *Repository) ListColumns(ctx context.Context, tab *bigquery.Table, parent *org.GcpOrgEntity, fn func(ctx context.Context, entity *org.GcpOrgEntity) error) error {
 	tMeta, err := tab.Metadata(ctx)
-	if common.HandleApiError(err) {
+	if common.IsGoogle400Error(err) {
 		common.Logger.Warn(fmt.Sprintf("Encountered 4xx error while fetching metadata for table %q: %s", tab.TableID, err.Error()))
 
 		return nil
@@ -205,7 +205,7 @@ func (c *Repository) ListViews(ctx context.Context, ds *bigquery.Dataset, parent
 		tab, err := tIterator.Next()
 		if errors.Is(err, iterator.Done) {
 			break
-		} else if common.HandleApiError(err) {
+		} else if common.IsGoogle400Error(err) {
 			common.Logger.Warn(fmt.Sprintf("Encountered 4xx error while fetching table in dataset %q: %s", ds.DatasetID, err.Error()))
 
 			continue
@@ -214,7 +214,7 @@ func (c *Repository) ListViews(ctx context.Context, ds *bigquery.Dataset, parent
 		}
 
 		meta, err := tab.Metadata(ctx)
-		if common.HandleApiError(err) {
+		if common.IsGoogle400Error(err) {
 			common.Logger.Warn(fmt.Sprintf("Encountered 4xx error while fetching metadata for table %q: %s", tab.TableID, err.Error()))
 
 			continue
@@ -270,7 +270,7 @@ func (c *Repository) GetBindings(ctx context.Context, entity *org.GcpOrgEntity) 
 		bindings, err = c.getTableBindings(ctx, entity, entityIdParts)
 	}
 
-	if common.HandleApiError(err) {
+	if common.IsGoogle400Error(err) {
 		common.Logger.Warn(fmt.Sprintf("Encountered 4xx error while fetching IAM Policy for %s: %s", entity.FullName, err.Error()))
 
 		return bindings, nil
@@ -319,7 +319,7 @@ func (c *Repository) GetDataUsage(ctx context.Context, windowStart *time.Time, u
 		ds, err := dsIterator.Next()
 		if errors.Is(err, iterator.Done) {
 			break
-		} else if common.HandleApiError(err) {
+		} else if common.IsGoogle400Error(err) {
 			common.Logger.Warn(fmt.Sprintf("Encountered 4xx error while fetching dataset: %s", err.Error()))
 
 			continue
@@ -328,7 +328,7 @@ func (c *Repository) GetDataUsage(ctx context.Context, windowStart *time.Time, u
 		}
 
 		md, err := ds.Metadata(ctx)
-		if common.HandleApiError(err) {
+		if common.IsGoogle400Error(err) {
 			common.Logger.Warn(fmt.Sprintf("Encountered 4xx error while fetching metadata for dataset %q: %s", ds.DatasetID, err.Error()))
 
 			continue
@@ -353,7 +353,7 @@ func (c *Repository) GetDataUsage(ctx context.Context, windowStart *time.Time, u
 
 		err = c.getDataUsage(ctx, strings.ToLower(r), windowStart, usageFirstUsed, usageLastUsed, allViews, fn)
 
-		if common.HandleApiError(err) {
+		if common.IsGoogle400Error(err) {
 			common.Logger.Warn(fmt.Sprintf("Encountered 4xx error while querying INFORMATION_SCHEMA in BigQuery region %s: %s", r, err.Error()))
 
 			continue

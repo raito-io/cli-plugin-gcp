@@ -41,8 +41,8 @@ func (r *FolderRepository) GetFolders(ctx context.Context, parentName string, pa
 		folder, err := folderIterator.Next()
 		if errors.Is(err, iterator.Done) {
 			break
-		} else if common.HandleApiError(err) {
-			common.Logger.Warn(fmt.Sprintf("Ecountered 4xx error while listing folders: %s", err.Error()))
+		} else if common.IsGoogle400Error(err) {
+			common.Logger.Warn(fmt.Sprintf("Encountered 4xx error while listing folders: %s", err.Error()))
 
 			continue
 		} else if err != nil {
