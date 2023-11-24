@@ -291,23 +291,21 @@ func (c Repository) UpdateBindings(ctx context.Context, dataObject *iam2.DataObj
 		if err != nil {
 			return fmt.Errorf("update project bindings for %q: %w", dataObject.FullName, err)
 		}
-
-		return nil
 	} else if len(entityIdParts) == 2 {
 		err := c.updateDatasetBindings(ctx, entityIdParts[1], addBindings, removeBindings)
 		if err != nil {
 			return fmt.Errorf("update dataset bindings for %q: %w", dataObject.FullName, err)
 		}
-
-		return nil
 	} else if len(entityIdParts) == 3 {
 		err := c.updateTableBindings(ctx, entityIdParts[1], entityIdParts[2], addBindings, removeBindings)
 		if err != nil {
 			return fmt.Errorf("update table bindings for %q: %w", dataObject.FullName, err)
 		}
+	} else {
+		return fmt.Errorf("unknown entity type for %s (%s)", dataObject.FullName, dataObject.ObjectType)
 	}
 
-	return fmt.Errorf("unknown entity type for %s (%s)", dataObject.FullName, dataObject.ObjectType)
+	return nil
 }
 
 func (c *Repository) GetDataUsage(ctx context.Context, windowStart *time.Time, usageFirstUsed *time.Time, usageLastUsed *time.Time, fn func(ctx context.Context, entity *BQInformationSchemaEntity) error) error {
