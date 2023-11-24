@@ -87,8 +87,12 @@ func (c *Repository) ListDataSets(ctx context.Context, parent *org.GcpOrgEntity,
 		}
 
 		md, err := ds.Metadata(ctx)
-		if err != nil {
-			common.Logger.Error(fmt.Sprintf("Error getting metadata for dataset %s: %s", ds.DatasetID, err))
+		if common.IsGoogle400Error(err) {
+			common.Logger.Warn(fmt.Sprintf("Encountered 4xx error while fetching metadata for dataset %q: %s", ds.DatasetID, err))
+
+			continue
+		} else if err != nil {
+			return fmt.Errorf("getting metadata for dataset %s: %w", ds.DatasetID, err)
 		}
 
 		id := fmt.Sprintf("%s.%s", parent.Id, ds.DatasetID)
@@ -135,6 +139,10 @@ func (c *Repository) ListTables(ctx context.Context, ds *bigquery.Dataset, paren
 		tab, err := tIterator.Next()
 		if errors.Is(err, iterator.Done) {
 			break
+		} else if common.IsGoogle400Error(err) {
+			common.Logger.Warn(fmt.Sprintf("Encountered 4xx error while fetching table in dataset %q: %s", ds.DatasetID, err.Error()))
+
+			continue
 		} else if err != nil {
 			return fmt.Errorf("table iterator: %w", err)
 		}
@@ -142,7 +150,12 @@ func (c *Repository) ListTables(ctx context.Context, ds *bigquery.Dataset, paren
 		entityType := data_source.Table
 
 		meta, err := tab.Metadata(ctx)
-		if err != nil {
+
+		if common.IsGoogle400Error(err) {
+			common.Logger.Warn(fmt.Sprintf("Encountered 4xx error while fetching metadata for table %q: %s", tab.TableID, err.Error()))
+
+			continue
+		} else if err != nil {
 			return fmt.Errorf("table metadata: %w", err)
 		}
 
@@ -186,7 +199,11 @@ func (c *Repository) ListColumns(ctx context.Context, tab *bigquery.Table, paren
 	}
 
 	tMeta, err := tab.Metadata(ctx)
-	if err != nil {
+	if common.IsGoogle400Error(err) {
+		common.Logger.Warn(fmt.Sprintf("Encountered 4xx error while fetching metadata for table %q: %s", tab.TableID, err.Error()))
+
+		return nil
+	} else if err != nil {
 		return fmt.Errorf("table metadata: %w", err)
 	}
 
@@ -246,12 +263,20 @@ func (c *Repository) ListViews(ctx context.Context, ds *bigquery.Dataset, parent
 		tab, err := tIterator.Next()
 		if errors.Is(err, iterator.Done) {
 			break
+		} else if common.IsGoogle400Error(err) {
+			common.Logger.Warn(fmt.Sprintf("Encountered 4xx error while fetching table in dataset %q: %s", ds.DatasetID, err.Error()))
+
+			continue
 		} else if err != nil {
 			return fmt.Errorf("table iterator: %w", err)
 		}
 
 		meta, err := tab.Metadata(ctx)
-		if err != nil {
+		if common.IsGoogle400Error(err) {
+			common.Logger.Warn(fmt.Sprintf("Encountered 4xx error while fetching metadata for table %q: %s", tab.TableID, err.Error()))
+
+			continue
+		} else if err != nil {
 			return fmt.Errorf("table metadata: %w", err)
 		}
 
@@ -303,8 +328,8 @@ func (c *Repository) GetBindings(ctx context.Context, entity *org.GcpOrgEntity) 
 		bindings, err = c.getTableBindings(ctx, entity, entityIdParts)
 	}
 
-	if err != nil && strings.Contains(err.Error(), "404") {
-		common.Logger.Warn(fmt.Sprintf("Encountered error while fetching IAM Policy for %s: %s", entity.FullName, err.Error()))
+	if common.IsGoogle400Error(err) {
+		common.Logger.Warn(fmt.Sprintf("Encountered 4xx error while fetching IAM Policy for %s: %s", entity.FullName, err.Error()))
 
 		return bindings, nil
 	} else if err != nil {
@@ -324,25 +349,21 @@ func (c Repository) UpdateBindings(ctx context.Context, dataObject *iam2.DataObj
 		if err != nil {
 			return fmt.Errorf("update project bindings for %q: %w", dataObject.FullName, err)
 		}
-
-		return nil
 	} else if len(entityIdParts) == 2 {
 		err := c.updateDatasetBindings(ctx, entityIdParts[1], addBindings, removeBindings)
 		if err != nil {
 			return fmt.Errorf("update dataset bindings for %q: %w", dataObject.FullName, err)
 		}
-
-		return nil
 	} else if len(entityIdParts) == 3 {
 		err := c.updateTableBindings(ctx, entityIdParts[1], entityIdParts[2], addBindings, removeBindings)
 		if err != nil {
 			return fmt.Errorf("update table bindings for %q: %w", dataObject.FullName, err)
 		}
-
-		return nil
+	} else {
+		return fmt.Errorf("unknown entity type for %s (%s)", dataObject.FullName, dataObject.ObjectType)
 	}
 
-	return fmt.Errorf("unknown entity type for %s (%s)", dataObject.FullName, dataObject.ObjectType)
+	return nil
 }
 
 func (c *Repository) GetDataUsage(ctx context.Context, windowStart *time.Time, usageFirstUsed *time.Time, usageLastUsed *time.Time, fn func(ctx context.Context, entity *BQInformationSchemaEntity) error) error {
@@ -354,13 +375,23 @@ func (c *Repository) GetDataUsage(ctx context.Context, windowStart *time.Time, u
 		ds, err := dsIterator.Next()
 		if errors.Is(err, iterator.Done) {
 			break
+		} else if common.IsGoogle400Error(err) {
+			common.Logger.Warn(fmt.Sprintf("Encountered 4xx error while fetching dataset: %s", err.Error()))
+
+			continue
 		} else if err != nil {
 			return fmt.Errorf("dataset iterator: %w", err)
 		}
 
 		md, err := ds.Metadata(ctx)
-		if err != nil {
+		if common.IsGoogle400Error(err) {
+			common.Logger.Warn(fmt.Sprintf("Encountered 4xx error while fetching metadata for dataset %q: %s", ds.DatasetID, err.Error()))
+
+			continue
+		} else if err != nil {
 			common.Logger.Error(fmt.Sprintf("Error getting metadata for dataset %s: %s", ds.DatasetID, err))
+
+			continue
 		}
 
 		if md.Location != "" {
@@ -378,7 +409,11 @@ func (c *Repository) GetDataUsage(ctx context.Context, windowStart *time.Time, u
 
 		err = c.getDataUsage(ctx, strings.ToLower(r), windowStart, usageFirstUsed, usageLastUsed, allViews, fn)
 
-		if err != nil {
+		if common.IsGoogle400Error(err) {
+			common.Logger.Warn(fmt.Sprintf("Encountered 4xx error while querying INFORMATION_SCHEMA in BigQuery region %s: %s", r, err.Error()))
+
+			continue
+		} else if err != nil {
 			return fmt.Errorf("get data usage: %w", err)
 		}
 	}

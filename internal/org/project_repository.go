@@ -13,6 +13,7 @@ import (
 	"github.com/googleapis/gax-go/v2"
 	"google.golang.org/api/iterator"
 
+	"github.com/raito-io/cli-plugin-gcp/internal/common"
 	"github.com/raito-io/cli-plugin-gcp/internal/iam"
 )
 
@@ -45,6 +46,10 @@ func (r *ProjectRepository) GetProjects(ctx context.Context, config *ds.DataSour
 		project, err := projectIterator.Next()
 		if errors.Is(err, iterator.Done) {
 			break
+		} else if common.IsGoogle400Error(err) {
+			common.Logger.Warn(fmt.Sprintf("Encountered 4xx error while fetching project in %q: %s", parentName, err.Error()))
+
+			continue
 		} else if err != nil {
 			return fmt.Errorf("project iterator: %w", err)
 		}
