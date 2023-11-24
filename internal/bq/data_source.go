@@ -1,8 +1,9 @@
 package bigquery
 
 import (
-	"cloud.google.com/go/bigquery/datapolicies/apiv1/datapoliciespb"
 	"context"
+
+	"cloud.google.com/go/bigquery/datapolicies/apiv1/datapoliciespb"
 
 	ds "github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/cli/base/util/config"
@@ -173,7 +174,7 @@ func NewDataSourceMetaData(_ context.Context, configParams *config.ConfigMap) (*
 			},
 		},
 	}
-	
+
 	if catalogEnabled {
 		metaData.MaskingMetadata = &ds.MaskingMetadata{
 			MaskTypes: []*ds.MaskingType{
