@@ -1,9 +1,9 @@
 package bigquery
 
 import (
+	"cloud.google.com/go/bigquery/datapolicies/apiv1/datapoliciespb"
 	"context"
 
-	"cloud.google.com/go/bigquery/datapolicies/apiv1/datapoliciespb"
 	ds "github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/cli/base/util/config"
 
@@ -14,7 +14,9 @@ import (
 func NewDataSourceMetaData(_ context.Context, configParams *config.ConfigMap) (*ds.MetaData, error) {
 	var supportedFeatures []string
 
-	if configParams.GetBoolWithDefault(common.BqCatalogEnabled, false) {
+	catalogEnabled := configParams.GetBoolWithDefault(common.BqCatalogEnabled, false)
+
+	if catalogEnabled {
 		supportedFeatures = append(supportedFeatures, ds.ColumnMasking) // TODO include row filtering
 	}
 
@@ -170,7 +172,10 @@ func NewDataSourceMetaData(_ context.Context, configParams *config.ConfigMap) (*
 				},
 			},
 		},
-		MaskingMetadata: &ds.MaskingMetadata{
+	}
+	
+	if catalogEnabled {
+		metaData.MaskingMetadata = &ds.MaskingMetadata{
 			MaskTypes: []*ds.MaskingType{
 				{
 					DisplayName: "NULL",
@@ -226,7 +231,7 @@ func NewDataSourceMetaData(_ context.Context, configParams *config.ConfigMap) (*
 				},
 			},
 			DefaultMaskExternalName: datapoliciespb.DataMaskingPolicy_PredefinedExpression_name[int32(datapoliciespb.DataMaskingPolicy_ALWAYS_NULL)],
-		},
+		}
 	}
 
 	return metaData, nil
