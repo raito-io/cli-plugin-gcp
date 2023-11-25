@@ -254,7 +254,7 @@ func (c *Repository) GetBindings(ctx context.Context, entity *org.GcpOrgEntity) 
 		return bindings, nil
 	}
 
-	common.Logger.Info(fmt.Sprintf("Fetching BigQuery IAM Policy for %s", entity.Id))
+	common.Logger.Info(fmt.Sprintf("Fetching BigQuery IAM Policy for %s (%s)", entity.Id, entity.Type))
 
 	entityIdParts := strings.Split(entity.Id, ".")
 
@@ -262,7 +262,7 @@ func (c *Repository) GetBindings(ctx context.Context, entity *org.GcpOrgEntity) 
 	var err error
 
 	switch entity.Type {
-	case "project":
+	case "project", data_source.Datasource:
 		bindings, err = c.projectClient.GetIamPolicy(ctx, c.projectId)
 	case data_source.Dataset:
 		bindings, err = c.getDataSetBindings(ctx, entity, entityIdParts)
@@ -533,6 +533,29 @@ func (c *Repository) getDataSetBindings(ctx context.Context, entity *org.GcpOrgE
 func (c *Repository) updateDatasetBindings(ctx context.Context, dataset string, bindingsToAdd []iam2.IamBinding, bindingsToRemove []iam2.IamBinding) error {
 	ds := c.client.Dataset(dataset)
 
+	dsMeta, err := ds.Metadata(ctx)
+	if err != nil {
+		return fmt.Errorf("metadata of dataset %q: %w", dataset, err)
+	}
+
+	update, err := c.mergeBindings(dsMeta.Access, bindingsToAdd, bindingsToRemove)
+	if err != nil {
+		return err
+	}
+
+	_, err = ds.Update(ctx, *update, dsMeta.ETag)
+	if err != nil {
+		return fmt.Errorf("update dataset %q: %w", dataset, err)
+	}
+
+	return nil
+}
+
+func (c *Repository) mergeBindings(existingAccess []*bigquery.AccessEntry, bindingsToAdd []iam2.IamBinding, bindingsToRemove []iam2.IamBinding) (*bigquery.DatasetMetadataToUpdate, error) {
+	update := bigquery.DatasetMetadataToUpdate{
+		Access: []*bigquery.AccessEntry{},
+	}
+
 	bindingsToRemoveMap := make(map[string]set.Set[string]) //Role -> Members
 	for i := range bindingsToRemove {
 		if _, found := bindingsToRemoveMap[bindingsToRemove[i].Role]; !found {
@@ -542,22 +565,15 @@ func (c *Repository) updateDatasetBindings(ctx context.Context, dataset string, 
 		bindingsToRemoveMap[bindingsToRemove[i].Role].Add(bindingsToRemove[i].Member)
 	}
 
-	dsMeta, err := ds.Metadata(ctx)
-	if err != nil {
-		return fmt.Errorf("metadata of dataset %q: %w", dataset, err)
-	}
-
-	update := bigquery.DatasetMetadataToUpdate{
-		Access: []*bigquery.AccessEntry{},
-	}
-
 	// Remove old bindings
-	for _, a := range dsMeta.Access {
+	for _, a := range existingAccess {
 		memberId := fmt.Sprintf("%s:%s", entityToString(a.EntityType), a.Entity)
 		if membersEntities, found := bindingsToRemoveMap[string(a.Role)]; found {
 			if !membersEntities.Contains(memberId) {
 				update.Access = append(update.Access, a)
 			}
+		} else {
+			update.Access = append(update.Access, a)
 		}
 	}
 
@@ -565,7 +581,7 @@ func (c *Repository) updateDatasetBindings(ctx context.Context, dataset string, 
 	for i := range bindingsToAdd {
 		memberEntityType, memberEntityId, err2 := parseMember(bindingsToAdd[i].Member)
 		if err2 != nil {
-			return fmt.Errorf("parse member %q: %w", bindingsToAdd[i].Member, err2)
+			return nil, fmt.Errorf("parse member %q: %w", bindingsToAdd[i].Member, err2)
 		}
 
 		update.Access = append(update.Access, &bigquery.AccessEntry{
@@ -575,12 +591,7 @@ func (c *Repository) updateDatasetBindings(ctx context.Context, dataset string, 
 		})
 	}
 
-	_, err = ds.Update(ctx, update, dsMeta.ETag)
-	if err != nil {
-		return fmt.Errorf("update dataset %q: %w", dataset, err)
-	}
-
-	return nil
+	return &update, nil
 }
 
 func (c *Repository) getTableBindings(ctx context.Context, entity *org.GcpOrgEntity, entityIdParts []string) ([]iam2.IamBinding, error) {
