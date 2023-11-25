@@ -248,12 +248,15 @@ func (a *AccessSyncer) ConvertBindingsToAccessProviders(ctx context.Context, con
 			continue
 		}
 
+		dataSourceSpecificBinding := binding
+		dataSourceSpecificBinding.ResourceType = a.translateResourceTypeToDataSourceType(dataSourceSpecificBinding.ResourceType)
+
 		if strings.HasPrefix(binding.Member, "special_group:") {
-			a.generateSpecialGroupOwnerAccessProvider(binding, specialGroupAccessProviderMap, projectOwnersWho, projectEditorWho, projectReaderWho)
+			a.generateSpecialGroupOwnerAccessProvider(dataSourceSpecificBinding, specialGroupAccessProviderMap, projectOwnersWho, projectEditorWho, projectReaderWho)
 		} else if rolesToGroupByIdentity.Contains(binding.Role) {
-			a.generateGroupedByIdentityAcccessProvider(binding, groupedByIdentityAccesProviderMap)
+			a.generateGroupedByIdentityAcccessProvider(dataSourceSpecificBinding, groupedByIdentityAccesProviderMap)
 		} else {
-			a.generateAccessProvider(binding, accessProviderMap, managed)
+			a.generateAccessProvider(dataSourceSpecificBinding, accessProviderMap, managed)
 		}
 	}
 
@@ -470,6 +473,14 @@ func (a *AccessSyncer) isRaitoManagedBinding(binding iam.IamBinding) bool {
 	}
 
 	return false
+}
+
+func (a *AccessSyncer) translateResourceTypeToDataSourceType(doType string) string {
+	if a.metadata.Type == "bigquery" && doType == "project" {
+		return data_source.Datasource
+	}
+
+	return doType
 }
 
 func (a *AccessSyncer) convertAccessProviderToBindings(ctx context.Context, accessProviders []*importer.AccessProvider) *BindingContainer {
