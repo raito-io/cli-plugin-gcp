@@ -454,7 +454,13 @@ func (a *AccessSyncer) handleErrors(err error, apFeedback map[string]*importer.A
 
 func (a *AccessSyncer) isRaitoManagedBinding(binding iam.IamBinding) bool {
 	for _, doType := range a.metadata.DataObjectTypes {
-		if strings.EqualFold(binding.ResourceType, doType.Type) {
+		doTypeType := doType.Type
+		// Dirty hack to map the datasource dataobject type to 'project' in case of bigquery datasource
+		if doTypeType == data_source.Datasource && a.metadata.Type == "bigquery" {
+			doTypeType = "project"
+		}
+
+		if strings.EqualFold(binding.ResourceType, doTypeType) {
 			for _, perm := range doType.Permissions {
 				if strings.EqualFold(binding.Role, perm.Permission) {
 					return true

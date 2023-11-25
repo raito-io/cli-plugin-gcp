@@ -254,7 +254,7 @@ func (c *Repository) GetBindings(ctx context.Context, entity *org.GcpOrgEntity) 
 		return bindings, nil
 	}
 
-	common.Logger.Info(fmt.Sprintf("Fetching BigQuery IAM Policy for %s", entity.Id))
+	common.Logger.Info(fmt.Sprintf("Fetching BigQuery IAM Policy for %s (%s)", entity.Id, entity.Type))
 
 	entityIdParts := strings.Split(entity.Id, ".")
 
@@ -262,7 +262,7 @@ func (c *Repository) GetBindings(ctx context.Context, entity *org.GcpOrgEntity) 
 	var err error
 
 	switch entity.Type {
-	case "project":
+	case "project", data_source.Datasource:
 		bindings, err = c.projectClient.GetIamPolicy(ctx, c.projectId)
 	case data_source.Dataset:
 		bindings, err = c.getDataSetBindings(ctx, entity, entityIdParts)
