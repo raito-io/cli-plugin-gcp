@@ -558,6 +558,8 @@ func (c *Repository) updateDatasetBindings(ctx context.Context, dataset string, 
 			if !membersEntities.Contains(memberId) {
 				update.Access = append(update.Access, a)
 			}
+		} else {
+			update.Access = append(update.Access, a)
 		}
 	}
 
