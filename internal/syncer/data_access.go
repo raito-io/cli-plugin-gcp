@@ -228,7 +228,7 @@ func (a *AccessSyncer) ConvertBindingsToAccessProviders(ctx context.Context, con
 
 	accessProviderMap := make(map[string]*exporter.AccessProvider)
 	specialGroupAccessProviderMap := make(map[string]*exporter.AccessProvider)
-	groupedByIdentityAccesProviderMap := make(map[string]*exporter.AccessProvider)
+	groupedByIdentityAccessProviderMap := make(map[string]*exporter.AccessProvider)
 
 	projectOwnersWho, projectEditorWho, projectReaderWho, err := a.projectRolesWhoItem(ctx, configMap)
 	if err != nil {
@@ -254,9 +254,9 @@ func (a *AccessSyncer) ConvertBindingsToAccessProviders(ctx context.Context, con
 		if strings.HasPrefix(binding.Member, "special_group:") {
 			a.generateSpecialGroupOwnerAccessProvider(dataSourceSpecificBinding, specialGroupAccessProviderMap, projectOwnersWho, projectEditorWho, projectReaderWho)
 		} else if rolesToGroupByIdentity.Contains(binding.Role) {
-			a.generateGroupedByIdentityAcccessProvider(dataSourceSpecificBinding, groupedByIdentityAccesProviderMap)
+			a.generateGroupedByIdentityAcccessProvider(dataSourceSpecificBinding, groupedByIdentityAccessProviderMap)
 		} else {
-			a.generateAccessProvider(dataSourceSpecificBinding, accessProviderMap, managed)
+			a.generateAccessProvider(binding.ResourceType, dataSourceSpecificBinding, accessProviderMap, managed)
 		}
 	}
 
@@ -269,15 +269,15 @@ func (a *AccessSyncer) ConvertBindingsToAccessProviders(ctx context.Context, con
 		aps = append(aps, specialGroupAp)
 	}
 
-	for _, groupedByIdentityAp := range groupedByIdentityAccesProviderMap {
+	for _, groupedByIdentityAp := range groupedByIdentityAccessProviderMap {
 		aps = append(aps, groupedByIdentityAp)
 	}
 
 	return aps, nil
 }
 
-func (a *AccessSyncer) generateAccessProvider(binding iam.IamBinding, accessProviderMap map[string]*exporter.AccessProvider, managed bool) {
-	apName := fmt.Sprintf("%s_%s_%s", binding.ResourceType, binding.Resource, strings.Replace(binding.Role, "/", "_", -1))
+func (a *AccessSyncer) generateAccessProvider(actualResourceType string, binding iam.IamBinding, accessProviderMap map[string]*exporter.AccessProvider, managed bool) {
+	apName := fmt.Sprintf("%s_%s_%s", actualResourceType, binding.Resource, strings.Replace(binding.Role, "/", "_", -1))
 
 	if _, f := accessProviderMap[apName]; !f {
 		accessProviderMap[apName] = &exporter.AccessProvider{
