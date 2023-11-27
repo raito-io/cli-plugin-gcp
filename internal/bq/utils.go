@@ -15,11 +15,3 @@ func getRoleForBQEntity(t bigquery.AccessRole) string {
 
 	return string(t)
 }
-
-func GetValueIfExists[T any](p *T, defaultValue T) T {
-	if p == nil {
-		return defaultValue
-	}
-
-	return *p
-}

@@ -8,11 +8,13 @@ import (
 
 	bigquery2 "cloud.google.com/go/bigquery"
 	"github.com/aws/smithy-go/ptr"
+	"github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	bigquery "github.com/raito-io/cli-plugin-gcp/internal/bq"
+	"github.com/raito-io/cli-plugin-gcp/internal/iam"
 	"github.com/raito-io/cli-plugin-gcp/internal/it"
 	"github.com/raito-io/cli-plugin-gcp/internal/org"
 )
@@ -341,6 +343,231 @@ func TestRepository_ListViews(t *testing.T) {
 		Description: "BigQuery project raito-integration-test view",
 		Parent:      parent,
 	}}, views)
+}
+
+func TestRepository_GetBindings(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	repository, _, _, cleanup, err := createRepository(ctx, t)
+	require.NoError(t, err)
+
+	defer cleanup()
+
+	type args struct {
+		ctx    context.Context
+		entity *org.GcpOrgEntity
+	}
+	tests := []struct {
+		name         string
+		args         args
+		wantBindings []iam.IamBinding
+		wantErr      require.ErrorAssertionFunc
+	}{
+		{
+			name: "datasource bindings",
+			args: args{
+				ctx: ctx,
+				entity: &org.GcpOrgEntity{
+					Id:          "raito-integration-test",
+					Name:        "raito-integration-test",
+					FullName:    "raito-integration-test",
+					Type:        data_source.Datasource,
+					Location:    "europe-west1",
+					Description: "BigQuery project raito-integration-test",
+				},
+			},
+			wantBindings: []iam.IamBinding{
+				{
+					Member:       "serviceAccount:service-account-for-raito-cli@raito-integration-test.iam.gserviceaccount.com",
+					Role:         "organizations/905493414429/roles/RaitoGcpRole",
+					Resource:     "raito-integration-test",
+					ResourceType: "project",
+				},
+				{
+					Member:       "serviceAccount:service-account-for-raito-cli@raito-integration-test.iam.gserviceaccount.com",
+					Role:         "organizations/905493414429/roles/RaitoGcpRoleMasking",
+					Resource:     "raito-integration-test",
+					ResourceType: "project",
+				},
+				{
+					Member:       "serviceAccount:service-account-for-raito-cli@raito-integration-test.iam.gserviceaccount.com",
+					Role:         "roles/bigquery.admin",
+					Resource:     "raito-integration-test",
+					ResourceType: "project",
+				},
+				{
+					Member:       "serviceAccount:service-204677507107@gcp-sa-bigquerydatatransfer.iam.gserviceaccount.com",
+					Role:         "roles/bigquerydatatransfer.serviceAgent",
+					Resource:     "raito-integration-test",
+					ResourceType: "project",
+				}, {
+					Member:       "user:dieter@raito.dev",
+					Role:         "roles/owner",
+					Resource:     "raito-integration-test",
+					ResourceType: "project",
+				},
+				{
+					Member:       "user:ruben@raito.dev",
+					Role:         "roles/owner",
+					Resource:     "raito-integration-test",
+					ResourceType: "project",
+				},
+			},
+			wantErr: require.NoError,
+		},
+		{
+			name: "dataset bindings",
+			args: args{
+				ctx: ctx,
+				entity: &org.GcpOrgEntity{
+					Id:          "raito-integration-test.public_dataset",
+					Name:        "public_dataset",
+					FullName:    "raito-integration-test.public_dataset",
+					Type:        data_source.Dataset,
+					Location:    "europe-west1",
+					Description: "BigQuery project raito-integration-test",
+				},
+			},
+			wantBindings: []iam.IamBinding{
+				{
+					Member:       "special_group:projectWriters",
+					Role:         "roles/bigquery.dataEditor",
+					Resource:     "raito-integration-test.public_dataset",
+					ResourceType: "dataset",
+				},
+				{
+					Member:       "special_group:projectOwners",
+					Role:         "roles/bigquery.dataOwner",
+					Resource:     "raito-integration-test.public_dataset",
+					ResourceType: "dataset",
+				},
+				{
+					Member:       "special_group:projectReaders",
+					Role:         "roles/bigquery.dataViewer",
+					Resource:     "raito-integration-test.public_dataset",
+					ResourceType: "dataset",
+				},
+				{
+					Member:       "user:d_hayden@raito.dev",
+					Role:         "roles/bigquery.dataOwner",
+					Resource:     "raito-integration-test.public_dataset",
+					ResourceType: "dataset",
+				},
+				{
+					Member:       "user:ruben@raito.dev",
+					Role:         "roles/bigquery.dataOwner",
+					Resource:     "raito-integration-test.public_dataset",
+					ResourceType: "dataset",
+				},
+			},
+			wantErr: require.NoError,
+		},
+		{
+			name: "table bindings",
+			args: args{
+				ctx: ctx,
+				entity: &org.GcpOrgEntity{
+					Id:          "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide",
+					Name:        "covid_19_geographic_distribution_worldwide",
+					FullName:    "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide",
+					Type:        data_source.Table,
+					Location:    "europe-west1",
+					Description: "BigQuery project raito-integration-test table",
+				},
+			},
+			wantBindings: []iam.IamBinding{
+				{
+					Member:       "user:m_carissa@raito.dev",
+					Role:         "roles/bigquery.dataViewer",
+					Resource:     "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide",
+					ResourceType: "table",
+				},
+			},
+			wantErr: require.NoError,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			result, err := repository.GetBindings(tt.args.ctx, tt.args.entity)
+
+			tt.wantErr(t, err)
+
+			if err != nil {
+				return
+			}
+
+			for _, binding := range tt.wantBindings {
+				assert.Contains(t, result, binding)
+			}
+		})
+	}
+
+	t.Run("column bindings should be empty", func(t *testing.T) {
+		t.Parallel()
+
+		result, err := repository.GetBindings(ctx, &org.GcpOrgEntity{
+			Id:          "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide.deaths",
+			Name:        "deaths",
+			FullName:    "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide.deaths",
+			Type:        data_source.Column,
+			Location:    "europe-west1",
+			Description: "BigQuery project raito-integration-test table",
+		})
+
+		require.NoError(t, err)
+		assert.Empty(t, result)
+	})
+}
+
+func TestRepository_UpdateBindings(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	repository, _, _, cleanup, err := createRepository(ctx, t)
+	require.NoError(t, err)
+
+	defer cleanup()
+
+	type args struct {
+		ctx            context.Context
+		dataObject     *iam.DataObjectReference
+		addBindings    []iam.IamBinding
+		removeBindings []iam.IamBinding
+	}
+	tests := []struct {
+		name      string
+		args      args
+		wantError require.ErrorAssertionFunc
+	}{
+		{
+			name: "No bindings to update",
+			args: args{
+				ctx:            ctx,
+				dataObject:     &iam.DataObjectReference{FullName: "raito-integration-test.public_dataset", ObjectType: "dataset"},
+				addBindings:    []iam.IamBinding{},
+				removeBindings: []iam.IamBinding{},
+			},
+			wantError: require.NoError,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := repository.UpdateBindings(tt.args.ctx, tt.args.dataObject, tt.args.addBindings, tt.args.removeBindings)
+
+			tt.wantError(t, err)
+
+			if err != nil {
+				return
+			}
+
+			// TODO
+		})
+	}
 }
 
 func createRepository(ctx context.Context, t *testing.T) (*bigquery.Repository, *bigquery2.Client, *config.ConfigMap, func(), error) {

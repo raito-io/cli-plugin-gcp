@@ -16,6 +16,8 @@ import (
 )
 
 func TestAdminRepository_GetUsers(t *testing.T) {
+	t.Parallel()
+
 	// Given
 	ctx := context.Background()
 	repo, _, cleanup, err := createRepository(ctx, t)
@@ -69,6 +71,8 @@ func TestAdminRepository_GetUsers(t *testing.T) {
 }
 
 func TestAdminRepository_GetGroups(t *testing.T) {
+	t.Parallel()
+
 	// Given
 	ctx := context.Background()
 	repo, _, cleanup, err := createRepository(ctx, t)

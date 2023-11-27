@@ -542,7 +542,7 @@ func (c *Repository) updateDatasetBindings(ctx context.Context, dataset string, 
 		return fmt.Errorf("metadata of dataset %q: %w", dataset, err)
 	}
 
-	update, err := c.mergeBindings(dsMeta.Access, bindingsToAdd, bindingsToRemove)
+	update, err := mergeBindings(dsMeta.Access, bindingsToAdd, bindingsToRemove)
 	if err != nil {
 		return err
 	}
@@ -555,7 +555,7 @@ func (c *Repository) updateDatasetBindings(ctx context.Context, dataset string, 
 	return nil
 }
 
-func (c *Repository) mergeBindings(existingAccess []*bigquery.AccessEntry, bindingsToAdd []iam2.IamBinding, bindingsToRemove []iam2.IamBinding) (*bigquery.DatasetMetadataToUpdate, error) {
+func mergeBindings(existingAccess []*bigquery.AccessEntry, bindingsToAdd []iam2.IamBinding, bindingsToRemove []iam2.IamBinding) (*bigquery.DatasetMetadataToUpdate, error) {
 	update := bigquery.DatasetMetadataToUpdate{
 		Access: []*bigquery.AccessEntry{},
 	}
