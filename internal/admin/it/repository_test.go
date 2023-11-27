@@ -4,7 +4,6 @@ package it
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	"github.com/raito-io/cli/base/util/config"
@@ -12,14 +11,14 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/raito-io/cli-plugin-gcp/internal/admin"
-	"github.com/raito-io/cli-plugin-gcp/internal/common"
 	"github.com/raito-io/cli-plugin-gcp/internal/iam"
+	"github.com/raito-io/cli-plugin-gcp/internal/it"
 )
 
 func TestAdminRepository_GetUsers(t *testing.T) {
 	// Given
 	ctx := context.Background()
-	repo, _, cleanup, err := funcName(ctx, t)
+	repo, _, cleanup, err := createRepository(ctx, t)
 	require.NoError(t, err)
 
 	defer cleanup()
@@ -72,7 +71,7 @@ func TestAdminRepository_GetUsers(t *testing.T) {
 func TestAdminRepository_GetGroups(t *testing.T) {
 	// Given
 	ctx := context.Background()
-	repo, _, cleanup, err := funcName(ctx, t)
+	repo, _, cleanup, err := createRepository(ctx, t)
 	require.NoError(t, err)
 
 	defer cleanup()
@@ -111,14 +110,11 @@ func TestAdminRepository_GetGroups(t *testing.T) {
 	assert.ElementsMatch(t, expectedGroups, groups)
 }
 
-func funcName(ctx context.Context, t *testing.T) (*admin.AdminRepository, *config.ConfigMap, func(), error) {
+func createRepository(ctx context.Context, t *testing.T) (*admin.AdminRepository, *config.ConfigMap, func(), error) {
 	t.Helper()
 
-	configMap := config.ConfigMap{Parameters: map[string]string{
-		common.GsuiteCustomerId:         os.Getenv("GSUITE_CUSTOMER_ID"),
-		common.GsuiteImpersonateSubject: os.Getenv("GSUITE_IMPERSONATE_SUBJECT"),
-	}}
-	repo, cleanup, err := InitializeAdminClient(ctx, &configMap)
+	configMap := it.IntegrationTestConfigMap()
+	repo, cleanup, err := InitializeAdminClient(ctx, configMap)
 
-	return repo, &configMap, cleanup, err
+	return repo, configMap, cleanup, err
 }
