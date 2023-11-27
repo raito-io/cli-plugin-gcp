@@ -12,8 +12,6 @@ import (
 )
 
 func TestAccessMerge(t *testing.T) {
-	repo := Repository{}
-
 	type TestData struct {
 		Name     string
 		Existing []*bigquery.AccessEntry
@@ -173,7 +171,7 @@ func TestAccessMerge(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.Name, func(t *testing.T) {
-			update, err := repo.mergeBindings(test.Existing, test.ToAdd, test.ToRemove)
+			update, err := mergeBindings(test.Existing, test.ToAdd, test.ToRemove)
 			require.NoError(t, err)
 			assert.Equal(t, len(test.Expected), len(update.Access))
 			entities := make([]string, 0, len(update.Access))
