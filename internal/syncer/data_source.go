@@ -27,10 +27,6 @@ func NewDataSourceSyncer(repository DataSourceRepository, metadata *ds.MetaData)
 	return &DataSourceSyncer{repoProvider: repository, metadata: metadata}
 }
 
-func GetOrgDataObjectName(configmap *config.ConfigMap) string {
-	return fmt.Sprintf("gcp-org-%s", configmap.GetString(common.GcpOrgId))
-}
-
 func (s *DataSourceSyncer) SyncDataSource(ctx context.Context, dataSourceHandler wrappers.DataSourceObjectHandler, config *ds.DataSourceSyncConfig) error {
 	err := s.repoProvider.DataObjects(ctx, config, func(_ context.Context, object *org.GcpOrgEntity) error {
 		err := dataSourceHandler.AddDataObjects(handleGcpOrgEntities(object))
