@@ -268,6 +268,10 @@ func (c *Repository) GetBindings(ctx context.Context, entity *org.GcpOrgEntity) 
 		bindings, err = c.getDataSetBindings(ctx, entity, entityIdParts)
 	case data_source.Table, data_source.View:
 		bindings, err = c.getTableBindings(ctx, entity, entityIdParts)
+	case data_source.Column:
+		// Do nothing
+	default:
+		return nil, fmt.Errorf("unsupported entity type %s", entity.Type)
 	}
 
 	if common.IsGoogle400Error(err) {

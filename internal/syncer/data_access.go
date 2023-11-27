@@ -85,10 +85,6 @@ func (a *AccessSyncer) SyncAccessProvidersFromTarget(ctx context.Context, access
 	maskingTags := make(map[string][]string)
 
 	err := a.bindingRepo.Bindings(ctx, &data_source.DataSourceSyncConfig{ConfigMap: configMap}, func(ctx context.Context, dataObject *org.GcpOrgEntity, bindings []iam.IamBinding) error {
-		if len(bindings) == 0 {
-			return nil
-		}
-
 		allBindings = append(allBindings, bindings...)
 
 		if a.maskingSupport && dataObject.Type == data_source.Column && len(dataObject.PolicyTags) > 0 {
@@ -190,7 +186,7 @@ func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessPro
 			defer mutex.Unlock()
 
 			if err != nil {
-				a.handleErrors(fmt.Errorf("update bindings of %s %q: %w", do.ObjectType, do.FullName, err), apFeedback, bindings.bindings[do].GetAllAccessProviders())
+				handleErrors(fmt.Errorf("update bindings of %s %q: %w", do.ObjectType, do.FullName, err), apFeedback, bindings.bindings[do].GetAllAccessProviders())
 			}
 
 			a.raitoManagedBindings.Add(bindingsToAdd...)
@@ -419,15 +415,15 @@ func (a *AccessSyncer) projectRolesWhoItem(ctx context.Context, configMap *confi
 			return nil, nil, nil, fmt.Errorf("get project %q owner: %w", gcpProject, err)
 		}
 
-		projectOwnersWho = a.generateProjectWhoItem(projectOwnerIds)
-		projectEditorWho = a.generateProjectWhoItem(projectEditorIds)
-		projectViewerWho = a.generateProjectWhoItem(projectViewerIDs)
+		projectOwnersWho = generateProjectWhoItem(projectOwnerIds)
+		projectEditorWho = generateProjectWhoItem(projectEditorIds)
+		projectViewerWho = generateProjectWhoItem(projectViewerIDs)
 	}
 
 	return projectOwnersWho, projectEditorWho, projectViewerWho, nil
 }
 
-func (a *AccessSyncer) generateProjectWhoItem(projectOwnerIds []string) *exporter.WhoItem {
+func generateProjectWhoItem(projectOwnerIds []string) *exporter.WhoItem {
 	result := &exporter.WhoItem{}
 
 	for _, ownerId := range projectOwnerIds {
@@ -445,7 +441,7 @@ func (a *AccessSyncer) generateProjectWhoItem(projectOwnerIds []string) *exporte
 	return result
 }
 
-func (a *AccessSyncer) handleErrors(err error, apFeedback map[string]*importer.AccessProviderSyncFeedback, aps []*importer.AccessProvider) {
+func handleErrors(err error, apFeedback map[string]*importer.AccessProviderSyncFeedback, aps []*importer.AccessProvider) {
 	if err != nil {
 		common.Logger.Error(fmt.Sprintf("error while updating bindings: %s", err.Error()))
 
@@ -537,7 +533,7 @@ func (a *AccessSyncer) convertAccessProviderToBindings(ctx context.Context, acce
 						Member:       m,
 						Role:         p,
 						Resource:     w.DataObject.FullName,
-						ResourceType: w.DataObject.Type,
+						ResourceType: objectType,
 					}
 
 					if ap.Delete {
@@ -561,7 +557,7 @@ func (a *AccessSyncer) convertAccessProviderToBindings(ctx context.Context, acce
 			}
 		}
 
-		if a.addMaskedReader && !ap.Delete {
+		if a.addMaskedReader && !ap.Delete && len(ap.What) > 0 {
 			additionalMaskBindings, err := a.maskingService.MaskedBinding(ctx, members)
 			if err != nil {
 				common.Logger.Error(fmt.Sprintf("error while masking binding: %s", err.Error()))

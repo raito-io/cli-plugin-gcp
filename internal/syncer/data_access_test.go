@@ -12,22 +12,33 @@ import (
 	importer "github.com/raito-io/cli/base/access_provider/sync_to_target"
 	"github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/cli/base/util/config"
+	"github.com/raito-io/cli/base/wrappers"
 	"github.com/raito-io/cli/base/wrappers/mocks"
 	"github.com/raito-io/golang-set/set"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
+	bigquery "github.com/raito-io/cli-plugin-gcp/internal/bq"
 	"github.com/raito-io/cli-plugin-gcp/internal/common"
+	"github.com/raito-io/cli-plugin-gcp/internal/common/roles"
 	"github.com/raito-io/cli-plugin-gcp/internal/gcp"
 	"github.com/raito-io/cli-plugin-gcp/internal/iam"
 	"github.com/raito-io/cli-plugin-gcp/internal/org"
 )
 
 func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
+	bqMetadata, err := bigquery.NewDataSourceMetaData(context.Background(), &config.ConfigMap{Parameters: map[string]string{
+		common.BqCatalogEnabled: "true",
+	}})
+
+	require.NoError(t, err)
+
 	type fields struct {
 		mockSetup            func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService)
 		metadata             *data_source.MetaData
 		raitoManagedBindings []iam.IamBinding
+		raitoMasks           set.Set[string]
 	}
 	type args struct {
 		ctx       context.Context
@@ -332,11 +343,148 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			expectedAccessProviders: []sync_from_target.AccessProvider{},
 			wantErr:                 assert.Error,
 		},
+		{
+			name: "Import masks",
+			fields: fields{
+				mockSetup: func(dataIterator *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
+					dataIterator.EXPECT().Bindings(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, syncConfig *data_source.DataSourceSyncConfig, f func(context.Context, *org.GcpOrgEntity, []iam.IamBinding) error) error {
+						err := f(ctx, &org.GcpOrgEntity{EntryName: "project1", Id: "project1", Type: "project", Name: "project1"}, []iam.IamBinding{{Member: "user:ruben@raito.io", Resource: "project1", ResourceType: "project", Role: "roles/owner"}})
+						if err != nil {
+							return err
+						}
+
+						err = f(ctx, &org.GcpOrgEntity{EntryName: "project1/dataset1", Id: "dataset1", Type: "dataset", Name: "dataset1"}, []iam.IamBinding{{Member: "user:dieter@raito.io", Resource: "project/dataset1", ResourceType: "dataset", Role: "roles/editor"}})
+						if err != nil {
+							return err
+						}
+
+						err = f(ctx, &org.GcpOrgEntity{EntryName: "project1/dataset1/table1", Id: "table1", Type: "table", Name: "table1"}, []iam.IamBinding{{Member: "user:thomas@raito.io", Resource: "project/dataset1/table1", ResourceType: "table", Role: "roles/bigquery.dataviewer"}})
+						if err != nil {
+							return err
+						}
+
+						return f(ctx, &org.GcpOrgEntity{EntryName: "project1/dataset1/table1/column1", Id: "column1", Type: "column", Name: "column1", Location: "eu-west1", PolicyTags: []string{"policytag1"}, FullName: "project1/dataset1/table1/column1"}, []iam.IamBinding{})
+					})
+
+					maskingService.EXPECT().ImportMasks(mock.Anything, mock.Anything, set.NewSet("eu-west1"), map[string][]string{"policytag1": {"project1/dataset1/table1/column1"}}, set.NewSet("raitoMask1")).RunAndReturn(func(ctx context.Context, handler wrappers.AccessProviderHandler, s set.Set[string], m map[string][]string, s2 set.Set[string]) error {
+						return handler.AddAccessProviders(&sync_from_target.AccessProvider{
+							ExternalId: "dataPolicyMask1",
+							Name:       "dataPolicyName",
+							Type:       ptr.String("maskType"),
+							What:       []sync_from_target.WhatItem{{DataObject: &data_source.DataObjectReference{Type: "column", FullName: "project1/dataset1/table1/column1"}}},
+							Who:        &sync_from_target.WhoItem{Users: []string{"bart@raito.io"}},
+							Action:     sync_from_target.Mask,
+							ActualName: "dataPolicyMask1ActualName",
+						})
+					})
+				},
+				metadata:             bqMetadata,
+				raitoManagedBindings: []iam.IamBinding{},
+				raitoMasks:           set.NewSet("raitoMask1"),
+			},
+			args: args{
+				ctx: context.Background(),
+				configMap: &config.ConfigMap{
+					Parameters: map[string]string{common.BqCatalogEnabled: "true"},
+				},
+			},
+			expectedAccessProviders: []sync_from_target.AccessProvider{
+				{
+					ExternalId: "project_project1_roles_owner",
+					Name:       "project_project1_roles_owner",
+					NamingHint: "project_project1_roles_owner",
+					Type:       ptr.String(access_provider.AclSet),
+					Action:     sync_from_target.Grant,
+					Who: &sync_from_target.WhoItem{
+						Users:           []string{"ruben@raito.io"},
+						Groups:          []string{},
+						AccessProviders: []string{},
+					},
+					WhoLocked:    ptr.Bool(false),
+					WhatLocked:   ptr.Bool(false),
+					NameLocked:   ptr.Bool(false),
+					DeleteLocked: ptr.Bool(false),
+					ActualName:   "project_project1_roles_owner",
+					What: []sync_from_target.WhatItem{
+						{
+							DataObject:  &data_source.DataObjectReference{Type: "datasource", FullName: "project1"},
+							Permissions: []string{"roles/owner"},
+						},
+					},
+				},
+				{
+					ExternalId: "dataset_project/dataset1_roles_editor",
+					Name:       "dataset_project/dataset1_roles_editor",
+					NamingHint: "dataset_project/dataset1_roles_editor",
+					Type:       ptr.String(access_provider.AclSet),
+					Action:     sync_from_target.Grant,
+					Who: &sync_from_target.WhoItem{
+						Users:           []string{"dieter@raito.io"},
+						Groups:          []string{},
+						AccessProviders: []string{},
+					},
+					WhoLocked:    ptr.Bool(false),
+					WhatLocked:   ptr.Bool(false),
+					NameLocked:   ptr.Bool(false),
+					DeleteLocked: ptr.Bool(false),
+					ActualName:   "dataset_project/dataset1_roles_editor",
+					What: []sync_from_target.WhatItem{
+						{
+							DataObject:  &data_source.DataObjectReference{Type: "dataset", FullName: "project/dataset1"},
+							Permissions: []string{"roles/editor"},
+						},
+					},
+				},
+				{
+					ExternalId: "table_project/dataset1/table1_roles_bigquery.dataviewer",
+					Name:       "table_project/dataset1/table1_roles_bigquery.dataviewer",
+					NamingHint: "table_project/dataset1/table1_roles_bigquery.dataviewer",
+					Type:       ptr.String(access_provider.AclSet),
+					Action:     sync_from_target.Grant,
+					Who: &sync_from_target.WhoItem{
+						Users:           []string{"thomas@raito.io"},
+						Groups:          []string{},
+						AccessProviders: []string{},
+					},
+					WhoLocked:    ptr.Bool(false),
+					WhatLocked:   ptr.Bool(false),
+					NameLocked:   ptr.Bool(false),
+					DeleteLocked: ptr.Bool(false),
+					ActualName:   "table_project/dataset1/table1_roles_bigquery.dataviewer",
+					What: []sync_from_target.WhatItem{
+						{
+							DataObject:  &data_source.DataObjectReference{Type: "table", FullName: "project/dataset1/table1"},
+							Permissions: []string{"roles/bigquery.dataviewer"},
+						},
+					},
+				},
+				{
+					ExternalId: "dataPolicyMask1",
+					Name:       "dataPolicyName",
+					NamingHint: "",
+					Type:       ptr.String("maskType"),
+					Action:     sync_from_target.Mask,
+					Who: &sync_from_target.WhoItem{
+						Users: []string{"bart@raito.io"},
+					},
+					ActualName: "dataPolicyMask1ActualName",
+					What: []sync_from_target.WhatItem{
+						{
+							DataObject:  &data_source.DataObjectReference{Type: "column", FullName: "project1/dataset1/table1/column1"},
+							Permissions: nil,
+						},
+					},
+				},
+			},
+			wantErr: assert.NoError,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			syncer, gcpMock, projectMock, mockMaskingService := createAccessSyncer(t, tt.fields.metadata, tt.args.configMap)
 			tt.fields.mockSetup(gcpMock, projectMock, mockMaskingService)
+			syncer.raitoMasks = tt.fields.raitoMasks
+			syncer.raitoManagedBindings = set.NewSet(tt.fields.raitoManagedBindings...)
 
 			apHandler := mocks.NewSimpleAccessProviderHandler(t, 4)
 			err := syncer.SyncAccessProvidersFromTarget(tt.args.ctx, apHandler, tt.args.configMap)
@@ -930,6 +1078,39 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 }
 
 func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
+	bqMetadata, err := bigquery.NewDataSourceMetaData(context.Background(), &config.ConfigMap{Parameters: map[string]string{
+		common.BqCatalogEnabled: "true",
+	}})
+
+	require.NoError(t, err)
+
+	maskInput := importer.AccessProvider{
+		Id:          "mask1",
+		Name:        "mask1",
+		Description: "some mask",
+		NamingHint:  "mask1",
+		Type:        ptr.String("maskType"),
+		ExternalId:  nil,
+		Action:      importer.Mask,
+		Who: importer.WhoItem{
+			Users: []string{
+				"bart@raito.io",
+			},
+			Groups: []string{
+				"sales@raito.io",
+			},
+		},
+		Delete: false,
+		What: []importer.WhatItem{
+			{
+				DataObject: &data_source.DataObjectReference{
+					FullName: "project1/dataset1/table1/column1",
+					Type:     "column",
+				},
+			},
+		},
+	}
+
 	type fields struct {
 		mocksSetup func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService)
 		metadata   *data_source.MetaData
@@ -940,12 +1121,13 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 		configMap       *config.ConfigMap
 	}
 	tests := []struct {
-		name             string
-		fields           fields
-		args             args
-		want             []importer.AccessProviderSyncFeedback
-		expectedBindings set.Set[iam.IamBinding]
-		wantErr          assert.ErrorAssertionFunc
+		name               string
+		fields             fields
+		args               args
+		want               []importer.AccessProviderSyncFeedback
+		expectedBindings   set.Set[iam.IamBinding]
+		expectedRaitoMasks set.Set[string]
+		wantErr            assert.ErrorAssertionFunc
 	}{
 		{
 			name: "No access providers",
@@ -960,9 +1142,10 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 				accessProviders: &importer.AccessProviderImport{},
 				configMap:       &config.ConfigMap{Parameters: map[string]string{}},
 			},
-			want:             []importer.AccessProviderSyncFeedback{},
-			expectedBindings: set.NewSet[iam.IamBinding](),
-			wantErr:          assert.NoError,
+			want:               []importer.AccessProviderSyncFeedback{},
+			expectedBindings:   set.NewSet[iam.IamBinding](),
+			expectedRaitoMasks: set.NewSet[string](),
+			wantErr:            assert.NoError,
 		},
 		{
 			name: "Access provider to binding",
@@ -1107,7 +1290,8 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 					ResourceType: "folder",
 				},
 			),
-			wantErr: assert.NoError,
+			expectedRaitoMasks: set.NewSet[string](),
+			wantErr:            assert.NoError,
 		},
 		{
 			name: "Deleted access provider",
@@ -1252,7 +1436,139 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 					ResourceType: "folder",
 				},
 			),
-			wantErr: assert.NoError,
+			expectedRaitoMasks: set.NewSet[string](),
+			wantErr:            assert.NoError,
+		},
+		{
+			name: "Unknown action",
+			fields: fields{
+				mocksSetup: func(repo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
+				},
+				metadata: bqMetadata,
+			},
+			args: args{
+				ctx: context.Background(),
+				accessProviders: &importer.AccessProviderImport{AccessProviders: []*importer.AccessProvider{
+					{
+						Id:          "apId1",
+						Name:        "ap1",
+						Description: "some description",
+						NamingHint:  "ap1",
+						Type:        nil,
+						ExternalId:  nil,
+						Action:      importer.Deny,
+						Who: importer.WhoItem{
+							Users: []string{
+								"ruben@raito.io",
+							},
+						},
+						Delete: false,
+						What: []importer.WhatItem{
+							{
+								DataObject: &data_source.DataObjectReference{
+									FullName: "project1",
+									Type:     "datasource",
+								},
+								Permissions: []string{"roles/owner"},
+							},
+						},
+						DeleteWhat: nil,
+					},
+				}},
+				configMap: &config.ConfigMap{Parameters: map[string]string{}},
+			},
+			want: []importer.AccessProviderSyncFeedback{
+				{
+					AccessProvider: "apId1",
+					ActualName:     "apId1",
+					ExternalId:     nil,
+					Errors:         []string{"unsupported action: 2"},
+				},
+			},
+			expectedBindings:   set.NewSet[iam.IamBinding](),
+			expectedRaitoMasks: set.NewSet[string](),
+			wantErr:            assert.NoError,
+		},
+		{
+			name: "Grants and masks",
+			fields: fields{
+				mocksSetup: func(repo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
+					maskingService.EXPECT().ExportMasks(mock.Anything, &maskInput, mock.Anything).RunAndReturn(func(ctx context.Context, provider *importer.AccessProvider, handler wrappers.AccessProviderFeedbackHandler) ([]string, error) {
+						err := handler.AddAccessProviderFeedback(importer.AccessProviderSyncFeedback{
+							AccessProvider: provider.Id,
+							ActualName:     provider.Name,
+							Type:           provider.Type,
+							ExternalId:     &provider.Name,
+						})
+						if err != nil {
+							return nil, err
+						}
+
+						return []string{"eu-mask1", "vs-mask1"}, nil
+					})
+
+					repo.EXPECT().DataSourceType().Return("project")
+
+					repo.EXPECT().UpdateBindings(mock.Anything, &iam.DataObjectReference{FullName: "project1", ObjectType: "project"}, []iam.IamBinding{{Member: "user:ruben@raito.io", Role: "roles/owner", Resource: "project1", ResourceType: "project"}}, []iam.IamBinding{}).Return(nil)
+				},
+				metadata: bqMetadata,
+			},
+			args: args{
+				ctx: context.Background(),
+				accessProviders: &importer.AccessProviderImport{AccessProviders: []*importer.AccessProvider{
+					{
+						Id:          "apId1",
+						Name:        "ap1",
+						Description: "some description",
+						NamingHint:  "ap1",
+						Type:        nil,
+						ExternalId:  nil,
+						Action:      importer.Grant,
+						Who: importer.WhoItem{
+							Users: []string{
+								"ruben@raito.io",
+							},
+						},
+						Delete: false,
+						What: []importer.WhatItem{
+							{
+								DataObject: &data_source.DataObjectReference{
+									FullName: "project1",
+									Type:     "datasource",
+								},
+								Permissions: []string{"roles/owner"},
+							},
+						},
+						DeleteWhat: nil,
+					},
+					&maskInput,
+				}},
+				configMap: &config.ConfigMap{Parameters: map[string]string{}},
+			},
+			want: []importer.AccessProviderSyncFeedback{
+				{
+					AccessProvider: "apId1",
+					ActualName:     "apId1",
+					ExternalId:     nil,
+					Type:           ptr.String(access_provider.AclSet),
+				},
+				{
+					AccessProvider: "mask1",
+					ActualName:     "mask1",
+					ExternalId:     ptr.String("mask1"),
+					Type:           ptr.String("maskType"),
+				},
+			},
+			expectedBindings: set.NewSet[iam.IamBinding](
+				iam.IamBinding{
+					Member:       "user:ruben@raito.io",
+					Role:         "roles/owner",
+					Resource:     "project1",
+					ResourceType: "project",
+				},
+			),
+			expectedRaitoMasks: set.NewSet[string]("eu-mask1", "vs-mask1"),
+			wantErr:            assert.NoError,
 		},
 	}
 	for _, tt := range tests {
@@ -1268,6 +1584,326 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 
 			assert.ElementsMatch(t, tt.want, feedbackHandler.AccessProviderFeedback)
 			assert.Equal(t, tt.expectedBindings, a.raitoManagedBindings)
+			assert.Equal(t, tt.expectedRaitoMasks, a.raitoMasks)
+		})
+	}
+}
+
+func TestAccessSyncer_convertAccessProviderToBindings(t *testing.T) {
+	accessProviders := []*importer.AccessProvider{
+		{
+			Id:          "apId1",
+			Name:        "ap1",
+			Description: "some description",
+			NamingHint:  "ap1",
+			Type:        nil,
+			ExternalId:  nil,
+			Action:      importer.Grant,
+			Who: importer.WhoItem{
+				Users: []string{
+					"ruben@raito.io",
+				},
+			},
+			Delete: false,
+			What: []importer.WhatItem{
+				{
+					DataObject: &data_source.DataObjectReference{
+						FullName: "project1",
+						Type:     "project",
+					},
+					Permissions: []string{"roles/owner"},
+				},
+			},
+			DeleteWhat: nil,
+		},
+		{
+			Id:          "apId2",
+			Name:        "ap2",
+			Description: "some description",
+			NamingHint:  "ap2",
+			Type:        nil,
+			ExternalId:  nil,
+			Action:      importer.Grant,
+			Who: importer.WhoItem{
+				Users: []string{
+					"ruben@raito.io",
+				},
+			},
+			Delete: false,
+			What: []importer.WhatItem{
+				{
+					DataObject: &data_source.DataObjectReference{
+						FullName: "SomeDataSourceFullName",
+						Type:     "datasource",
+					},
+					Permissions: []string{"roles/owner"},
+				},
+			},
+			DeleteWhat: nil,
+		},
+		{
+			Id:          "apId3",
+			Name:        "ap3",
+			Description: "some description",
+			NamingHint:  "ap3",
+			Type:        nil,
+			ExternalId:  nil,
+			Action:      importer.Grant,
+			Who: importer.WhoItem{
+				Users: []string{
+					"ruben@raito.io",
+				},
+			},
+			DeletedWho: &importer.WhoItem{Users: []string{"michael@raito.io", "oldSa@raito.gserviceaccount.com"},
+				Groups: []string{"sales@raito.io"},
+			},
+			Delete: false,
+			What: []importer.WhatItem{
+				{
+					DataObject: &data_source.DataObjectReference{
+						FullName: "project3",
+						Type:     "project",
+					},
+					Permissions: []string{"roles/owner"},
+				},
+			},
+			DeleteWhat: nil,
+		},
+		{
+			Id:          "apId3",
+			Name:        "ap3",
+			Description: "some description",
+			NamingHint:  "ap3",
+			Type:        nil,
+			ExternalId:  nil,
+			Action:      importer.Grant,
+			Who: importer.WhoItem{
+				Users: []string{
+					"ruben@raito.io",
+				},
+			},
+			DeletedWho: &importer.WhoItem{Users: []string{"michael@raito.io"}},
+			Delete:     false,
+			What: []importer.WhatItem{
+				{
+					DataObject: &data_source.DataObjectReference{
+						FullName: "project4",
+						Type:     "project",
+					},
+					Permissions: []string{"roles/owner"},
+				},
+			},
+			DeleteWhat: []importer.WhatItem{
+				{
+					DataObject: &data_source.DataObjectReference{
+						FullName: "project5",
+						Type:     "project",
+					},
+					Permissions: []string{"roles/editor"},
+				},
+			},
+		},
+	}
+
+	type fields struct {
+		mocksSetup func(repo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService)
+		metadata   *data_source.MetaData
+		configMap  *config.ConfigMap
+	}
+	type args struct {
+		ctx             context.Context
+		accessProviders []*importer.AccessProvider
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   *BindingContainer
+	}{
+		{
+			name: "No accessProviders",
+			fields: fields{
+				mocksSetup: func(repo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
+				},
+				metadata:  gcp.NewDataSourceMetaData(),
+				configMap: &config.ConfigMap{Parameters: map[string]string{}},
+			},
+			args: args{
+				ctx:             context.Background(),
+				accessProviders: []*importer.AccessProvider{},
+			},
+			want: NewBindingContainer(),
+		},
+		{
+			name: "New grant accessProviders",
+			fields: fields{
+				mocksSetup: func(repo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
+				},
+				metadata:  gcp.NewDataSourceMetaData(),
+				configMap: &config.ConfigMap{Parameters: map[string]string{}},
+			},
+			args: args{
+				ctx: context.Background(),
+				accessProviders: []*importer.AccessProvider{
+					accessProviders[0],
+				},
+			},
+			want: &BindingContainer{
+				bindings: map[iam.DataObjectReference]*BindingsForDataObject{
+					iam.DataObjectReference{FullName: "project1", ObjectType: "project"}: {
+						bindingsToAdd:    set.NewSet(iam.IamBinding{Member: "user:ruben@raito.io", Role: "roles/owner", Resource: "project1", ResourceType: "project"}),
+						bindingsToDelete: set.NewSet[iam.IamBinding](),
+						accessProviders: map[iam.IamBinding][]*importer.AccessProvider{
+							iam.IamBinding{Member: "user:ruben@raito.io", Role: "roles/owner", Resource: "project1", ResourceType: "project"}: {accessProviders[0]},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "New grant on datasource",
+			fields: fields{
+				mocksSetup: func(repo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
+					repo.EXPECT().DataSourceType().Return("datasource_real_type")
+				},
+				metadata:  gcp.NewDataSourceMetaData(),
+				configMap: &config.ConfigMap{Parameters: map[string]string{}},
+			},
+			args: args{
+				ctx: context.Background(),
+				accessProviders: []*importer.AccessProvider{
+					accessProviders[1],
+				},
+			},
+			want: &BindingContainer{
+				bindings: map[iam.DataObjectReference]*BindingsForDataObject{
+					iam.DataObjectReference{FullName: "SomeDataSourceFullName", ObjectType: "datasource_real_type"}: {
+						bindingsToAdd:    set.NewSet(iam.IamBinding{Member: "user:ruben@raito.io", Role: "roles/owner", Resource: "SomeDataSourceFullName", ResourceType: "datasource_real_type"}),
+						bindingsToDelete: set.NewSet[iam.IamBinding](),
+						accessProviders: map[iam.IamBinding][]*importer.AccessProvider{
+							iam.IamBinding{Member: "user:ruben@raito.io", Role: "roles/owner", Resource: "SomeDataSourceFullName", ResourceType: "datasource_real_type"}: {accessProviders[1]},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "Grant with deleted members",
+			fields: fields{
+				mocksSetup: func(repo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
+				},
+				metadata:  gcp.NewDataSourceMetaData(),
+				configMap: &config.ConfigMap{Parameters: map[string]string{}},
+			},
+			args: args{
+				ctx: context.Background(),
+				accessProviders: []*importer.AccessProvider{
+					accessProviders[2],
+				},
+			},
+			want: &BindingContainer{
+				bindings: map[iam.DataObjectReference]*BindingsForDataObject{
+					iam.DataObjectReference{FullName: "project3", ObjectType: "project"}: {
+						bindingsToAdd:    set.NewSet(iam.IamBinding{Member: "user:ruben@raito.io", Role: "roles/owner", Resource: "project3", ResourceType: "project"}),
+						bindingsToDelete: set.NewSet(iam.IamBinding{Member: "serviceAccount:oldSa@raito.gserviceaccount.com", Role: "roles/owner", Resource: "project3", ResourceType: "project"}, iam.IamBinding{Member: "user:michael@raito.io", Role: "roles/owner", Resource: "project3", ResourceType: "project"}, iam.IamBinding{Member: "group:sales@raito.io", Role: "roles/owner", Resource: "project3", ResourceType: "project"}),
+						accessProviders: map[iam.IamBinding][]*importer.AccessProvider{
+							iam.IamBinding{Member: "user:ruben@raito.io", Role: "roles/owner", Resource: "project3", ResourceType: "project"}:                            {accessProviders[2]},
+							iam.IamBinding{Member: "serviceAccount:oldSa@raito.gserviceaccount.com", Role: "roles/owner", Resource: "project3", ResourceType: "project"}: {accessProviders[2]},
+							iam.IamBinding{Member: "user:michael@raito.io", Role: "roles/owner", Resource: "project3", ResourceType: "project"}:                          {accessProviders[2]},
+							iam.IamBinding{Member: "group:sales@raito.io", Role: "roles/owner", Resource: "project3", ResourceType: "project"}:                           {accessProviders[2]},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "Grant with deleted what",
+			fields: fields{
+				mocksSetup: func(repo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
+				},
+				metadata:  gcp.NewDataSourceMetaData(),
+				configMap: &config.ConfigMap{Parameters: map[string]string{}},
+			},
+			args: args{
+				ctx: context.Background(),
+				accessProviders: []*importer.AccessProvider{
+					accessProviders[3],
+				},
+			},
+			want: &BindingContainer{
+				bindings: map[iam.DataObjectReference]*BindingsForDataObject{
+					iam.DataObjectReference{FullName: "project4", ObjectType: "project"}: {
+						bindingsToAdd:    set.NewSet(iam.IamBinding{Member: "user:ruben@raito.io", Role: "roles/owner", Resource: "project4", ResourceType: "project"}),
+						bindingsToDelete: set.NewSet(iam.IamBinding{Member: "user:michael@raito.io", Role: "roles/owner", Resource: "project4", ResourceType: "project"}),
+						accessProviders: map[iam.IamBinding][]*importer.AccessProvider{
+							iam.IamBinding{Member: "user:ruben@raito.io", Role: "roles/owner", Resource: "project4", ResourceType: "project"}:   {accessProviders[3]},
+							iam.IamBinding{Member: "user:michael@raito.io", Role: "roles/owner", Resource: "project4", ResourceType: "project"}: {accessProviders[3]},
+						},
+					},
+					iam.DataObjectReference{FullName: "project5", ObjectType: "project"}: {
+						bindingsToAdd:    set.NewSet[iam.IamBinding](),
+						bindingsToDelete: set.NewSet(iam.IamBinding{Member: "user:michael@raito.io", Role: "roles/editor", Resource: "project5", ResourceType: "project"}, iam.IamBinding{Member: "user:ruben@raito.io", Role: "roles/editor", Resource: "project5", ResourceType: "project"}),
+						accessProviders: map[iam.IamBinding][]*importer.AccessProvider{
+							iam.IamBinding{Member: "user:ruben@raito.io", Role: "roles/editor", Resource: "project5", ResourceType: "project"}:   {accessProviders[3]},
+							iam.IamBinding{Member: "user:michael@raito.io", Role: "roles/editor", Resource: "project5", ResourceType: "project"}: {accessProviders[3]},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "Grant with masked reader",
+			fields: fields{
+				mocksSetup: func(repo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
+					maskingService.EXPECT().MaskedBinding(mock.Anything, []string{"user:ruben@raito.io"}).Return([]iam.IamBinding{
+						{
+							Member:       "user:ruben@raito.io",
+							Role:         roles.RolesBigQueryMaskedReader.Name,
+							Resource:     "project1",
+							ResourceType: "project",
+						},
+					}, nil)
+				},
+				metadata:  gcp.NewDataSourceMetaData(),
+				configMap: &config.ConfigMap{Parameters: map[string]string{common.GcpMaskedReader: "true"}},
+			},
+			args: args{
+				ctx: context.Background(),
+				accessProviders: []*importer.AccessProvider{
+					accessProviders[0],
+				},
+			},
+			want: &BindingContainer{
+				bindings: map[iam.DataObjectReference]*BindingsForDataObject{
+					iam.DataObjectReference{FullName: "project1", ObjectType: "project"}: {
+						bindingsToAdd: set.NewSet(iam.IamBinding{Member: "user:ruben@raito.io", Role: "roles/owner", Resource: "project1", ResourceType: "project"},
+							iam.IamBinding{Member: "user:ruben@raito.io", Role: roles.RolesBigQueryMaskedReader.Name, Resource: "project1", ResourceType: "project"}),
+						bindingsToDelete: set.NewSet[iam.IamBinding](),
+						accessProviders: map[iam.IamBinding][]*importer.AccessProvider{
+							iam.IamBinding{Member: "user:ruben@raito.io", Role: "roles/owner", Resource: "project1", ResourceType: "project"}: {accessProviders[0]},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			syncer, repoMock, projectRepoMock, maskingService := createAccessSyncer(t, tt.fields.metadata, tt.fields.configMap)
+			tt.fields.mocksSetup(repoMock, projectRepoMock, maskingService)
+
+			result := syncer.convertAccessProviderToBindings(tt.args.ctx, tt.args.accessProviders)
+
+			assert.Equal(t, len(result.bindings), len(tt.want.bindings))
+
+			for k, v := range tt.want.bindings {
+				assert.Equal(t, v.bindingsToAdd, result.bindings[k].bindingsToAdd)
+				assert.Equal(t, v.bindingsToDelete, result.bindings[k].bindingsToDelete)
+
+				for binding, aps := range v.accessProviders {
+					assert.ElementsMatch(t, aps, result.bindings[k].accessProviders[binding])
+				}
+			}
 		})
 	}
 }
@@ -1280,4 +1916,189 @@ func createAccessSyncer(t *testing.T, dsMetadata *data_source.MetaData, configMa
 	maskingService := NewMockMaskingService(t)
 
 	return NewDataAccessSyncer(gcpRepo, projectRepo, maskingService, dsMetadata, configMap), gcpRepo, projectRepo, maskingService
+}
+
+func Test_handleErrors(t *testing.T) {
+	type args struct {
+		err        error
+		apFeedback map[string]*importer.AccessProviderSyncFeedback
+		aps        []*importer.AccessProvider
+	}
+	type want struct {
+		apFeedback map[string]*importer.AccessProviderSyncFeedback
+	}
+	tests := []struct {
+		name string
+		args args
+		want want
+	}{
+		{
+			name: "No errors",
+			args: args{
+				err: nil,
+				apFeedback: map[string]*importer.AccessProviderSyncFeedback{
+					"ap1": {
+						AccessProvider: "ap1",
+						ActualName:     "ap1",
+					},
+					"ap2": {
+						AccessProvider: "ap2",
+						ActualName:     "ap2",
+					},
+				},
+				aps: []*importer.AccessProvider{},
+			},
+			want: want{apFeedback: map[string]*importer.AccessProviderSyncFeedback{
+				"ap1": {
+					AccessProvider: "ap1",
+					ActualName:     "ap1",
+				},
+				"ap2": {
+					AccessProvider: "ap2",
+					ActualName:     "ap2",
+				},
+			}},
+		},
+		{
+			name: "Error for single ap",
+			args: args{
+				err: errors.New("some error"),
+				apFeedback: map[string]*importer.AccessProviderSyncFeedback{
+					"ap1": {
+						AccessProvider: "ap1",
+						ActualName:     "ap1",
+					},
+					"ap2": {
+						AccessProvider: "ap2",
+						ActualName:     "ap2",
+					},
+				},
+				aps: []*importer.AccessProvider{
+					{
+						Id: "ap1",
+					},
+				},
+			},
+			want: want{apFeedback: map[string]*importer.AccessProviderSyncFeedback{
+				"ap1": {
+					AccessProvider: "ap1",
+					ActualName:     "ap1",
+					Errors:         []string{"some error"},
+				},
+				"ap2": {
+					AccessProvider: "ap2",
+					ActualName:     "ap2",
+				},
+			}},
+		},
+		{
+			name: "Error for multiple ap",
+			args: args{
+				err: errors.New("some error"),
+				apFeedback: map[string]*importer.AccessProviderSyncFeedback{
+					"ap1": {
+						AccessProvider: "ap1",
+						ActualName:     "ap1",
+					},
+					"ap2": {
+						AccessProvider: "ap2",
+						ActualName:     "ap2",
+					},
+				},
+				aps: []*importer.AccessProvider{
+					{
+						Id: "ap1",
+					},
+					{
+						Id: "ap2",
+					},
+				},
+			},
+			want: want{apFeedback: map[string]*importer.AccessProviderSyncFeedback{
+				"ap1": {
+					AccessProvider: "ap1",
+					ActualName:     "ap1",
+					Errors:         []string{"some error"},
+				},
+				"ap2": {
+					AccessProvider: "ap2",
+					ActualName:     "ap2",
+					Errors:         []string{"some error"},
+				},
+			}},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			handleErrors(tt.args.err, tt.args.apFeedback, tt.args.aps)
+		})
+	}
+}
+
+func Test_generateProjectWhoItem(t *testing.T) {
+	type args struct {
+		projectOwnerIds []string
+	}
+	tests := []struct {
+		name string
+		args args
+		want *sync_from_target.WhoItem
+	}{
+		{
+			name: "No project owner",
+			args: args{
+				projectOwnerIds: []string{},
+			},
+			want: &sync_from_target.WhoItem{},
+		},
+		{
+			name: "user owner",
+			args: args{
+				projectOwnerIds: []string{"user:ruben@raito.io"},
+			},
+			want: &sync_from_target.WhoItem{
+				Users: []string{"ruben@raito.io"},
+			},
+		},
+		{
+			name: "service account owner",
+			args: args{
+				projectOwnerIds: []string{"serviceAccount:sa@raito.io"},
+			},
+			want: &sync_from_target.WhoItem{
+				Users: []string{"sa@raito.io"},
+			},
+		},
+		{
+			name: "group owner",
+			args: args{
+				projectOwnerIds: []string{"group:sales@raito.io"},
+			},
+			want: &sync_from_target.WhoItem{
+				Groups: []string{"sales@raito.io"},
+			},
+		},
+		{
+			name: "ignore unknown types",
+			args: args{
+				projectOwnerIds: []string{"deleted_user:michael@raito.io"},
+			},
+			want: &sync_from_target.WhoItem{},
+		},
+		{
+			name: "Combine all",
+			args: args{
+				projectOwnerIds: []string{"user:ruben@raito.io", "serviceAccount:sa@raito.io", "group:sales@raito.io"},
+			},
+			want: &sync_from_target.WhoItem{
+				Users:  []string{"ruben@raito.io", "sa@raito.io"},
+				Groups: []string{"sales@raito.io"},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.want, generateProjectWhoItem(tt.args.projectOwnerIds), "generateProjectWhoItem(%v)", tt.args.projectOwnerIds)
+		})
+	}
 }

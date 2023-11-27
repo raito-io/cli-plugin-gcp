@@ -81,3 +81,81 @@ func TestBindingsForDataObject_BindingToDelete(t *testing.T) {
 		assert.Equal(t, map[iam.IamBinding][]*importer.AccessProvider{binding: {&ap1}}, b.accessProviders)
 	})
 }
+
+func TestBindingsForDataObject_GetAllAccessProviders(t *testing.T) {
+	type fields struct {
+		accessProviders map[iam.IamBinding][]*importer.AccessProvider
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		want   []*importer.AccessProvider
+	}{
+		{
+			name: "Empty",
+			fields: fields{
+				accessProviders: make(map[iam.IamBinding][]*importer.AccessProvider),
+			},
+			want: []*importer.AccessProvider{},
+		},
+		{
+			name: "One Binding",
+			fields: fields{
+				accessProviders: map[iam.IamBinding][]*importer.AccessProvider{
+					{Role: "role", Resource: "resource", ResourceType: "type", Member: "member"}: {
+						&importer.AccessProvider{Id: "id1"},
+					},
+				},
+			},
+			want: []*importer.AccessProvider{
+				{Id: "id1"},
+			},
+		},
+		{
+			name: "Multiple binding",
+			fields: fields{
+				accessProviders: map[iam.IamBinding][]*importer.AccessProvider{
+					{Role: "role", Resource: "resource", ResourceType: "type", Member: "member"}: {
+						&importer.AccessProvider{Id: "id1"},
+					},
+					{Role: "role2", Resource: "resource", ResourceType: "type", Member: "member"}: {
+						&importer.AccessProvider{Id: "id2"},
+					},
+				},
+			},
+			want: []*importer.AccessProvider{
+				{Id: "id1"},
+				{Id: "id2"},
+			},
+		},
+		{
+			name: "Multiple aps per binding",
+			fields: fields{
+				accessProviders: map[iam.IamBinding][]*importer.AccessProvider{
+					{Role: "role", Resource: "resource", ResourceType: "type", Member: "member"}: {
+						&importer.AccessProvider{Id: "id1"},
+						&importer.AccessProvider{Id: "id3"},
+						&importer.AccessProvider{Id: "id4"},
+					},
+					{Role: "role2", Resource: "resource", ResourceType: "type", Member: "member"}: {
+						&importer.AccessProvider{Id: "id2"},
+					},
+				},
+			},
+			want: []*importer.AccessProvider{
+				{Id: "id1"},
+				{Id: "id3"},
+				{Id: "id4"},
+				{Id: "id2"},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b := &BindingsForDataObject{
+				accessProviders: tt.fields.accessProviders,
+			}
+			assert.ElementsMatchf(t, tt.want, b.GetAllAccessProviders(), "GetAllAccessProviders()")
+		})
+	}
+}
