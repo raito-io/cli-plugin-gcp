@@ -23,7 +23,7 @@ func IsGoogle400Error(err error) bool {
 		return false
 	}
 
-	if apiError.Code >= 400 && apiError.Code < 500 {
+	if apiError.Code >= 400 && apiError.Code < 500 && apiError.Code != 403 {
 		return true
 	}
 
