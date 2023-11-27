@@ -30,8 +30,8 @@ jobs:
 
       - name: Generate credentials file
         run: | 
-          echo $GCP_CREDENTIALS > credentials.json
-          echo $(pwd)/credentials.json >> $GOOGLE_APPLICATION_CREDENTIALS
+          echo $GCP_CREDENTIALS > $RUNNER_TEMP/credentials.json
+          echo $RUNNER_TEMP/credentials.json >> $GOOGLE_APPLICATION_CREDENTIALS
         env:
           GCP_CREDENTIALS: ${{ secrets.gcp_credentials }}
 
