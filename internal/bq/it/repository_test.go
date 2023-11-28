@@ -5,6 +5,7 @@ package it
 import (
 	"context"
 	"testing"
+	"time"
 
 	bigquery2 "cloud.google.com/go/bigquery"
 	"github.com/aws/smithy-go/ptr"
@@ -14,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	bigquery "github.com/raito-io/cli-plugin-gcp/internal/bq"
+	"github.com/raito-io/cli-plugin-gcp/internal/common/roles"
 	"github.com/raito-io/cli-plugin-gcp/internal/iam"
 	"github.com/raito-io/cli-plugin-gcp/internal/it"
 	"github.com/raito-io/cli-plugin-gcp/internal/org"
@@ -490,8 +492,6 @@ func TestRepository_GetBindings(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
 			result, err := repository.GetBindings(tt.args.ctx, tt.args.entity)
 
 			tt.wantErr(t, err)
@@ -533,10 +533,9 @@ func TestRepository_UpdateBindings(t *testing.T) {
 	defer cleanup()
 
 	type args struct {
-		ctx            context.Context
-		dataObject     *iam.DataObjectReference
-		addBindings    []iam.IamBinding
-		removeBindings []iam.IamBinding
+		ctx        context.Context
+		dataObject *org.GcpOrgEntity
+		bindings   []iam.IamBinding
 	}
 	tests := []struct {
 		name      string
@@ -546,28 +545,160 @@ func TestRepository_UpdateBindings(t *testing.T) {
 		{
 			name: "No bindings to update",
 			args: args{
-				ctx:            ctx,
-				dataObject:     &iam.DataObjectReference{FullName: "raito-integration-test.public_dataset", ObjectType: "dataset"},
-				addBindings:    []iam.IamBinding{},
-				removeBindings: []iam.IamBinding{},
+				ctx: ctx,
+				dataObject: &org.GcpOrgEntity{
+					Id:          "raito-integration-test.public_dataset",
+					Name:        "public_dataset",
+					FullName:    "raito-integration-test.public_dataset",
+					Type:        "dataset",
+					Location:    "europe-west1",
+					Description: "BigQuery project raito-integration-test dataset",
+					Parent:      repository.Project(),
+				},
+				bindings: []iam.IamBinding{},
 			},
 			wantError: require.NoError,
+		},
+		{
+			name: "Update project bindings",
+			args: args{
+				ctx:        ctx,
+				dataObject: repository.Project(),
+				bindings: []iam.IamBinding{
+					{
+						Member:       "user:m_carissa@raito.dev",
+						Role:         roles.RolesBigQueryResourceViewer.Name,
+						ResourceType: "project",
+						Resource:     "raito-integration-test",
+					},
+				},
+			},
+			wantError: require.NoError,
+		},
+		{
+			name: "Update dataset bindings",
+			args: args{
+				ctx: ctx,
+				dataObject: &org.GcpOrgEntity{
+					Id:          "raito-integration-test.private_dataset",
+					Name:        "private_dataset",
+					FullName:    "raito-integration-test.private_dataset",
+					Type:        "dataset",
+					Location:    "EU",
+					Description: "BigQuery project raito-integration-test dataset",
+					Parent:      repository.Project(),
+				},
+				bindings: []iam.IamBinding{
+					{
+						Member:       "user:m_carissa@raito.dev",
+						Role:         roles.RolesBigQueryDataViewer.Name,
+						ResourceType: "dataset",
+						Resource:     "raito-integration-test.private_dataset",
+					},
+				},
+			},
+			wantError: require.NoError,
+		},
+		{
+			name: "Update table bindings",
+			args: args{
+				ctx: ctx,
+				dataObject: &org.GcpOrgEntity{
+					Id:       "raito-integration-test.private_dataset.private_table",
+					Name:     "private_table",
+					FullName: "raito-integration-test.private_dataset.private_table",
+					Type:     "table",
+					Location: "EU",
+					Parent: &org.GcpOrgEntity{
+						Id:          "raito-integration-test.private_dataset",
+						Name:        "private_dataset",
+						FullName:    "raito-integration-test.private_dataset",
+						Type:        "dataset",
+						Location:    "EU",
+						Description: "BigQuery project raito-integration-test dataset",
+						Parent:      repository.Project(),
+					},
+				},
+				bindings: []iam.IamBinding{
+					{
+						Member:       "user:m_carissa@raito.dev",
+						Role:         roles.RolesBigQueryEditor.Name,
+						ResourceType: "table",
+						Resource:     "raito-integration-test.private_dataset.private_table",
+					},
+				},
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := repository.UpdateBindings(tt.args.ctx, tt.args.dataObject, tt.args.addBindings, tt.args.removeBindings)
+			originalBindings, err := repository.GetBindings(tt.args.ctx, tt.args.dataObject)
+			require.NoError(t, err)
 
-			tt.wantError(t, err)
+			dataobject := iam.DataObjectReference{FullName: tt.args.dataObject.FullName, ObjectType: tt.args.dataObject.Type}
 
-			if err != nil {
-				return
-			}
+			t.Run("Add bindings", func(t *testing.T) {
+				// When
+				err = repository.UpdateBindings(ctx, &dataobject, tt.args.bindings, nil)
 
-			// TODO
+				// Then
+				require.NoError(t, err)
+
+				updatedBindings, err := repository.GetBindings(tt.args.ctx, tt.args.dataObject)
+				require.NoError(t, err)
+
+				assert.GreaterOrEqual(t, len(updatedBindings), len(originalBindings))
+
+				for _, binding := range tt.args.bindings {
+					assert.Contains(t, updatedBindings, binding)
+				}
+
+				for _, binding := range originalBindings {
+					assert.Contains(t, updatedBindings, binding)
+				}
+
+				originalBindings = updatedBindings
+			})
+
+			t.Run("Remove bindings", func(t *testing.T) {
+				// When
+				err = repository.UpdateBindings(ctx, &dataobject, nil, tt.args.bindings)
+
+				//Then
+				require.NoError(t, err)
+
+				updatedBindings, err := repository.GetBindings(tt.args.ctx, tt.args.dataObject)
+				require.NoError(t, err)
+
+				assert.Equal(t, len(updatedBindings), len(originalBindings)-len(tt.args.bindings))
+
+				for _, binding := range tt.args.bindings {
+					assert.NotContains(t, updatedBindings, binding)
+				}
+			})
 		})
 	}
+}
+
+func TestRepository_GetDataUsage(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	repository, _, _, cleanup, err := createRepository(ctx, t)
+	require.NoError(t, err)
+
+	defer cleanup()
+
+	var dataUsage []*bigquery.BQInformationSchemaEntity
+
+	repository.GetDataUsage(ctx, ptr.Time(time.Now().Add(-14*24*time.Hour)), nil, nil, func(ctx context.Context, entity *bigquery.BQInformationSchemaEntity) error {
+		dataUsage = append(dataUsage, entity)
+
+		return nil
+	})
+
+	assert.NotEmpty(t, dataUsage)
 }
 
 func createRepository(ctx context.Context, t *testing.T) (*bigquery.Repository, *bigquery2.Client, *config.ConfigMap, func(), error) {

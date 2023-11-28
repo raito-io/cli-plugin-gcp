@@ -21,6 +21,8 @@ func InitializeBigqueryRepository(ctx context.Context, configMap *config.ConfigM
 		wire.Bind(new(bigquery.ProjectClient), new(*org.ProjectRepository)),
 
 		wire.Struct(new(TestRepositoryAndClient), "Repository", "Client"),
+
+		wire.Value(&bigquery.RepositoryOptions{EnableCache: false}),
 	)
 
 	return nil, nil, nil

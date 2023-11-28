@@ -35,19 +35,27 @@ type ProjectClient interface {
 	UpdateBinding(ctx context.Context, dataObject *iam2.DataObjectReference, bindingsToAdd []iam2.IamBinding, bindingsToDelete []iam2.IamBinding) error
 }
 
+type RepositoryOptions struct {
+	EnableCache bool
+}
+
 type Repository struct {
 	projectClient ProjectClient
 	client        *bigquery.Client
 	projectId     string
 	listHidden    bool
+
+	options *RepositoryOptions
 }
 
-func NewRepository(projectClient ProjectClient, client *bigquery.Client, configMap *config.ConfigMap) *Repository {
+func NewRepository(projectClient ProjectClient, client *bigquery.Client, configMap *config.ConfigMap, options *RepositoryOptions) *Repository {
 	return &Repository{
 		projectClient: projectClient,
 		client:        client,
 		projectId:     configMap.GetString(common.GcpProjectId),
 		listHidden:    configMap.GetBool(common.BqIncludeHiddenDatasets),
+
+		options: options,
 	}
 }
 
@@ -248,7 +256,7 @@ func (c *Repository) ListViews(ctx context.Context, ds *bigquery.Dataset, parent
 }
 
 func (c *Repository) GetBindings(ctx context.Context, entity *org.GcpOrgEntity) ([]iam2.IamBinding, error) {
-	if bindings, found := bqPolicyCache[entity.Id]; found {
+	if bindings, found := bqPolicyCache[entity.Id]; c.options.EnableCache && found {
 		common.Logger.Debug(fmt.Sprintf("Found cached bindings for entity %s", entity.Id))
 
 		return bindings, nil
@@ -282,7 +290,9 @@ func (c *Repository) GetBindings(ctx context.Context, entity *org.GcpOrgEntity) 
 		return nil, err
 	}
 
-	bqPolicyCache[entity.Id] = bindings
+	if c.options.EnableCache {
+		bqPolicyCache[entity.Id] = bindings
+	}
 
 	return bindings, nil
 }
@@ -572,7 +582,9 @@ func mergeBindings(existingAccess []*bigquery.AccessEntry, bindingsToAdd []iam2.
 	// Remove old bindings
 	for _, a := range existingAccess {
 		memberId := fmt.Sprintf("%s:%s", entityToString(a.EntityType), a.Entity)
-		if membersEntities, found := bindingsToRemoveMap[string(a.Role)]; found {
+		role := getRoleForBQEntity(a.Role)
+
+		if membersEntities, found := bindingsToRemoveMap[role]; found {
 			if !membersEntities.Contains(memberId) {
 				update.Access = append(update.Access, a)
 			}
