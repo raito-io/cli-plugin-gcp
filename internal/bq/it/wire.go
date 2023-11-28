@@ -13,12 +13,29 @@ import (
 	"github.com/raito-io/cli-plugin-gcp/internal/org"
 )
 
-func InitializeBqRepository(ctx context.Context, configMap *config.ConfigMap) (*bigquery.Repository, func(), error) {
+func InitializeBigqueryRepository(ctx context.Context, configMap *config.ConfigMap) (*TestRepositoryAndClient, func(), error) {
 	wire.Build(
 		bigquery.Wired,
 		org.Wired,
 
 		wire.Bind(new(bigquery.ProjectClient), new(*org.ProjectRepository)),
+
+		wire.Struct(new(TestRepositoryAndClient), "Repository", "Client"),
+
+		wire.Value(&bigquery.RepositoryOptions{EnableCache: false}),
+	)
+
+	return nil, nil, nil
+}
+
+func InitializeDataObjectIterator(ctx context.Context, configMap *config.ConfigMap) (*bigquery.DataObjectIterator, func(), error) {
+	wire.Build(
+		bigquery.Wired,
+		org.Wired,
+
+		wire.Bind(new(bigquery.ProjectClient), new(*org.ProjectRepository)),
+
+		wire.Value(&bigquery.RepositoryOptions{EnableCache: false}),
 	)
 
 	return nil, nil, nil

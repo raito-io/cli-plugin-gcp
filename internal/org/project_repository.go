@@ -96,5 +96,7 @@ func (r *ProjectRepository) GetIamPolicy(ctx context.Context, projectId string) 
 }
 
 func (r *ProjectRepository) UpdateBinding(ctx context.Context, dataObject *iam.DataObjectReference, bindingsToAdd []iam.IamBinding, bindingsToDelete []iam.IamBinding) error {
+	dataObject.ObjectType = "project"
+
 	return updateBindings(ctx, r.projectClient, dataObject, bindingsToAdd, bindingsToDelete)
 }

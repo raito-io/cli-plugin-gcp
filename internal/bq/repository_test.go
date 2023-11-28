@@ -2,15 +2,16 @@ package bigquery
 
 import (
 	"cloud.google.com/go/bigquery"
+
+	"testing"
+
 	"github.com/raito-io/cli-plugin-gcp/internal/iam"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestAccessMerge(t *testing.T) {
-	repo := Repository{}
-
 	type TestData struct {
 		Name     string
 		Existing []*bigquery.AccessEntry
@@ -36,13 +37,13 @@ func TestAccessMerge(t *testing.T) {
 			},
 			ToAdd: []iam.IamBinding{
 				{
-					Role:   string(bigquery.ReaderRole),
+					Role:   getRoleForBQEntity(bigquery.ReaderRole),
 					Member: "user:user2@raito.io",
 				},
 			},
 			ToRemove: []iam.IamBinding{
 				{
-					Role:   string(bigquery.WriterRole),
+					Role:   getRoleForBQEntity(bigquery.WriterRole),
 					Member: "group:group@raito.io",
 				},
 			},
@@ -68,11 +69,11 @@ func TestAccessMerge(t *testing.T) {
 			ToAdd: []iam.IamBinding{},
 			ToRemove: []iam.IamBinding{
 				{
-					Role:   string(bigquery.WriterRole),
+					Role:   getRoleForBQEntity(bigquery.WriterRole),
 					Member: "group:group@raito.io",
 				},
 				{
-					Role:   string(bigquery.OwnerRole),
+					Role:   getRoleForBQEntity(bigquery.OwnerRole),
 					Member: "user:user@raito.io",
 				},
 			},
@@ -95,7 +96,7 @@ func TestAccessMerge(t *testing.T) {
 			ToAdd: []iam.IamBinding{},
 			ToRemove: []iam.IamBinding{
 				{
-					Role:   string(bigquery.ReaderRole),
+					Role:   getRoleForBQEntity(bigquery.ReaderRole),
 					Member: "group:group@raito.io",
 				},
 			},
@@ -120,13 +121,13 @@ func TestAccessMerge(t *testing.T) {
 			},
 			ToAdd: []iam.IamBinding{
 				{
-					Role:   string(bigquery.OwnerRole),
+					Role:   getRoleForBQEntity(bigquery.OwnerRole),
 					Member: "user:user@raito.io",
 				},
 			},
 			ToRemove: []iam.IamBinding{
 				{
-					Role:   string(bigquery.OwnerRole),
+					Role:   getRoleForBQEntity(bigquery.OwnerRole),
 					Member: "user:user@raito.io",
 				},
 			},
@@ -151,13 +152,13 @@ func TestAccessMerge(t *testing.T) {
 			},
 			ToAdd: []iam.IamBinding{
 				{
-					Role:   string(bigquery.WriterRole),
+					Role:   getRoleForBQEntity(bigquery.WriterRole),
 					Member: "user:user@raito.io",
 				},
 			},
 			ToRemove: []iam.IamBinding{
 				{
-					Role:   string(bigquery.OwnerRole),
+					Role:   getRoleForBQEntity(bigquery.OwnerRole),
 					Member: "user:user@raito.io",
 				},
 			},
@@ -170,7 +171,7 @@ func TestAccessMerge(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.Name, func(t *testing.T) {
-			update, err := repo.mergeBindings(test.Existing, test.ToAdd, test.ToRemove)
+			update, err := mergeBindings(test.Existing, test.ToAdd, test.ToRemove)
 			require.NoError(t, err)
 			assert.Equal(t, len(test.Expected), len(update.Access))
 			entities := make([]string, 0, len(update.Access))
