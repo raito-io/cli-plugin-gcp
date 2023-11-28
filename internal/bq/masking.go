@@ -18,8 +18,8 @@ import (
 	"github.com/raito-io/cli-plugin-gcp/internal/iam"
 )
 
-//go:generate go run github.com/vektra/mockery/v2 --name=MaskingDataCatalogRepository --with-expecter --inpackage
-type MaskingDataCatalogRepository interface {
+//go:generate go run github.com/vektra/mockery/v2 --name=maskingDataCatalogRepository --with-expecter --inpackage
+type maskingDataCatalogRepository interface {
 	ListDataPolicies(ctx context.Context) (map[string]BQMaskingInformation, error)
 	GetFineGrainedReaderMembers(ctx context.Context, tagId string) ([]string, error)
 	DeletePolicyAndTag(ctx context.Context, policyTagId string) error
@@ -31,12 +31,12 @@ type MaskingDataCatalogRepository interface {
 }
 
 type BqMaskingService struct {
-	datacatalogRepo MaskingDataCatalogRepository
+	datacatalogRepo maskingDataCatalogRepository
 	projectId       string
 	maskingEnabled  bool
 }
 
-func NewBqMaskingService(dataCatalogRepository MaskingDataCatalogRepository, configMap *config.ConfigMap) *BqMaskingService {
+func NewBqMaskingService(dataCatalogRepository maskingDataCatalogRepository, configMap *config.ConfigMap) *BqMaskingService {
 	return &BqMaskingService{
 		datacatalogRepo: dataCatalogRepository,
 		projectId:       configMap.GetString(common.GcpProjectId),
@@ -54,7 +54,7 @@ func (m *BqMaskingService) ImportMasks(ctx context.Context, accessProviderHandle
 
 	masks, err := m.datacatalogRepo.ListDataPolicies(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("list data policies: %w", err)
 	}
 
 	for maskTag, columns := range maskingTags {
@@ -85,7 +85,7 @@ func (m *BqMaskingService) ImportMasks(ctx context.Context, accessProviderHandle
 
 		members, err := m.datacatalogRepo.GetFineGrainedReaderMembers(ctx, mask.PolicyTag.FullName)
 		if err != nil {
-			return err
+			return fmt.Errorf("gine grained reader members for %q: %w", mask.PolicyTag.FullName, err)
 		}
 
 		for _, member := range members {
@@ -193,7 +193,7 @@ func (m *BqMaskingService) deleteMask(ctx context.Context, ap *importer.AccessPr
 
 		err = m.datacatalogRepo.DeletePolicyAndTag(ctx, externalId)
 		if err != nil {
-			return actualNames, ap.Type, externalIds, err
+			return actualNames, ap.Type, externalIds, fmt.Errorf("delete policy and tag %q: %w", externalId, err)
 		}
 	}
 
@@ -247,7 +247,7 @@ func (m *BqMaskingService) exportMasks(ctx context.Context, accessProvider *impo
 
 			err = m.datacatalogRepo.UpdateAccess(ctx, &maskingPolicy, &accessProvider.Who, accessProvider.DeletedWho)
 			if err != nil {
-				return actualName, apType, externalId, err
+				return actualName, apType, externalId, fmt.Errorf("update datapolicy access on %q: %w", maskingPolicy.PolicyTag.FullName, err)
 			}
 
 			// Update What of policy tag
@@ -255,12 +255,12 @@ func (m *BqMaskingService) exportMasks(ctx context.Context, accessProvider *impo
 
 			err = m.datacatalogRepo.UpdateWhatOfDataPolicy(ctx, &maskingPolicy, dataObjectsToAdd, dataObjectsToRemove)
 			if err != nil {
-				return actualName, apType, externalId, err
+				return actualName, apType, externalId, fmt.Errorf("update what of data policy %q: %w", maskingPolicy.PolicyTag.FullName, err)
 			}
 		} else {
 			err = m.datacatalogRepo.DeletePolicyAndTag(ctx, dataPolicyMap[location].DataPolicy.FullName)
 			if err != nil {
-				return actualName, apType, externalId, err
+				return actualName, apType, externalId, fmt.Errorf("delete policy and tag %q: %w", dataPolicyMap[location].DataPolicy.FullName, err)
 			}
 		}
 	}
@@ -353,7 +353,7 @@ func (m *BqMaskingService) exportRaitoMaskListAllDoLocations(ctx context.Context
 
 	dataObjectLocationMap, deletedDataObjectLocationMap, err := m.datacatalogRepo.GetLocationsForDataObjects(ctx, accessProvider)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, fmt.Errorf("get location for data objects: %w", err)
 	}
 
 	doLocations := map[string][]string{}
