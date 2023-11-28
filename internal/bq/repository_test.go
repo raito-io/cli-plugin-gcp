@@ -37,13 +37,13 @@ func TestAccessMerge(t *testing.T) {
 			},
 			ToAdd: []iam.IamBinding{
 				{
-					Role:   string(bigquery.ReaderRole),
+					Role:   getRoleForBQEntity(bigquery.ReaderRole),
 					Member: "user:user2@raito.io",
 				},
 			},
 			ToRemove: []iam.IamBinding{
 				{
-					Role:   string(bigquery.WriterRole),
+					Role:   getRoleForBQEntity(bigquery.WriterRole),
 					Member: "group:group@raito.io",
 				},
 			},
@@ -69,11 +69,11 @@ func TestAccessMerge(t *testing.T) {
 			ToAdd: []iam.IamBinding{},
 			ToRemove: []iam.IamBinding{
 				{
-					Role:   string(bigquery.WriterRole),
+					Role:   getRoleForBQEntity(bigquery.WriterRole),
 					Member: "group:group@raito.io",
 				},
 				{
-					Role:   string(bigquery.OwnerRole),
+					Role:   getRoleForBQEntity(bigquery.OwnerRole),
 					Member: "user:user@raito.io",
 				},
 			},
@@ -96,7 +96,7 @@ func TestAccessMerge(t *testing.T) {
 			ToAdd: []iam.IamBinding{},
 			ToRemove: []iam.IamBinding{
 				{
-					Role:   string(bigquery.ReaderRole),
+					Role:   getRoleForBQEntity(bigquery.ReaderRole),
 					Member: "group:group@raito.io",
 				},
 			},
@@ -121,13 +121,13 @@ func TestAccessMerge(t *testing.T) {
 			},
 			ToAdd: []iam.IamBinding{
 				{
-					Role:   string(bigquery.OwnerRole),
+					Role:   getRoleForBQEntity(bigquery.OwnerRole),
 					Member: "user:user@raito.io",
 				},
 			},
 			ToRemove: []iam.IamBinding{
 				{
-					Role:   string(bigquery.OwnerRole),
+					Role:   getRoleForBQEntity(bigquery.OwnerRole),
 					Member: "user:user@raito.io",
 				},
 			},
@@ -152,13 +152,13 @@ func TestAccessMerge(t *testing.T) {
 			},
 			ToAdd: []iam.IamBinding{
 				{
-					Role:   string(bigquery.WriterRole),
+					Role:   getRoleForBQEntity(bigquery.WriterRole),
 					Member: "user:user@raito.io",
 				},
 			},
 			ToRemove: []iam.IamBinding{
 				{
-					Role:   string(bigquery.OwnerRole),
+					Role:   getRoleForBQEntity(bigquery.OwnerRole),
 					Member: "user:user@raito.io",
 				},
 			},
