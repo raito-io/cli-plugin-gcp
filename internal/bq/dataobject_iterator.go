@@ -26,10 +26,10 @@ func NewDataObjectIterator(repo *Repository, configMap *config.ConfigMap) *DataO
 }
 
 func (it *DataObjectIterator) DataObjects(ctx context.Context, config *ds.DataSourceSyncConfig, fn func(ctx context.Context, object *org.GcpOrgEntity) error) error {
-	return it.sync(ctx, config, false, fn)
+	return it.Sync(ctx, config, false, fn)
 }
 
-func (it *DataObjectIterator) sync(ctx context.Context, config *ds.DataSourceSyncConfig, skipColumns bool, fn func(ctx context.Context, object *org.GcpOrgEntity) error) error {
+func (it *DataObjectIterator) Sync(ctx context.Context, config *ds.DataSourceSyncConfig, skipColumns bool, fn func(ctx context.Context, object *org.GcpOrgEntity) error) error {
 	ds := it.repo.Project()
 
 	if common.ShouldHandle(ds.FullName, config) {
@@ -88,7 +88,7 @@ func (it *DataObjectIterator) sync(ctx context.Context, config *ds.DataSourceSyn
 }
 
 func (it *DataObjectIterator) Bindings(ctx context.Context, config *ds.DataSourceSyncConfig, fn func(ctx context.Context, dataObject *org.GcpOrgEntity, bindings []iam.IamBinding) error) error {
-	return it.sync(ctx, config, !config.ConfigMap.GetBoolWithDefault(common.BqCatalogEnabled, false), func(ctx context.Context, object *org.GcpOrgEntity) error {
+	return it.Sync(ctx, config, !config.ConfigMap.GetBoolWithDefault(common.BqCatalogEnabled, false), func(ctx context.Context, object *org.GcpOrgEntity) error {
 		bindings, err := it.repo.GetBindings(ctx, object)
 		if err != nil {
 			return fmt.Errorf("get bq bindings: %w", err)

@@ -20,4 +20,6 @@ var Wired = wire.NewSet(
 
 	NewDataSourceMetaData,
 	NewIdentityStoreMetadata,
+
+	wire.Bind(new(MaskingDataCatalogRepository), new(*DataCatalogRepository)),
 )

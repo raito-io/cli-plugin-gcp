@@ -18,13 +18,25 @@ import (
 	"github.com/raito-io/cli-plugin-gcp/internal/iam"
 )
 
+//go:generate go run github.com/vektra/mockery/v2 --name=MaskingDataCatalogRepository --with-expecter --inpackage
+type MaskingDataCatalogRepository interface {
+	ListDataPolicies(ctx context.Context) (map[string]BQMaskingInformation, error)
+	GetFineGrainedReaderMembers(ctx context.Context, tagId string) ([]string, error)
+	DeletePolicyAndTag(ctx context.Context, policyTagId string) error
+	UpdateAccess(ctx context.Context, maskingInformation *BQMaskingInformation, who *importer.WhoItem, deletedWho *importer.WhoItem) error
+	UpdateWhatOfDataPolicy(ctx context.Context, policy *BQMaskingInformation, dataObjects []string, deletedDataObjects []string) error
+	UpdatePolicyTag(ctx context.Context, location string, maskingType datapoliciespb.DataMaskingPolicy_PredefinedExpression, ap *importer.AccessProvider, dataPolicyId string) (*BQMaskingInformation, error)
+	CreatePolicyTagWithDataPolicy(ctx context.Context, location string, maskingType datapoliciespb.DataMaskingPolicy_PredefinedExpression, ap *importer.AccessProvider) (_ *BQMaskingInformation, err error)
+	GetLocationsForDataObjects(ctx context.Context, ap *importer.AccessProvider) (map[string]string, map[string]string, error)
+}
+
 type BqMaskingService struct {
-	datacatalogRepo *DataCatalogRepository
+	datacatalogRepo MaskingDataCatalogRepository
 	projectId       string
 	maskingEnabled  bool
 }
 
-func NewBqMaskingService(dataCatalogRepository *DataCatalogRepository, configMap *config.ConfigMap) *BqMaskingService {
+func NewBqMaskingService(dataCatalogRepository MaskingDataCatalogRepository, configMap *config.ConfigMap) *BqMaskingService {
 	return &BqMaskingService{
 		datacatalogRepo: dataCatalogRepository,
 		projectId:       configMap.GetString(common.GcpProjectId),
