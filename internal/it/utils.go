@@ -14,5 +14,6 @@ func IntegrationTestConfigMap() *config.ConfigMap {
 		common.GsuiteImpersonateSubject: os.Getenv("GSUITE_IMPERSONATE_SUBJECT"),
 		common.GcpProjectId:             os.Getenv("GCP_PROJECT_ID"),
 		common.GcpSAFileLocation:        os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"),
+		common.GcpOrgId:                 os.Getenv("GCP_ORGANIZATION_ID"),
 	}}
 }

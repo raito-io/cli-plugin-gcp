@@ -138,6 +138,8 @@ func TestFolderRepository_GetFolders(t *testing.T) {
 }
 
 func TestFolderRepository_GetIamPolicy(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 
 	repo, _, cleanup, err := createFolderRepository(ctx, t)
@@ -233,7 +235,7 @@ func TestFolderRepository_UpdateBinding(t *testing.T) {
 		{
 			name: "No bindings",
 			args: args{
-				ctx:        context.Background(),
+				ctx:        ctx,
 				dataObject: &dataObject,
 			},
 			wantErr: require.NoError,
@@ -241,7 +243,7 @@ func TestFolderRepository_UpdateBinding(t *testing.T) {
 		{
 			name: "Single binding",
 			args: args{
-				ctx:        context.Background(),
+				ctx:        ctx,
 				dataObject: &dataObject,
 				binding: []iam.IamBinding{
 					{
@@ -257,7 +259,7 @@ func TestFolderRepository_UpdateBinding(t *testing.T) {
 		{
 			name: "Multiple bindings",
 			args: args{
-				ctx:        context.Background(),
+				ctx:        ctx,
 				dataObject: &dataObject,
 				binding: []iam.IamBinding{
 					{

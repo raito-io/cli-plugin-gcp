@@ -19,3 +19,19 @@ func InitializeFolderRepository(ctx context.Context, configMap *config.ConfigMap
 
 	return nil, nil, nil
 }
+
+func InitializeOrganizationRepository(ctx context.Context, configMap *config.ConfigMap) (*org.OrganizationRepository, func(), error) {
+	wire.Build(
+		org.Wired,
+	)
+
+	return nil, nil, nil
+}
+
+func InitializeProjectRepository(ctx context.Context, configMap *config.ConfigMap) (*org.ProjectRepository, func(), error) {
+	wire.Build(
+		org.Wired,
+	)
+
+	return nil, nil, nil
+}

@@ -37,7 +37,7 @@ func NewProjectRepository(projectClient projectClient) *ProjectRepository {
 	}
 }
 
-func (r *ProjectRepository) GetProjects(ctx context.Context, config *ds.DataSourceSyncConfig, parentName string, parent *GcpOrgEntity, fn func(ctx context.Context, project *GcpOrgEntity) error) error {
+func (r *ProjectRepository) GetProjects(ctx context.Context, _ *ds.DataSourceSyncConfig, parentName string, parent *GcpOrgEntity, fn func(ctx context.Context, project *GcpOrgEntity) error) error {
 	projectIterator := r.projectClient.ListProjects(ctx, &resourcemanagerpb.ListProjectsRequest{
 		Parent: parentName,
 	})
