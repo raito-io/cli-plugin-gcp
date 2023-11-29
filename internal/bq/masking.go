@@ -3,6 +3,7 @@ package bigquery
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 
 	"cloud.google.com/go/bigquery/datapolicies/apiv1/datapoliciespb"
@@ -127,6 +128,8 @@ func (m *BqMaskingService) ExportMasks(ctx context.Context, accessProvider *impo
 		if err != nil {
 			return nil, fmt.Errorf("add ap feedback to handler: %w", err)
 		}
+
+		return nil, nil
 	}
 
 	var actualName, externalId, errors []string
@@ -142,6 +145,9 @@ func (m *BqMaskingService) ExportMasks(ctx context.Context, accessProvider *impo
 	if err != nil {
 		errors = append(errors, err.Error())
 	}
+
+	sort.Strings(actualName)
+	sort.Strings(externalId)
 
 	err = accessProviderFeedbackHandler.AddAccessProviderFeedback(importer.AccessProviderSyncFeedback{
 		AccessProvider: accessProvider.Id,

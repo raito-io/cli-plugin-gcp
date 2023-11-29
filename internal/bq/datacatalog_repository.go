@@ -31,8 +31,14 @@ const (
 	idAlphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 )
 
+//go:generate go run github.com/vektra/mockery/v2 --name=dataCatalogBqRepository --with-expecter --inpackage
+type dataCatalogBqRepository interface {
+	ListDataSets(ctx context.Context, parent *org.GcpOrgEntity, fn func(ctx context.Context, entity *org.GcpOrgEntity, dataset *bigquery.Dataset) error) error
+	Project() *org.GcpOrgEntity
+}
+
 type DataCatalogRepository struct {
-	bigQueryRepo     *Repository
+	bigQueryRepo     dataCatalogBqRepository
 	policyTagClient  *datacatalog.PolicyTagManagerClient
 	dataPolicyClient *datapolicies.DataPolicyClient
 	bigQueryClient   *bigquery.Client
@@ -44,7 +50,7 @@ type DataCatalogRepository struct {
 	datasetCache map[string]org.GcpOrgEntity
 }
 
-func NewDataCatalogRepository(repository *Repository, tagClient *datacatalog.PolicyTagManagerClient, dataPolicyClient *datapolicies.DataPolicyClient, bqClient *bigquery.Client, configMap *config.ConfigMap) *DataCatalogRepository {
+func NewDataCatalogRepository(repository dataCatalogBqRepository, tagClient *datacatalog.PolicyTagManagerClient, dataPolicyClient *datapolicies.DataPolicyClient, bqClient *bigquery.Client, configMap *config.ConfigMap) *DataCatalogRepository {
 	return &DataCatalogRepository{
 		bigQueryRepo:     repository,
 		policyTagClient:  tagClient,
@@ -588,6 +594,10 @@ func (r *DataCatalogRepository) getDataSets(ctx context.Context) (map[string]org
 }
 
 func parseWhoToMembers(who *sync_to_target.WhoItem) []string {
+	if who == nil {
+		return nil
+	}
+
 	members := make([]string, 0, len(who.Users)+len(who.Groups))
 
 	for _, m := range who.Users {
