@@ -171,7 +171,7 @@ func (r *DataCatalogRepository) ListDataPolicies(ctx context.Context) (map[strin
 			return nil
 		})
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("list dataset: %w", err)
 		}
 
 		r.dataPolicies = make(map[string]BQMaskingInformation)
@@ -586,7 +586,7 @@ func (r *DataCatalogRepository) getDataSets(ctx context.Context) (map[string]org
 		})
 
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("list datasets: %w", err)
 		}
 	}
 
