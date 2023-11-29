@@ -1,6 +1,6 @@
 //go:build integration
 
-package it
+package admin
 
 import (
 	"context"
@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/raito-io/cli-plugin-gcp/internal/admin"
 	"github.com/raito-io/cli-plugin-gcp/internal/iam"
 	"github.com/raito-io/cli-plugin-gcp/internal/it"
 )
@@ -114,7 +113,7 @@ func TestAdminRepository_GetGroups(t *testing.T) {
 	assert.ElementsMatch(t, expectedGroups, groups)
 }
 
-func createRepository(ctx context.Context, t *testing.T) (*admin.AdminRepository, *config.ConfigMap, func(), error) {
+func createRepository(ctx context.Context, t *testing.T) (*AdminRepository, *config.ConfigMap, func(), error) {
 	t.Helper()
 
 	configMap := it.IntegrationTestConfigMap()

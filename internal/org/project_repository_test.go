@@ -1,6 +1,6 @@
 //go:build integration
 
-package it
+package org
 
 import (
 	"context"
@@ -14,7 +14,6 @@ import (
 	"github.com/raito-io/cli-plugin-gcp/internal/common/roles"
 	"github.com/raito-io/cli-plugin-gcp/internal/iam"
 	"github.com/raito-io/cli-plugin-gcp/internal/it"
-	"github.com/raito-io/cli-plugin-gcp/internal/org"
 )
 
 func TestProjectRepository_GetProjects(t *testing.T) {
@@ -30,12 +29,12 @@ func TestProjectRepository_GetProjects(t *testing.T) {
 	type args struct {
 		ctx        context.Context
 		parentName string
-		parent     *org.GcpOrgEntity
+		parent     *GcpOrgEntity
 	}
 	tests := []struct {
 		name    string
 		args    args
-		want    []*org.GcpOrgEntity
+		want    []*GcpOrgEntity
 		wantErr require.ErrorAssertionFunc
 	}{
 		{
@@ -43,13 +42,13 @@ func TestProjectRepository_GetProjects(t *testing.T) {
 			args: args{
 				ctx:        ctx,
 				parentName: "folders/831872280962",
-				parent: &org.GcpOrgEntity{
+				parent: &GcpOrgEntity{
 					EntryName: "folders/831872280962",
 					Id:        "831872280962",
 					Name:      "second_folder",
 					FullName:  "831872280962",
 					Type:      data_source.Folder,
-					Parent: &org.GcpOrgEntity{
+					Parent: &GcpOrgEntity{
 						EntryName: "folders/138023537297",
 						Name:      "integration_tests",
 						Id:        "folders/138023537297",
@@ -58,7 +57,7 @@ func TestProjectRepository_GetProjects(t *testing.T) {
 					},
 				},
 			},
-			want:    []*org.GcpOrgEntity{},
+			want:    []*GcpOrgEntity{},
 			wantErr: require.NoError,
 		},
 		{
@@ -66,13 +65,13 @@ func TestProjectRepository_GetProjects(t *testing.T) {
 			args: args{
 				ctx:        ctx,
 				parentName: "folders/138023537297",
-				parent: &org.GcpOrgEntity{
+				parent: &GcpOrgEntity{
 					EntryName: "folders/138023537297",
 					Id:        "138023537297",
 					Name:      "integration_tests",
 					FullName:  "138023537297",
 					Type:      data_source.Folder,
-					Parent: &org.GcpOrgEntity{
+					Parent: &GcpOrgEntity{
 						EntryName: "organizations/905493414429",
 						Name:      "raito.dev",
 						Id:        "organizations/905493414429",
@@ -81,20 +80,20 @@ func TestProjectRepository_GetProjects(t *testing.T) {
 					},
 				},
 			},
-			want: []*org.GcpOrgEntity{
+			want: []*GcpOrgEntity{
 				{
 					EntryName: "projects/204677507107",
 					Id:        "raito-integration-test",
 					Name:      "raito-integration-test",
 					FullName:  "raito-integration-test",
 					Type:      "project",
-					Parent: &org.GcpOrgEntity{
+					Parent: &GcpOrgEntity{
 						EntryName: "folders/138023537297",
 						Id:        "138023537297",
 						Name:      "integration_tests",
 						FullName:  "138023537297",
 						Type:      data_source.Folder,
-						Parent: &org.GcpOrgEntity{
+						Parent: &GcpOrgEntity{
 							EntryName: "organizations/905493414429",
 							Name:      "raito.dev",
 							Id:        "organizations/905493414429",
@@ -110,9 +109,9 @@ func TestProjectRepository_GetProjects(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var projects []*org.GcpOrgEntity
+			var projects []*GcpOrgEntity
 
-			err := repo.GetProjects(tt.args.ctx, nil, tt.args.parentName, tt.args.parent, func(ctx context.Context, project *org.GcpOrgEntity) error {
+			err := repo.GetProjects(tt.args.ctx, nil, tt.args.parentName, tt.args.parent, func(ctx context.Context, project *GcpOrgEntity) error {
 				projects = append(projects, project)
 
 				return nil
@@ -185,19 +184,19 @@ func TestProjectRepository_UpdateBinding(t *testing.T) {
 
 	defer cleanup()
 
-	do := org.GcpOrgEntity{
+	do := GcpOrgEntity{
 		EntryName: "projects/204677507107",
 		Id:        "raito-integration-test",
 		Name:      "raito-integration-test",
 		FullName:  "raito-integration-test",
 		Type:      "project",
-		Parent: &org.GcpOrgEntity{
+		Parent: &GcpOrgEntity{
 			EntryName: "folders/138023537297",
 			Id:        "138023537297",
 			Name:      "integration_tests",
 			FullName:  "138023537297",
 			Type:      data_source.Folder,
-			Parent: &org.GcpOrgEntity{
+			Parent: &GcpOrgEntity{
 				EntryName: "organizations/905493414429",
 				Name:      "raito.dev",
 				Id:        "organizations/905493414429",
@@ -316,7 +315,7 @@ func TestProjectRepository_UpdateBinding(t *testing.T) {
 
 }
 
-func createProjectRepository(ctx context.Context, t *testing.T) (*org.ProjectRepository, *config.ConfigMap, func(), error) {
+func createProjectRepository(ctx context.Context, t *testing.T) (*ProjectRepository, *config.ConfigMap, func(), error) {
 	t.Helper()
 
 	configMap := it.IntegrationTestConfigMap()

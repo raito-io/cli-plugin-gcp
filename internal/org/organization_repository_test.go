@@ -1,6 +1,6 @@
 //go:build integration
 
-package it
+package org
 
 import (
 	"context"
@@ -13,7 +13,6 @@ import (
 	"github.com/raito-io/cli-plugin-gcp/internal/common/roles"
 	"github.com/raito-io/cli-plugin-gcp/internal/iam"
 	"github.com/raito-io/cli-plugin-gcp/internal/it"
-	"github.com/raito-io/cli-plugin-gcp/internal/org"
 )
 
 func TestOrganizationRepository_GetOrganization(t *testing.T) {
@@ -29,7 +28,7 @@ func TestOrganizationRepository_GetOrganization(t *testing.T) {
 	organization, err := repo.GetOrganization(ctx)
 
 	require.NoError(t, err)
-	assert.Equal(t, organization, &org.GcpOrgEntity{
+	assert.Equal(t, organization, &GcpOrgEntity{
 		EntryName: "organizations/905493414429",
 		Id:        "gcp-org-905493414429",
 		Name:      "raito.dev",
@@ -86,7 +85,7 @@ func TestOrganizationRepository_UpdateBinding(t *testing.T) {
 
 	ctx := context.Background()
 
-	dataObject := org.GcpOrgEntity{
+	dataObject := GcpOrgEntity{
 		EntryName: "organizations/905493414429",
 		Id:        "gcp-org-905493414429",
 		Name:      "raito.dev",
@@ -207,7 +206,7 @@ func TestOrganizationRepository_UpdateBinding(t *testing.T) {
 	}
 }
 
-func createOrganizationRepository(ctx context.Context, t *testing.T) (*org.OrganizationRepository, *config.ConfigMap, func(), error) {
+func createOrganizationRepository(ctx context.Context, t *testing.T) (*OrganizationRepository, *config.ConfigMap, func(), error) {
 	t.Helper()
 
 	configMap := it.IntegrationTestConfigMap()

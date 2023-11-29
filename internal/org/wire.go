@@ -4,8 +4,11 @@
 package org
 
 import (
+	"context"
+
 	resourcemanager "cloud.google.com/go/resourcemanager/apiv3"
 	"github.com/google/wire"
+	"github.com/raito-io/cli/base/util/config"
 )
 
 var Wired = wire.NewSet(
@@ -25,3 +28,29 @@ var Wired = wire.NewSet(
 	wire.Bind(new(folderRepo), new(*FolderRepository)),
 	wire.Bind(new(organizationRepo), new(*OrganizationRepository)),
 )
+
+// TESTING
+
+func InitializeFolderRepository(ctx context.Context, configMap *config.ConfigMap) (*FolderRepository, func(), error) {
+	wire.Build(
+		Wired,
+	)
+
+	return nil, nil, nil
+}
+
+func InitializeOrganizationRepository(ctx context.Context, configMap *config.ConfigMap) (*OrganizationRepository, func(), error) {
+	wire.Build(
+		Wired,
+	)
+
+	return nil, nil, nil
+}
+
+func InitializeProjectRepository(ctx context.Context, configMap *config.ConfigMap) (*ProjectRepository, func(), error) {
+	wire.Build(
+		Wired,
+	)
+
+	return nil, nil, nil
+}

@@ -1,6 +1,6 @@
 //go:build integration
 
-package it
+package bigquery
 
 import (
 	"context"
@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	bigquery "github.com/raito-io/cli-plugin-gcp/internal/bq"
 	"github.com/raito-io/cli-plugin-gcp/internal/common/roles"
 	"github.com/raito-io/cli-plugin-gcp/internal/iam"
 	"github.com/raito-io/cli-plugin-gcp/internal/it"
@@ -180,6 +179,11 @@ func TestRepository_ListColumns(t *testing.T) {
 
 	// Then
 	require.NoError(t, err)
+
+	// Ignore policyTags
+	for i := range columns {
+		columns[i].PolicyTags = nil
+	}
 
 	assert.ElementsMatch(t, []*org.GcpOrgEntity{
 		{
@@ -675,9 +679,9 @@ func TestRepository_GetDataUsage(t *testing.T) {
 
 	defer cleanup()
 
-	var dataUsage []*bigquery.BQInformationSchemaEntity
+	var dataUsage []*BQInformationSchemaEntity
 
-	repository.GetDataUsage(ctx, ptr.Time(time.Now().Add(-14*24*time.Hour)), nil, nil, func(ctx context.Context, entity *bigquery.BQInformationSchemaEntity) error {
+	repository.GetDataUsage(ctx, ptr.Time(time.Now().Add(-14*24*time.Hour)), nil, nil, func(ctx context.Context, entity *BQInformationSchemaEntity) error {
 		dataUsage = append(dataUsage, entity)
 
 		return nil
@@ -686,7 +690,7 @@ func TestRepository_GetDataUsage(t *testing.T) {
 	assert.NotEmpty(t, dataUsage)
 }
 
-func createRepository(ctx context.Context, t *testing.T) (*bigquery.Repository, *bigquery2.Client, *config.ConfigMap, func(), error) {
+func createRepository(ctx context.Context, t *testing.T) (*Repository, *bigquery2.Client, *config.ConfigMap, func(), error) {
 	t.Helper()
 
 	configMap := it.IntegrationTestConfigMap()

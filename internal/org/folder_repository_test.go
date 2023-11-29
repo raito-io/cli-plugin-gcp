@@ -1,6 +1,6 @@
 //go:build integration
 
-package it
+package org
 
 import (
 	"context"
@@ -14,7 +14,6 @@ import (
 	"github.com/raito-io/cli-plugin-gcp/internal/common/roles"
 	"github.com/raito-io/cli-plugin-gcp/internal/iam"
 	"github.com/raito-io/cli-plugin-gcp/internal/it"
-	"github.com/raito-io/cli-plugin-gcp/internal/org"
 )
 
 func TestFolderRepository_GetFolders(t *testing.T) {
@@ -30,12 +29,12 @@ func TestFolderRepository_GetFolders(t *testing.T) {
 	type args struct {
 		ctx        context.Context
 		parentName string
-		parent     *org.GcpOrgEntity
+		parent     *GcpOrgEntity
 	}
 	tests := []struct {
 		name    string
 		args    args
-		want    []*org.GcpOrgEntity
+		want    []*GcpOrgEntity
 		wantErr require.ErrorAssertionFunc
 	}{
 		{
@@ -43,7 +42,7 @@ func TestFolderRepository_GetFolders(t *testing.T) {
 			args: args{
 				ctx:        ctx,
 				parentName: "organizations/905493414429",
-				parent: &org.GcpOrgEntity{
+				parent: &GcpOrgEntity{
 					EntryName: "organizations/905493414429",
 					Name:      "raito.dev",
 					Id:        "organizations/905493414429",
@@ -51,14 +50,14 @@ func TestFolderRepository_GetFolders(t *testing.T) {
 					Type:      data_source.Datasource,
 				},
 			},
-			want: []*org.GcpOrgEntity{
+			want: []*GcpOrgEntity{
 				{
 					EntryName: "folders/894564211610",
 					Id:        "894564211610",
 					Name:      "e2e_tests",
 					FullName:  "894564211610",
 					Type:      data_source.Folder,
-					Parent: &org.GcpOrgEntity{
+					Parent: &GcpOrgEntity{
 						EntryName: "organizations/905493414429",
 						Name:      "raito.dev",
 						Id:        "organizations/905493414429",
@@ -72,7 +71,7 @@ func TestFolderRepository_GetFolders(t *testing.T) {
 					Name:      "integration_tests",
 					FullName:  "138023537297",
 					Type:      data_source.Folder,
-					Parent: &org.GcpOrgEntity{
+					Parent: &GcpOrgEntity{
 						EntryName: "organizations/905493414429",
 						Name:      "raito.dev",
 						Id:        "organizations/905493414429",
@@ -88,7 +87,7 @@ func TestFolderRepository_GetFolders(t *testing.T) {
 			args: args{
 				ctx:        ctx,
 				parentName: "folders/138023537297",
-				parent: &org.GcpOrgEntity{
+				parent: &GcpOrgEntity{
 					EntryName: "folders/138023537297",
 					Name:      "integration_tests",
 					Id:        "folders/138023537297",
@@ -96,14 +95,14 @@ func TestFolderRepository_GetFolders(t *testing.T) {
 					Type:      data_source.Folder,
 				},
 			},
-			want: []*org.GcpOrgEntity{
+			want: []*GcpOrgEntity{
 				{
 					EntryName: "folders/831872280962",
 					Id:        "831872280962",
 					Name:      "second_folder",
 					FullName:  "831872280962",
 					Type:      data_source.Folder,
-					Parent: &org.GcpOrgEntity{
+					Parent: &GcpOrgEntity{
 						EntryName: "folders/138023537297",
 						Name:      "integration_tests",
 						Id:        "folders/138023537297",
@@ -118,9 +117,9 @@ func TestFolderRepository_GetFolders(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var folders []*org.GcpOrgEntity
+			var folders []*GcpOrgEntity
 
-			err := repo.GetFolders(tt.args.ctx, tt.args.parentName, tt.args.parent, func(ctx context.Context, folder *org.GcpOrgEntity) error {
+			err := repo.GetFolders(tt.args.ctx, tt.args.parentName, tt.args.parent, func(ctx context.Context, folder *GcpOrgEntity) error {
 				folders = append(folders, folder)
 
 				return nil
@@ -202,13 +201,13 @@ func TestFolderRepository_UpdateBinding(t *testing.T) {
 
 	ctx := context.Background()
 
-	dataObject := org.GcpOrgEntity{
+	dataObject := GcpOrgEntity{
 		EntryName: "folders/831872280962",
 		Id:        "831872280962",
 		Name:      "second_folder",
 		FullName:  "831872280962",
 		Type:      data_source.Folder,
-		Parent: &org.GcpOrgEntity{
+		Parent: &GcpOrgEntity{
 			EntryName: "folders/138023537297",
 			Name:      "integration_tests",
 			Id:        "folders/138023537297",
@@ -224,7 +223,7 @@ func TestFolderRepository_UpdateBinding(t *testing.T) {
 
 	type args struct {
 		ctx        context.Context
-		dataObject *org.GcpOrgEntity
+		dataObject *GcpOrgEntity
 		binding    []iam.IamBinding
 	}
 	tests := []struct {
@@ -333,7 +332,7 @@ func TestFolderRepository_UpdateBinding(t *testing.T) {
 	}
 }
 
-func createFolderRepository(ctx context.Context, t *testing.T) (*org.FolderRepository, *config.ConfigMap, func(), error) {
+func createFolderRepository(ctx context.Context, t *testing.T) (*FolderRepository, *config.ConfigMap, func(), error) {
 	t.Helper()
 
 	configMap := it.IntegrationTestConfigMap()

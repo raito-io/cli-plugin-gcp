@@ -1,6 +1,6 @@
 //go:build integration
 
-package it
+package bigquery
 
 import (
 	"context"
@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/raito-io/cli-plugin-gcp/internal/bq"
 	"github.com/raito-io/cli-plugin-gcp/internal/it"
 	"github.com/raito-io/cli-plugin-gcp/internal/org"
 )
@@ -147,7 +146,7 @@ func TestDataObjectIterator_Sync(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			objectCounts := make(map[string]int)
 
-			err = iterator.Sync(tt.args.ctx, tt.args.config, tt.args.skipColumns, func(ctx context.Context, object *org.GcpOrgEntity) error {
+			err = iterator.sync(tt.args.ctx, tt.args.config, tt.args.skipColumns, func(ctx context.Context, object *org.GcpOrgEntity) error {
 				if _, found := objectCounts[object.Type]; found {
 					objectCounts[object.Type]++
 				} else {
@@ -174,7 +173,7 @@ func TestDataObjectIterator_Sync(t *testing.T) {
 	}
 }
 
-func createIterator(ctx context.Context, t *testing.T) (*bigquery.DataObjectIterator, *config.ConfigMap, func(), error) {
+func createIterator(ctx context.Context, t *testing.T) (*DataObjectIterator, *config.ConfigMap, func(), error) {
 	t.Helper()
 
 	configMap := it.IntegrationTestConfigMap()
