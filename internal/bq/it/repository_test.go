@@ -559,22 +559,7 @@ func TestRepository_UpdateBindings(t *testing.T) {
 			},
 			wantError: require.NoError,
 		},
-		{
-			name: "Update project bindings",
-			args: args{
-				ctx:        ctx,
-				dataObject: repository.Project(),
-				bindings: []iam.IamBinding{
-					{
-						Member:       "user:m_carissa@raito.dev",
-						Role:         roles.RolesBigQueryResourceViewer.Name,
-						ResourceType: "project",
-						Resource:     "raito-integration-test",
-					},
-				},
-			},
-			wantError: require.NoError,
-		},
+		// Bindings for project are repository tests in project gcp package
 		{
 			name: "Update dataset bindings",
 			args: args{

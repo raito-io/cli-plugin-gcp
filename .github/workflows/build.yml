@@ -44,6 +44,7 @@ jobs:
           GSUITE_IMPERSONATE_SUBJECT: ${{ secrets.gsuite_impersonate_subject }}
           GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
           GCP_PROJECT_ID: ${{ secrets.gcp_project_id }}
+          GCP_ORGANIZATION_ID: ${{ secrets.gcp_organization_id }}
 
       - uses: codecov/codecov-action@v3
         with:

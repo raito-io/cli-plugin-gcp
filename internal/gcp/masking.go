@@ -28,7 +28,7 @@ func (n *NoMasking) ImportMasks(_ context.Context, _ wrappers.AccessProviderHand
 	return errors.New("masking is not supported for GCP")
 }
 
-func (n *NoMasking) ExportMasks(ctx context.Context, accessProvider *importer.AccessProvider, accessProviderFeedbackHandler wrappers.AccessProviderFeedbackHandler) ([]string, error) {
+func (n *NoMasking) ExportMasks(_ context.Context, accessProvider *importer.AccessProvider, accessProviderFeedbackHandler wrappers.AccessProviderFeedbackHandler) ([]string, error) {
 	err := accessProviderFeedbackHandler.AddAccessProviderFeedback(importer.AccessProviderSyncFeedback{
 		AccessProvider: accessProvider.Id,
 		ActualName:     accessProvider.Name,

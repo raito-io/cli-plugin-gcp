@@ -30,6 +30,7 @@ const (
 
 var bqPolicyCache = make(map[string][]iam2.IamBinding)
 
+//go:generate go run github.com/vektra/mockery/v2 --name=ProjectClient --with-expecter --inpackage
 type ProjectClient interface {
 	GetIamPolicy(ctx context.Context, projectId string) ([]iam2.IamBinding, error)
 	UpdateBinding(ctx context.Context, dataObject *iam2.DataObjectReference, bindingsToAdd []iam2.IamBinding, bindingsToDelete []iam2.IamBinding) error
