@@ -194,7 +194,9 @@ func (c *Repository) ListTables(ctx context.Context, ds *bigquery.Dataset, paren
 		dataObjects = append(dataObjects, &entity)
 	}
 
-	bqDataObjectCache[parent.FullName] = dataObjects
+	if c.options.EnableCache {
+		bqDataObjectCache[parent.FullName] = dataObjects
+	}
 
 	return nil
 }
@@ -248,7 +250,9 @@ func (c *Repository) ListColumns(ctx context.Context, tab *bigquery.Table, paren
 		dataObjects = append(dataObjects, &entity)
 	}
 
-	bqDataObjectCache[parent.FullName] = dataObjects
+	if c.options.EnableCache {
+		bqDataObjectCache[parent.FullName] = dataObjects
+	}
 
 	return nil
 }
