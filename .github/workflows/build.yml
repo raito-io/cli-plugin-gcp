@@ -12,10 +12,12 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version: '1.21'
           cache: true
+          check-latest: true
+          cache-dependency-path: "**/*.sum"
 
       - name: Mod Tidy
         run: go mod tidy
@@ -28,14 +30,21 @@ jobs:
         with:
           version: v1.55.1
 
+      - name: Generate credentials file
+        run: | 
+          echo $GCP_CREDENTIALS > $RUNNER_TEMP/credentials.json
+          echo GOOGLE_APPLICATION_CREDENTIALS=$(echo "$RUNNER_TEMP/credentials.json") >> $GITHUB_ENV
+        env:
+          GCP_CREDENTIALS: ${{ secrets.gcp_credentials }}
+
       - name: Test
         run: make test
-      #  env:
-      #    SF_ACCOUNT: ${{ secrets.sf_account }}
-      #    SF_USER: ${{ secrets.sf_user }}
-      #    SF_PASSWORD: ${{ secrets.sf_password }}
-      #    SF_ROLE: ${{ secrets.sf_role }}
-      #    SF_STANDARD_EDITION: true
+        env:
+          GSUITE_CUSTOMER_ID: ${{ secrets.gsuite_customer_id }}
+          GSUITE_IMPERSONATE_SUBJECT: ${{ secrets.gsuite_impersonate_subject }}
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
+          GCP_PROJECT_ID: ${{ secrets.gcp_project_id }}
+          GCP_ORGANIZATION_ID: ${{ secrets.gcp_organization_id }}
 
       - uses: codecov/codecov-action@v3
         with:

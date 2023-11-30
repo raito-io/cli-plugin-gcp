@@ -37,7 +37,7 @@ func NewProjectRepository(projectClient projectClient) *ProjectRepository {
 	}
 }
 
-func (r *ProjectRepository) GetProjects(ctx context.Context, config *ds.DataSourceSyncConfig, parentName string, parent *GcpOrgEntity, fn func(ctx context.Context, project *GcpOrgEntity) error) error {
+func (r *ProjectRepository) GetProjects(ctx context.Context, _ *ds.DataSourceSyncConfig, parentName string, parent *GcpOrgEntity, fn func(ctx context.Context, project *GcpOrgEntity) error) error {
 	projectIterator := r.projectClient.ListProjects(ctx, &resourcemanagerpb.ListProjectsRequest{
 		Parent: parentName,
 	})
@@ -96,5 +96,7 @@ func (r *ProjectRepository) GetIamPolicy(ctx context.Context, projectId string) 
 }
 
 func (r *ProjectRepository) UpdateBinding(ctx context.Context, dataObject *iam.DataObjectReference, bindingsToAdd []iam.IamBinding, bindingsToDelete []iam.IamBinding) error {
+	dataObject.ObjectType = "project"
+
 	return updateBindings(ctx, r.projectClient, dataObject, bindingsToAdd, bindingsToDelete)
 }

@@ -16,8 +16,13 @@ import (
 	"github.com/raito-io/cli-plugin-gcp/internal/syncer"
 )
 
+var optionSet = wire.NewSet(
+	wire.Value(&bigquery.RepositoryOptions{EnableCache: true}),
+)
+
 func InitializeDataSourceSyncer(ctx context.Context, configMap *config.ConfigMap) (wrappers.DataSourceSyncer, func(), error) {
 	wire.Build(
+		optionSet,
 		bigquery.Wired,
 		org.Wired,
 		syncer.Wired,
@@ -32,6 +37,7 @@ func InitializeDataSourceSyncer(ctx context.Context, configMap *config.ConfigMap
 
 func InitializeIdentityStoreSyncer(ctx context.Context, configMap *config.ConfigMap) (wrappers.IdentityStoreSyncer, func(), error) {
 	wire.Build(
+		optionSet,
 		bigquery.Wired,
 		org.Wired,
 		admin.Wired,
@@ -48,6 +54,7 @@ func InitializeIdentityStoreSyncer(ctx context.Context, configMap *config.Config
 
 func InitializeDataAccessSyncer(ctx context.Context, configMap *config.ConfigMap) (wrappers.AccessProviderSyncer, func(), error) {
 	wire.Build(
+		optionSet,
 		bigquery.Wired,
 		syncer.Wired,
 		org.Wired,
@@ -64,6 +71,7 @@ func InitializeDataAccessSyncer(ctx context.Context, configMap *config.ConfigMap
 
 func InitializeDataUsageSyncer(ctx context.Context, configMap *config.ConfigMap) (wrappers.DataUsageSyncer, func(), error) {
 	wire.Build(
+		optionSet,
 		bigquery.Wired,
 		syncer.Wired,
 		org.Wired,

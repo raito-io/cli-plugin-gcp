@@ -71,11 +71,11 @@ func updateBindings(ctx context.Context, policyClient setPolicyClient, dataObjec
 
 	for i := range resourcePolicy.Bindings {
 		// Remove old assignees
-		if members, found := membersToRemoveFromRole[resourcePolicy.Bindings[i].Role]; found {
+		if membersToRemove, found := membersToRemoveFromRole[resourcePolicy.Bindings[i].Role]; found {
 			updatedMembers := make([]string, 0, len(resourcePolicy.Bindings[i].Members))
 
 			for _, m := range resourcePolicy.Bindings[i].Members {
-				if !members.Contains(m) {
+				if !membersToRemove.Contains(m) {
 					updatedMembers = append(updatedMembers, m)
 				}
 			}

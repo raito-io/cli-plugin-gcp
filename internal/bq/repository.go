@@ -31,9 +31,14 @@ const (
 var bqPolicyCache = make(map[string][]iam2.IamBinding)
 var bqDataObjectCache = make(map[string][]*org.GcpOrgEntity)
 
+//go:generate go run github.com/vektra/mockery/v2 --name=ProjectClient --with-expecter --inpackage
 type ProjectClient interface {
 	GetIamPolicy(ctx context.Context, projectId string) ([]iam2.IamBinding, error)
 	UpdateBinding(ctx context.Context, dataObject *iam2.DataObjectReference, bindingsToAdd []iam2.IamBinding, bindingsToDelete []iam2.IamBinding) error
+}
+
+type RepositoryOptions struct {
+	EnableCache bool
 }
 
 type Repository struct {
@@ -41,14 +46,18 @@ type Repository struct {
 	client        *bigquery.Client
 	projectId     string
 	listHidden    bool
+
+	options *RepositoryOptions
 }
 
-func NewRepository(projectClient ProjectClient, client *bigquery.Client, configMap *config.ConfigMap) *Repository {
+func NewRepository(projectClient ProjectClient, client *bigquery.Client, configMap *config.ConfigMap, options *RepositoryOptions) *Repository {
 	return &Repository{
 		projectClient: projectClient,
 		client:        client,
 		projectId:     configMap.GetString(common.GcpProjectId),
 		listHidden:    configMap.GetBool(common.BqIncludeHiddenDatasets),
+
+		options: options,
 	}
 }
 
@@ -115,7 +124,9 @@ func (c *Repository) ListDataSets(ctx context.Context, parent *org.GcpOrgEntity,
 		dataObjects = append(dataObjects, &entity)
 	}
 
-	bqDataObjectCache[parent.FullName] = dataObjects
+	if c.options.EnableCache {
+		bqDataObjectCache[parent.FullName] = dataObjects
+	}
 
 	return nil
 }
@@ -306,13 +317,13 @@ func (c *Repository) ListViews(ctx context.Context, ds *bigquery.Dataset, parent
 }
 
 func (c *Repository) GetBindings(ctx context.Context, entity *org.GcpOrgEntity) ([]iam2.IamBinding, error) {
-	if bindings, found := bqPolicyCache[entity.Id]; found {
+	if bindings, found := bqPolicyCache[entity.Id]; c.options.EnableCache && found {
 		common.Logger.Debug(fmt.Sprintf("Found cached bindings for entity %s", entity.Id))
 
 		return bindings, nil
 	}
 
-	common.Logger.Info(fmt.Sprintf("Fetching BigQuery IAM Policy for %s", entity.Id))
+	common.Logger.Info(fmt.Sprintf("Fetching BigQuery IAM Policy for %s (%s)", entity.Id, entity.Type))
 
 	entityIdParts := strings.Split(entity.Id, ".")
 
@@ -320,12 +331,16 @@ func (c *Repository) GetBindings(ctx context.Context, entity *org.GcpOrgEntity) 
 	var err error
 
 	switch entity.Type {
-	case "project":
+	case "project", data_source.Datasource:
 		bindings, err = c.projectClient.GetIamPolicy(ctx, c.projectId)
 	case data_source.Dataset:
 		bindings, err = c.getDataSetBindings(ctx, entity, entityIdParts)
 	case data_source.Table, data_source.View:
 		bindings, err = c.getTableBindings(ctx, entity, entityIdParts)
+	case data_source.Column:
+		// Do nothing
+	default:
+		return nil, fmt.Errorf("unsupported entity type %s", entity.Type)
 	}
 
 	if common.IsGoogle400Error(err) {
@@ -336,7 +351,9 @@ func (c *Repository) GetBindings(ctx context.Context, entity *org.GcpOrgEntity) 
 		return nil, err
 	}
 
-	bqPolicyCache[entity.Id] = bindings
+	if c.options.EnableCache {
+		bqPolicyCache[entity.Id] = bindings
+	}
 
 	return bindings, nil
 }
@@ -591,6 +608,29 @@ func (c *Repository) getDataSetBindings(ctx context.Context, entity *org.GcpOrgE
 func (c *Repository) updateDatasetBindings(ctx context.Context, dataset string, bindingsToAdd []iam2.IamBinding, bindingsToRemove []iam2.IamBinding) error {
 	ds := c.client.Dataset(dataset)
 
+	dsMeta, err := ds.Metadata(ctx)
+	if err != nil {
+		return fmt.Errorf("metadata of dataset %q: %w", dataset, err)
+	}
+
+	update, err := mergeBindings(dsMeta.Access, bindingsToAdd, bindingsToRemove)
+	if err != nil {
+		return err
+	}
+
+	_, err = ds.Update(ctx, *update, dsMeta.ETag)
+	if err != nil {
+		return fmt.Errorf("update dataset %q: %w", dataset, err)
+	}
+
+	return nil
+}
+
+func mergeBindings(existingAccess []*bigquery.AccessEntry, bindingsToAdd []iam2.IamBinding, bindingsToRemove []iam2.IamBinding) (*bigquery.DatasetMetadataToUpdate, error) {
+	update := bigquery.DatasetMetadataToUpdate{
+		Access: []*bigquery.AccessEntry{},
+	}
+
 	bindingsToRemoveMap := make(map[string]set.Set[string]) //Role -> Members
 	for i := range bindingsToRemove {
 		if _, found := bindingsToRemoveMap[bindingsToRemove[i].Role]; !found {
@@ -600,22 +640,17 @@ func (c *Repository) updateDatasetBindings(ctx context.Context, dataset string, 
 		bindingsToRemoveMap[bindingsToRemove[i].Role].Add(bindingsToRemove[i].Member)
 	}
 
-	dsMeta, err := ds.Metadata(ctx)
-	if err != nil {
-		return fmt.Errorf("metadata of dataset %q: %w", dataset, err)
-	}
-
-	update := bigquery.DatasetMetadataToUpdate{
-		Access: []*bigquery.AccessEntry{},
-	}
-
 	// Remove old bindings
-	for _, a := range dsMeta.Access {
+	for _, a := range existingAccess {
 		memberId := fmt.Sprintf("%s:%s", entityToString(a.EntityType), a.Entity)
-		if membersEntities, found := bindingsToRemoveMap[string(a.Role)]; found {
+		role := getRoleForBQEntity(a.Role)
+
+		if membersEntities, found := bindingsToRemoveMap[role]; found {
 			if !membersEntities.Contains(memberId) {
 				update.Access = append(update.Access, a)
 			}
+		} else {
+			update.Access = append(update.Access, a)
 		}
 	}
 
@@ -623,7 +658,7 @@ func (c *Repository) updateDatasetBindings(ctx context.Context, dataset string, 
 	for i := range bindingsToAdd {
 		memberEntityType, memberEntityId, err2 := parseMember(bindingsToAdd[i].Member)
 		if err2 != nil {
-			return fmt.Errorf("parse member %q: %w", bindingsToAdd[i].Member, err2)
+			return nil, fmt.Errorf("parse member %q: %w", bindingsToAdd[i].Member, err2)
 		}
 
 		update.Access = append(update.Access, &bigquery.AccessEntry{
@@ -633,12 +668,7 @@ func (c *Repository) updateDatasetBindings(ctx context.Context, dataset string, 
 		})
 	}
 
-	_, err = ds.Update(ctx, update, dsMeta.ETag)
-	if err != nil {
-		return fmt.Errorf("update dataset %q: %w", dataset, err)
-	}
-
-	return nil
+	return &update, nil
 }
 
 func (c *Repository) getTableBindings(ctx context.Context, entity *org.GcpOrgEntity, entityIdParts []string) ([]iam2.IamBinding, error) {
@@ -696,6 +726,10 @@ func (c *Repository) description(doType string) string {
 }
 
 func (c *Repository) loadDataObjectsFromCache(ctx context.Context, parent *org.GcpOrgEntity, fn func(ctx context.Context, item *org.GcpOrgEntity) error) (error, bool) {
+	if !c.options.EnableCache {
+		return nil, false
+	}
+
 	if result, found := bqDataObjectCache[parent.FullName]; found {
 		for _, entity := range result {
 			err := fn(ctx, entity)

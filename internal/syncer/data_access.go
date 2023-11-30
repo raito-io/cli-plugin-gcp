@@ -85,10 +85,6 @@ func (a *AccessSyncer) SyncAccessProvidersFromTarget(ctx context.Context, access
 	maskingTags := make(map[string][]string)
 
 	err := a.bindingRepo.Bindings(ctx, &data_source.DataSourceSyncConfig{ConfigMap: configMap}, func(ctx context.Context, dataObject *org.GcpOrgEntity, bindings []iam.IamBinding) error {
-		if len(bindings) == 0 {
-			return nil
-		}
-
 		allBindings = append(allBindings, bindings...)
 
 		if a.maskingSupport && dataObject.Type == data_source.Column && len(dataObject.PolicyTags) > 0 {
@@ -190,7 +186,7 @@ func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessPro
 			defer mutex.Unlock()
 
 			if err != nil {
-				a.handleErrors(fmt.Errorf("update bindings of %s %q: %w", do.ObjectType, do.FullName, err), apFeedback, bindings.bindings[do].GetAllAccessProviders())
+				handleErrors(fmt.Errorf("update bindings of %s %q: %w", do.ObjectType, do.FullName, err), apFeedback, bindings.bindings[do].GetAllAccessProviders())
 			}
 
 			a.raitoManagedBindings.Add(bindingsToAdd...)
@@ -228,7 +224,7 @@ func (a *AccessSyncer) ConvertBindingsToAccessProviders(ctx context.Context, con
 
 	accessProviderMap := make(map[string]*exporter.AccessProvider)
 	specialGroupAccessProviderMap := make(map[string]*exporter.AccessProvider)
-	groupedByIdentityAccesProviderMap := make(map[string]*exporter.AccessProvider)
+	groupedByIdentityAccessProviderMap := make(map[string]*exporter.AccessProvider)
 
 	projectOwnersWho, projectEditorWho, projectReaderWho, err := a.projectRolesWhoItem(ctx, configMap)
 	if err != nil {
@@ -248,12 +244,15 @@ func (a *AccessSyncer) ConvertBindingsToAccessProviders(ctx context.Context, con
 			continue
 		}
 
+		dataSourceSpecificBinding := binding
+		dataSourceSpecificBinding.ResourceType = a.translateResourceTypeToDataSourceType(dataSourceSpecificBinding.ResourceType)
+
 		if strings.HasPrefix(binding.Member, "special_group:") {
-			a.generateSpecialGroupOwnerAccessProvider(binding, specialGroupAccessProviderMap, projectOwnersWho, projectEditorWho, projectReaderWho)
+			a.generateSpecialGroupOwnerAccessProvider(dataSourceSpecificBinding, specialGroupAccessProviderMap, projectOwnersWho, projectEditorWho, projectReaderWho)
 		} else if rolesToGroupByIdentity.Contains(binding.Role) {
-			a.generateGroupedByIdentityAcccessProvider(binding, groupedByIdentityAccesProviderMap)
+			a.generateGroupedByIdentityAcccessProvider(dataSourceSpecificBinding, groupedByIdentityAccessProviderMap)
 		} else {
-			a.generateAccessProvider(binding, accessProviderMap, managed)
+			a.generateAccessProvider(binding.ResourceType, dataSourceSpecificBinding, accessProviderMap, managed)
 		}
 	}
 
@@ -266,15 +265,15 @@ func (a *AccessSyncer) ConvertBindingsToAccessProviders(ctx context.Context, con
 		aps = append(aps, specialGroupAp)
 	}
 
-	for _, groupedByIdentityAp := range groupedByIdentityAccesProviderMap {
+	for _, groupedByIdentityAp := range groupedByIdentityAccessProviderMap {
 		aps = append(aps, groupedByIdentityAp)
 	}
 
 	return aps, nil
 }
 
-func (a *AccessSyncer) generateAccessProvider(binding iam.IamBinding, accessProviderMap map[string]*exporter.AccessProvider, managed bool) {
-	apName := fmt.Sprintf("%s_%s_%s", binding.ResourceType, binding.Resource, strings.Replace(binding.Role, "/", "_", -1))
+func (a *AccessSyncer) generateAccessProvider(actualResourceType string, binding iam.IamBinding, accessProviderMap map[string]*exporter.AccessProvider, managed bool) {
+	apName := fmt.Sprintf("%s_%s_%s", actualResourceType, binding.Resource, strings.Replace(binding.Role, "/", "_", -1))
 
 	if _, f := accessProviderMap[apName]; !f {
 		accessProviderMap[apName] = &exporter.AccessProvider{
@@ -416,15 +415,15 @@ func (a *AccessSyncer) projectRolesWhoItem(ctx context.Context, configMap *confi
 			return nil, nil, nil, fmt.Errorf("get project %q owner: %w", gcpProject, err)
 		}
 
-		projectOwnersWho = a.generateProjectWhoItem(projectOwnerIds)
-		projectEditorWho = a.generateProjectWhoItem(projectEditorIds)
-		projectViewerWho = a.generateProjectWhoItem(projectViewerIDs)
+		projectOwnersWho = generateProjectWhoItem(projectOwnerIds)
+		projectEditorWho = generateProjectWhoItem(projectEditorIds)
+		projectViewerWho = generateProjectWhoItem(projectViewerIDs)
 	}
 
 	return projectOwnersWho, projectEditorWho, projectViewerWho, nil
 }
 
-func (a *AccessSyncer) generateProjectWhoItem(projectOwnerIds []string) *exporter.WhoItem {
+func generateProjectWhoItem(projectOwnerIds []string) *exporter.WhoItem {
 	result := &exporter.WhoItem{}
 
 	for _, ownerId := range projectOwnerIds {
@@ -442,7 +441,7 @@ func (a *AccessSyncer) generateProjectWhoItem(projectOwnerIds []string) *exporte
 	return result
 }
 
-func (a *AccessSyncer) handleErrors(err error, apFeedback map[string]*importer.AccessProviderSyncFeedback, aps []*importer.AccessProvider) {
+func handleErrors(err error, apFeedback map[string]*importer.AccessProviderSyncFeedback, aps []*importer.AccessProvider) {
 	if err != nil {
 		common.Logger.Error(fmt.Sprintf("error while updating bindings: %s", err.Error()))
 
@@ -454,7 +453,13 @@ func (a *AccessSyncer) handleErrors(err error, apFeedback map[string]*importer.A
 
 func (a *AccessSyncer) isRaitoManagedBinding(binding iam.IamBinding) bool {
 	for _, doType := range a.metadata.DataObjectTypes {
-		if strings.EqualFold(binding.ResourceType, doType.Type) {
+		doTypeType := doType.Type
+		// Dirty hack to map the datasource dataobject type to 'project' in case of bigquery datasource
+		if doTypeType == data_source.Datasource && a.metadata.Type == "bigquery" {
+			doTypeType = "project"
+		}
+
+		if strings.EqualFold(binding.ResourceType, doTypeType) {
 			for _, perm := range doType.Permissions {
 				if strings.EqualFold(binding.Role, perm.Permission) {
 					return true
@@ -464,6 +469,14 @@ func (a *AccessSyncer) isRaitoManagedBinding(binding iam.IamBinding) bool {
 	}
 
 	return false
+}
+
+func (a *AccessSyncer) translateResourceTypeToDataSourceType(doType string) string {
+	if a.metadata.Type == "bigquery" && doType == "project" {
+		return data_source.Datasource
+	}
+
+	return doType
 }
 
 func (a *AccessSyncer) convertAccessProviderToBindings(ctx context.Context, accessProviders []*importer.AccessProvider) *BindingContainer {
@@ -520,7 +533,7 @@ func (a *AccessSyncer) convertAccessProviderToBindings(ctx context.Context, acce
 						Member:       m,
 						Role:         p,
 						Resource:     w.DataObject.FullName,
-						ResourceType: w.DataObject.Type,
+						ResourceType: objectType,
 					}
 
 					if ap.Delete {
@@ -544,7 +557,7 @@ func (a *AccessSyncer) convertAccessProviderToBindings(ctx context.Context, acce
 			}
 		}
 
-		if a.addMaskedReader && !ap.Delete {
+		if a.addMaskedReader && !ap.Delete && len(ap.What) > 0 {
 			additionalMaskBindings, err := a.maskingService.MaskedBinding(ctx, members)
 			if err != nil {
 				common.Logger.Error(fmt.Sprintf("error while masking binding: %s", err.Error()))
