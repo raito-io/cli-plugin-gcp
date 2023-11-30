@@ -21,4 +21,6 @@ lint:
 
 test:
 	$(gotestsum) --debug --format pkgname -- -mod=readonly -tags=integration -race -coverpkg=./... -covermode=atomic -coverprofile=coverage.txt ./...
-	go tool cover -html=coverage.txt -o coverage.html
+
+test-sync:
+	$(gotestsum) --debug --format testname -- mod=readonly -tags=syncintegration -race -coverpkg=./... -covermode=atomic -coverprofile=coverage-sync.txt ./cmd/...
