@@ -146,6 +146,7 @@ func AccessSync(ctx context.Context, config *config.ConfigMap, t *testing.T) {
 
 	defer cleanup()
 
+	// We always set the same ap, and just check the errors
 	t.Run("Sync to target", func(t *testing.T) {
 		// Given
 		feedbackHandler := mocks.NewSimpleAccessProviderFeedbackHandler(t)
