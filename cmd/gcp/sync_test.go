@@ -235,7 +235,7 @@ func AccessSync(ctx context.Context, config *config.ConfigMap, t *testing.T) {
 
 	t.Run("Sync from target", func(t *testing.T) {
 		// Given
-		apHandler := mocks.NewSimpleAccessProviderHandler(t, 5)
+		apHandler := mocks.NewSimpleAccessProviderHandler(t, 10)
 
 		// When
 		err = syncer.SyncAccessProvidersFromTarget(ctx, apHandler, config)
