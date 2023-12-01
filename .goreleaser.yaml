@@ -13,7 +13,7 @@ builds:
       - linux
       - darwin
     ldflags:
-      - -X version.Version={{.Version}}
+      - -X github.com/raito-io/cli-plugin-gcp/version.Version={{.Version}}
   - id: "bigquery"
     main: ./cmd/bq
     env:
@@ -22,7 +22,7 @@ builds:
       - linux
       - darwin
     ldflags:
-      - -X version.Version={{.Version}}
+      - -X github.com/raito-io/cli-plugin-gcp/version.Version={{.Version}}
 
 checksum:
   name_template: 'checksums.txt'
