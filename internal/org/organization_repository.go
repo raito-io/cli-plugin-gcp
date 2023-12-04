@@ -37,18 +37,23 @@ func (r *OrganizationRepository) GetOrganization(ctx context.Context) (*GcpOrgEn
 	})
 
 	name := r.raitoOrgId()
+	entryName := ""
+	displayname := name
 
 	if common.IsGoogle400Error(err) {
 		common.Logger.Warn(fmt.Sprintf("Encountered 4xx error while fetching organisation information: %s", err.Error()))
 
 		return nil, nil
 	} else if err != nil {
-		return nil, fmt.Errorf("get organization %q: %w", r.organizationId, err)
+		common.Logger.Warn(fmt.Sprintf("Encountered error while fetching organisation information: %s", err.Error()))
+	} else {
+		entryName = organization.Name
+		displayname = organization.DisplayName
 	}
 
 	return &GcpOrgEntity{
-		EntryName: organization.Name,
-		Name:      organization.DisplayName,
+		EntryName: entryName,
+		Name:      displayname,
 		Id:        name,
 		FullName:  name,
 		Type:      "organization",
