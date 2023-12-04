@@ -75,7 +75,7 @@ func DataSourceSync(ctx context.Context, config *config.ConfigMap, t *testing.T)
 			Name:             "covid19_open_data",
 			FullName:         "raito-integration-test.public_dataset.covid19_open_data",
 			Type:             "table",
-			Description:      "",
+			Description:      "This dataset contains country-level datasets of daily time-series data related to COVID-19 globally. You can find the list of sources available here: https://github.com/open-covid-19/data",
 			ParentExternalId: "raito-integration-test.public_dataset",
 		},
 		{
