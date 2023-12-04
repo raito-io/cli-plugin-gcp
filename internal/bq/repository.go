@@ -68,7 +68,7 @@ func (c *Repository) Project() *org.GcpOrgEntity {
 		Name:        c.projectId,
 		FullName:    c.projectId,
 		Type:        data_source.Datasource,
-		Description: fmt.Sprintf("BigQuery DataSource for GCP project %s", c.projectId),
+		Description: "",
 		Location:    "",
 		PolicyTags:  nil,
 		Parent:      nil,
@@ -111,7 +111,7 @@ func (c *Repository) ListDataSets(ctx context.Context, parent *org.GcpOrgEntity,
 			Name:        ds.DatasetID,
 			Id:          id,
 			FullName:    id,
-			Description: c.description(data_source.Dataset),
+			Description: md.Description,
 			Parent:      parent,
 			Location:    md.Location,
 		}
@@ -181,7 +181,7 @@ func (c *Repository) ListTables(ctx context.Context, ds *bigquery.Dataset, paren
 			Name:        tab.TableID,
 			Id:          id,
 			FullName:    id,
-			Description: c.description(entityType),
+			Description: meta.Description,
 			Parent:      parent,
 			Location:    meta.Location,
 		}
@@ -236,7 +236,7 @@ func (c *Repository) ListColumns(ctx context.Context, tab *bigquery.Table, paren
 			Id:          id,
 			FullName:    id,
 			Parent:      parent,
-			Description: c.description("column"),
+			Description: col.Description,
 			Location:    tMeta.Location,
 			PolicyTags:  policyTags,
 			DataType:    ptr.String(string(col.Type)),
@@ -306,7 +306,7 @@ func (c *Repository) ListViews(ctx context.Context, ds *bigquery.Dataset, parent
 			Name:        tab.TableID,
 			Id:          id,
 			FullName:    id,
-			Description: c.description(data_source.View),
+			Description: meta.Description,
 			Parent:      parent,
 			Location:    meta.Location,
 		}
@@ -723,10 +723,6 @@ func (c *Repository) updateTableBindings(ctx context.Context, dataset, table str
 	}
 
 	return nil
-}
-
-func (c *Repository) description(doType string) string {
-	return fmt.Sprintf("BigQuery project %s %s", c.projectId, doType)
 }
 
 func (c *Repository) loadDataObjectsFromCache(ctx context.Context, parent *org.GcpOrgEntity, fn func(ctx context.Context, item *org.GcpOrgEntity) error) (error, bool) {
