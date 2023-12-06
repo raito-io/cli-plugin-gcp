@@ -37,7 +37,7 @@ func (r *OrganizationRepository) GetOrganization(ctx context.Context) (*GcpOrgEn
 	})
 
 	name := r.raitoOrgId()
-	entryName := r.organizationId
+	entryName := "organizations/" + r.organizationId
 	displayname := name
 
 	if common.IsGoogle400Error(err) {
