@@ -116,6 +116,7 @@ func (c *Repository) ListDataSets(ctx context.Context, parent *org.GcpOrgEntity,
 			Location:    meta.Location,
 			Tags:        meta.Labels,
 		}
+
 		err = fn(ctx, &entity, ds)
 		if err != nil {
 			return err

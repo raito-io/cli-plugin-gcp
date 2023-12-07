@@ -51,6 +51,7 @@ func handleGcpOrgEntities(entity *org.GcpOrgEntity) *ds.DataObject {
 	}
 
 	var tags []*tag.Tag
+
 	if (entity.Tags != nil) && (len(entity.Tags) > 0) {
 		for tagKey, tagValue := range entity.Tags {
 			tags = append(tags, &tag.Tag{

@@ -70,7 +70,7 @@ func getTagsForResource(ctx context.Context, tagBindingsClient tagBindingsClient
 			return nil
 		}
 
-		if tag.Inherited == false {
+		if !tag.Inherited {
 			tags[tag.TagKey] = tag.TagValue
 		}
 	}
