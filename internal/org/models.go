@@ -14,4 +14,5 @@ type GcpOrgEntity struct {
 	PolicyTags  []string
 	Parent      *GcpOrgEntity
 	DataType    *string
+	Tags        map[string]string
 }

@@ -37,3 +37,12 @@ func NewOrganizationsClient(ctx context.Context, configMap *config.ConfigMap) (*
 
 	return c, func() { c.Close() }, nil
 }
+
+func NewTagBindingsClient(ctx context.Context, configMap *config.ConfigMap) (*resourcemanager.TagBindingsClient, func(), error) {
+	c, err := resourcemanager.NewTagBindingsClient(ctx, option.WithCredentialsFile(configMap.GetString(common.GcpSAFileLocation)))
+	if err != nil {
+		return nil, nil, fmt.Errorf("new organizations client: %w", err)
+	}
+
+	return c, func() { c.Close() }, nil
+}

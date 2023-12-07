@@ -15,4 +15,6 @@ const (
 	BqIncludeHiddenDatasets = "bq-include-hidden-datasets"
 	BqDataUsageWindow       = "bq-data-usage-window"
 	BqCatalogEnabled        = "bq-catalog-enabled"
+
+	TagSource = "gcp-plugin"
 )

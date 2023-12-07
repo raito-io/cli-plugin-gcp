@@ -15,6 +15,7 @@ var Wired = wire.NewSet(
 	NewProjectsClient,
 	NewFoldersClient,
 	NewOrganizationsClient,
+	NewTagBindingsClient,
 
 	NewFolderRepository,
 	NewProjectRepository,
@@ -24,6 +25,7 @@ var Wired = wire.NewSet(
 	wire.Bind(new(projectClient), new(*resourcemanager.ProjectsClient)),
 	wire.Bind(new(folderClient), new(*resourcemanager.FoldersClient)),
 	wire.Bind(new(organizationClient), new(*resourcemanager.OrganizationsClient)),
+	wire.Bind(new(tagBindingsClient), new(*resourcemanager.TagBindingsClient)),
 	wire.Bind(new(projectRepo), new(*ProjectRepository)),
 	wire.Bind(new(folderRepo), new(*FolderRepository)),
 	wire.Bind(new(organizationRepo), new(*OrganizationRepository)),

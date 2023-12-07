@@ -22,12 +22,14 @@ type organizationClient interface {
 type OrganizationRepository struct {
 	organizationClient organizationClient
 	organizationId     string
+	tagBindingsClient  tagBindingsClient
 }
 
-func NewOrganizationRepository(organizationClient organizationClient, configMap *config.ConfigMap) *OrganizationRepository {
+func NewOrganizationRepository(organizationClient organizationClient, tagBindingsClient tagBindingsClient, configMap *config.ConfigMap) *OrganizationRepository {
 	return &OrganizationRepository{
 		organizationClient: organizationClient,
 		organizationId:     configMap.GetString(common.GcpOrgId),
+		tagBindingsClient:  tagBindingsClient,
 	}
 }
 
@@ -51,6 +53,9 @@ func (r *OrganizationRepository) GetOrganization(ctx context.Context) (*GcpOrgEn
 		displayname = organization.DisplayName
 	}
 
+	tags := getTagsForResource(ctx, r.tagBindingsClient, &resourcemanagerpb.ListEffectiveTagsRequest{
+		Parent: fmt.Sprintf("//cloudresourcemanager.googleapis.com/%s", entryName)})
+
 	return &GcpOrgEntity{
 		EntryName: entryName,
 		Name:      displayname,
@@ -58,6 +63,7 @@ func (r *OrganizationRepository) GetOrganization(ctx context.Context) (*GcpOrgEn
 		FullName:  name,
 		Type:      "organization",
 		Parent:    nil,
+		Tags:      tags,
 	}, nil
 }
 
