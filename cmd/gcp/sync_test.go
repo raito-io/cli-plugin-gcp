@@ -251,7 +251,7 @@ func AccessSync(ctx context.Context, config *config.ConfigMap, t *testing.T) {
 				Type:       ptr.String(access_provider.AclSet),
 				Action:     sync_from_target.Grant,
 				Who: &sync_from_target.WhoItem{
-					Users:           []string{"service-account-for-raito-cli@raito-integration-test.iam.gserviceaccount.com"},
+					Users:           []string{"service-account-for-raito-cli@raito-integration-test.iam.gserviceaccount.com", "thomas@raito.dev"},
 					Groups:          []string{},
 					AccessProviders: []string{},
 				},
@@ -301,7 +301,7 @@ func AccessSync(ctx context.Context, config *config.ConfigMap, t *testing.T) {
 				},
 			},
 		}
-
+		
 		for _, ap := range expectedAps {
 			assert.Contains(t, apHandler.AccessProviders, ap)
 		}
