@@ -232,6 +232,9 @@ func NewDataSourceMetaData(_ context.Context, configParams *config.ConfigMap) (*
 				},
 			},
 			DefaultMaskExternalName: datapoliciespb.DataMaskingPolicy_PredefinedExpression_name[int32(datapoliciespb.DataMaskingPolicy_ALWAYS_NULL)],
+			MaskOverridePermissions: []string{
+				roles.RolesBigQueryCatalogFineGrainedAccess.Name,
+			},
 		}
 	}
 
