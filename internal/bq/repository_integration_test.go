@@ -684,12 +684,13 @@ func TestRepository_GetDataUsage(t *testing.T) {
 
 	var dataUsage []*BQInformationSchemaEntity
 
-	repository.GetDataUsage(ctx, ptr.Time(time.Now().Add(-14*24*time.Hour)), nil, nil, func(ctx context.Context, entity *BQInformationSchemaEntity) error {
+	err = repository.GetDataUsage(ctx, ptr.Time(time.Now().Add(-14*24*time.Hour)), nil, nil, func(ctx context.Context, entity *BQInformationSchemaEntity) error {
 		dataUsage = append(dataUsage, entity)
 
 		return nil
 	})
 
+	require.NoError(t, err)
 	assert.NotEmpty(t, dataUsage)
 }
 

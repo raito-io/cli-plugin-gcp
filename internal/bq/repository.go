@@ -140,7 +140,12 @@ func (c *Repository) ListTables(ctx context.Context, ds *bigquery.Dataset, paren
 	}
 
 	if ds == nil {
-		ds = c.client.Dataset(parent.Id)
+		ds = c.client.Dataset(parent.Name)
+
+		_, err := ds.Metadata(ctx)
+		if err != nil {
+			return fmt.Errorf("getting metadata for dataset %s: %w", parent.Id, err)
+		}
 	}
 
 	tIterator := ds.Tables(ctx)
@@ -209,16 +214,18 @@ func (c *Repository) ListColumns(ctx context.Context, tab *bigquery.Table, paren
 	}
 
 	if tab == nil {
-		ds := c.client.Dataset(parent.Parent.Id)
+		ds := c.client.Dataset(parent.Parent.Name)
+
+		_, err := ds.Metadata(ctx)
+		if err != nil {
+			return fmt.Errorf("getting metadata for dataset %s: %w", parent.Id, err)
+		}
+
 		tab = ds.Table(parent.Name)
 	}
 
 	tMeta, err := tab.Metadata(ctx)
-	if common.IsGoogle400Error(err) {
-		common.Logger.Warn(fmt.Sprintf("Encountered 4xx error while fetching metadata for table %q: %s", tab.TableID, err.Error()))
-
-		return nil
-	} else if err != nil {
+	if err != nil {
 		return fmt.Errorf("table metadata: %w", err)
 	}
 
