@@ -23,14 +23,12 @@ type folderClient interface {
 }
 
 type FolderRepository struct {
-	folderClient      folderClient
-	tagBindingsClient tagBindingsClient
+	folderClient folderClient
 }
 
-func NewFolderRepository(folderClient folderClient, tagBindingsClient tagBindingsClient) *FolderRepository {
+func NewFolderRepository(folderClient folderClient) *FolderRepository {
 	return &FolderRepository{
-		folderClient:      folderClient,
-		tagBindingsClient: tagBindingsClient,
+		folderClient: folderClient,
 	}
 }
 

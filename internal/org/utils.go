@@ -5,8 +5,6 @@ import (
 	"fmt"
 
 	"cloud.google.com/go/iam/apiv1/iampb"
-	resourcemanager "cloud.google.com/go/resourcemanager/apiv3"
-	"cloud.google.com/go/resourcemanager/apiv3/resourcemanagerpb"
 	"github.com/googleapis/gax-go/v2"
 	"github.com/raito-io/golang-set/set"
 
@@ -20,9 +18,6 @@ type getPolicyClient interface {
 type setPolicyClient interface {
 	getPolicyClient
 	SetIamPolicy(ctx context.Context, req *iampb.SetIamPolicyRequest, opts ...gax.CallOption) (*iampb.Policy, error)
-}
-type tagBindingsClient interface {
-	ListEffectiveTags(ctx context.Context, req *resourcemanagerpb.ListEffectiveTagsRequest, opts ...gax.CallOption) *resourcemanager.EffectiveTagIterator
 }
 
 func getAndParseBindings(ctx context.Context, policyClient getPolicyClient, resourceType string, resourceId string) ([]iam.IamBinding, error) {
