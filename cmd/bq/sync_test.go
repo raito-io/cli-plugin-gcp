@@ -12,6 +12,7 @@ import (
 	"github.com/raito-io/cli/base/access_provider/sync_to_target"
 	"github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/cli/base/identity_store"
+	"github.com/raito-io/cli/base/tag"
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/raito-io/cli/base/wrappers/mocks"
 	"github.com/stretchr/testify/assert"
@@ -77,6 +78,9 @@ func DataSourceSync(ctx context.Context, config *config.ConfigMap, t *testing.T)
 			Type:             "table",
 			Description:      "This dataset contains country-level datasets of daily time-series data related to COVID-19 globally. You can find the list of sources available here: https://github.com/open-covid-19/data",
 			ParentExternalId: "raito-integration-test.public_dataset",
+			Tags: []*tag.Tag{
+				{Key: "freebqcovid", Value: "", Source: "gcp-plugin"},
+			},
 		},
 		{
 			ExternalId:       "raito-integration-test.public_dataset.covid19_open_data.location_key",
