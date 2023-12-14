@@ -53,9 +53,6 @@ func (r *OrganizationRepository) GetOrganization(ctx context.Context) (*GcpOrgEn
 		displayname = organization.DisplayName
 	}
 
-	tags := getTagsForResource(ctx, r.tagBindingsClient, &resourcemanagerpb.ListEffectiveTagsRequest{
-		Parent: fmt.Sprintf("//cloudresourcemanager.googleapis.com/%s", entryName)})
-
 	return &GcpOrgEntity{
 		EntryName: entryName,
 		Name:      displayname,
@@ -63,7 +60,6 @@ func (r *OrganizationRepository) GetOrganization(ctx context.Context) (*GcpOrgEn
 		FullName:  name,
 		Type:      "organization",
 		Parent:    nil,
-		Tags:      tags,
 	}, nil
 }
 

@@ -53,9 +53,6 @@ func (r *FolderRepository) GetFolders(ctx context.Context, parentName string, pa
 
 		id := strings.Split(folder.Name, "/")[1]
 
-		tags := getTagsForResource(ctx, r.tagBindingsClient, &resourcemanagerpb.ListEffectiveTagsRequest{
-			Parent: fmt.Sprintf("//cloudresourcemanager.googleapis.com/folders/%s", id)})
-
 		res := GcpOrgEntity{
 			EntryName: folder.Name,
 			Name:      folder.DisplayName,
@@ -63,7 +60,6 @@ func (r *FolderRepository) GetFolders(ctx context.Context, parentName string, pa
 			FullName:  id,
 			Type:      "folder",
 			Parent:    parent,
-			Tags:      tags,
 		}
 
 		err = fn(ctx, &res)

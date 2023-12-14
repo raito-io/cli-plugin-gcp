@@ -134,6 +134,7 @@ func TestRepository_ListTables(t *testing.T) {
 			Location:    "europe-west1",
 			Description: "",
 			Parent:      parent,
+			Tags:        map[string]string{"country": "belgium"},
 		},
 	}, tables)
 }
@@ -349,6 +350,7 @@ func TestRepository_ListViews(t *testing.T) {
 		Location:    "europe-west1",
 		Description: "",
 		Parent:      parent,
+		Tags:        map[string]string{"country": "belgium"},
 	}}, views)
 }
 
