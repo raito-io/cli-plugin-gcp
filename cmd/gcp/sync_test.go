@@ -83,7 +83,7 @@ func DataSourceSync(ctx context.Context, config *config.ConfigMap, t *testing.T)
 			Type:             "project",
 			ParentExternalId: "138023537297",
 			Tags: []*tag.Tag{
-				{Key: "test-type", Value: "integration", Source: "gcp-plugin"},
+				{Key: "test-type", Value: "integration", Source: "gcp"},
 			},
 		},
 		{
@@ -305,7 +305,7 @@ func AccessSync(ctx context.Context, config *config.ConfigMap, t *testing.T) {
 				},
 			},
 		}
-		
+
 		for _, ap := range expectedAps {
 			assert.Contains(t, apHandler.AccessProviders, ap)
 		}

@@ -79,7 +79,7 @@ func DataSourceSync(ctx context.Context, config *config.ConfigMap, t *testing.T)
 			Description:      "This dataset contains country-level datasets of daily time-series data related to COVID-19 globally. You can find the list of sources available here: https://github.com/open-covid-19/data",
 			ParentExternalId: "raito-integration-test.public_dataset",
 			Tags: []*tag.Tag{
-				{Key: "freebqcovid", Value: "", Source: "gcp-plugin"},
+				{Key: "freebqcovid", Value: "", Source: "gcp"},
 			},
 		},
 		{

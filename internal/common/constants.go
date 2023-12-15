@@ -16,5 +16,5 @@ const (
 	BqDataUsageWindow       = "bq-data-usage-window"
 	BqCatalogEnabled        = "bq-catalog-enabled"
 
-	TagSource = "gcp-plugin"
+	TagSource = "gcp"
 )
