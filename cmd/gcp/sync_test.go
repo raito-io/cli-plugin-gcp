@@ -12,6 +12,7 @@ import (
 	"github.com/raito-io/cli/base/access_provider/sync_to_target"
 	"github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/cli/base/identity_store"
+	"github.com/raito-io/cli/base/tag"
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/raito-io/cli/base/wrappers/mocks"
 	"github.com/stretchr/testify/assert"
@@ -81,6 +82,9 @@ func DataSourceSync(ctx context.Context, config *config.ConfigMap, t *testing.T)
 			FullName:         "raito-integration-test",
 			Type:             "project",
 			ParentExternalId: "138023537297",
+			Tags: []*tag.Tag{
+				{Key: "test-type", Value: "integration", Source: "gcp"},
+			},
 		},
 		{
 			ExternalId:       "831872280962",
@@ -301,7 +305,7 @@ func AccessSync(ctx context.Context, config *config.ConfigMap, t *testing.T) {
 				},
 			},
 		}
-		
+
 		for _, ap := range expectedAps {
 			assert.Contains(t, apHandler.AccessProviders, ap)
 		}

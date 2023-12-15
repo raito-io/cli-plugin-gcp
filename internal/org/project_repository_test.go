@@ -101,6 +101,9 @@ func TestProjectRepository_GetProjects(t *testing.T) {
 							Type:      data_source.Datasource,
 						},
 					},
+					Tags: map[string]string{
+						"test-type": "integration",
+					},
 				},
 			},
 			wantErr: require.NoError,

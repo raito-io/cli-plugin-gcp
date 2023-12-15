@@ -115,6 +115,7 @@ func TestRepository_ListTables(t *testing.T) {
 			Location:    "europe-west1",
 			Description: "This dataset contains country-level datasets of daily time-series data related to COVID-19 globally. You can find the list of sources available here: https://github.com/open-covid-19/data",
 			Parent:      parent,
+			Tags:        map[string]string{"freebqcovid": ""},
 		},
 		{
 			Id:          "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide",
@@ -133,6 +134,7 @@ func TestRepository_ListTables(t *testing.T) {
 			Location:    "europe-west1",
 			Description: "",
 			Parent:      parent,
+			Tags:        map[string]string{"country": "belgium"},
 		},
 	}, tables)
 }
@@ -348,6 +350,7 @@ func TestRepository_ListViews(t *testing.T) {
 		Location:    "europe-west1",
 		Description: "",
 		Parent:      parent,
+		Tags:        map[string]string{"country": "belgium"},
 	}}, views)
 }
 

@@ -5,12 +5,12 @@ import (
 	"fmt"
 
 	ds "github.com/raito-io/cli/base/data_source"
+	"github.com/raito-io/cli/base/tag"
+	"github.com/raito-io/cli/base/util/config"
+	"github.com/raito-io/cli/base/wrappers"
 
 	"github.com/raito-io/cli-plugin-gcp/internal/common"
 	"github.com/raito-io/cli-plugin-gcp/internal/org"
-
-	"github.com/raito-io/cli/base/util/config"
-	"github.com/raito-io/cli/base/wrappers"
 )
 
 //go:generate go run github.com/vektra/mockery/v2 --name=DataSourceRepository --with-expecter --inpackage
@@ -50,6 +50,18 @@ func handleGcpOrgEntities(entity *org.GcpOrgEntity) *ds.DataObject {
 		parent = entity.Parent.Id
 	}
 
+	var tags []*tag.Tag
+
+	if (entity.Tags != nil) && (len(entity.Tags) > 0) {
+		for tagKey, tagValue := range entity.Tags {
+			tags = append(tags, &tag.Tag{
+				Key:    tagKey,
+				Value:  tagValue,
+				Source: common.TagSource,
+			})
+		}
+	}
+
 	return &ds.DataObject{
 		Name:             entity.Name,
 		Type:             entity.Type,
@@ -58,6 +70,7 @@ func handleGcpOrgEntities(entity *org.GcpOrgEntity) *ds.DataObject {
 		Description:      entity.Description,
 		ParentExternalId: parent,
 		DataType:         entity.DataType,
+		Tags:             tags,
 	}
 }
 

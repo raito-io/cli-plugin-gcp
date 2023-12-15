@@ -95,7 +95,7 @@ func (c *Repository) ListDataSets(ctx context.Context, parent *org.GcpOrgEntity,
 			return fmt.Errorf("dataset iterator: %w", err)
 		}
 
-		md, err := ds.Metadata(ctx)
+		meta, err := ds.Metadata(ctx)
 		if common.IsGoogle400Error(err) {
 			common.Logger.Warn(fmt.Sprintf("Encountered 4xx error while fetching metadata for dataset %q: %s", ds.DatasetID, err))
 
@@ -111,9 +111,10 @@ func (c *Repository) ListDataSets(ctx context.Context, parent *org.GcpOrgEntity,
 			Name:        ds.DatasetID,
 			Id:          id,
 			FullName:    id,
-			Description: md.Description,
+			Description: meta.Description,
 			Parent:      parent,
-			Location:    md.Location,
+			Location:    meta.Location,
+			Tags:        meta.Labels,
 		}
 
 		err = fn(ctx, &entity, ds)
@@ -189,6 +190,7 @@ func (c *Repository) ListTables(ctx context.Context, ds *bigquery.Dataset, paren
 			Description: meta.Description,
 			Parent:      parent,
 			Location:    meta.Location,
+			Tags:        meta.Labels,
 		}
 
 		err = fn(ctx, &entity, tab)
@@ -316,6 +318,7 @@ func (c *Repository) ListViews(ctx context.Context, ds *bigquery.Dataset, parent
 			Description: meta.Description,
 			Parent:      parent,
 			Location:    meta.Location,
+			Tags:        meta.Labels,
 		}
 
 		err = fn(ctx, &entity)
