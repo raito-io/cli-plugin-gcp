@@ -35,7 +35,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 	require.NoError(t, err)
 
 	type fields struct {
-		mockSetup            func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService)
+		mockSetup            func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService, filteringService *MockFilteringService)
 		metadata             *data_source.MetaData
 		raitoManagedBindings []iam.IamBinding
 		raitoMasks           set.Set[string]
@@ -54,7 +54,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 		{
 			name: "No access providers",
 			fields: fields{
-				mockSetup: func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
+				mockSetup: func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService, filteringService *MockFilteringService) {
 					gcpRepo.EXPECT().Bindings(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 				},
 				metadata: gcp.NewDataSourceMetaData(),
@@ -69,7 +69,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 		{
 			name: "Single access provider",
 			fields: fields{
-				mockSetup: func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
+				mockSetup: func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService, filteringService *MockFilteringService) {
 					gcpRepo.EXPECT().Bindings(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, config *data_source.DataSourceSyncConfig, f func(context.Context, *org.GcpOrgEntity, []iam.IamBinding) error) error {
 						return f(ctx, &org.GcpOrgEntity{
 							EntryName: "projects/project1",
@@ -140,7 +140,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 		{
 			name: "Multiple access provider",
 			fields: fields{
-				mockSetup: func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
+				mockSetup: func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService, filteringService *MockFilteringService) {
 					gcpRepo.EXPECT().Bindings(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, config *data_source.DataSourceSyncConfig, f func(context.Context, *org.GcpOrgEntity, []iam.IamBinding) error) error {
 						err := f(ctx, &org.GcpOrgEntity{
 							EntryName: "projects/project1",
@@ -310,7 +310,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 		{
 			name: "processing error",
 			fields: fields{
-				mockSetup: func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
+				mockSetup: func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService, filteringService *MockFilteringService) {
 					gcpRepo.EXPECT().Bindings(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, config *data_source.DataSourceSyncConfig, f func(context.Context, *org.GcpOrgEntity, []iam.IamBinding) error) error {
 						err := f(ctx, &org.GcpOrgEntity{
 							EntryName: "projects/project1",
@@ -346,7 +346,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 		{
 			name: "Import masks",
 			fields: fields{
-				mockSetup: func(dataIterator *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
+				mockSetup: func(dataIterator *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService, filteringService *MockFilteringService) {
 					dataIterator.EXPECT().Bindings(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, syncConfig *data_source.DataSourceSyncConfig, f func(context.Context, *org.GcpOrgEntity, []iam.IamBinding) error) error {
 						err := f(ctx, &org.GcpOrgEntity{EntryName: "project1", Id: "project1", Type: "project", Name: "project1"}, []iam.IamBinding{{Member: "user:ruben@raito.io", Resource: "project1", ResourceType: "project", Role: "roles/owner"}})
 						if err != nil {
@@ -377,6 +377,8 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 							ActualName: "dataPolicyMask1ActualName",
 						})
 					})
+
+					filteringService.EXPECT().ImportFilters(mock.Anything, mock.Anything, mock.Anything, set.Set[string]{}).Return(nil)
 				},
 				metadata:             bqMetadata,
 				raitoManagedBindings: []iam.IamBinding{},
@@ -478,11 +480,149 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			},
 			wantErr: assert.NoError,
 		},
+		{
+			name: "Import filters",
+			fields: fields{
+				mockSetup: func(dataIterator *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService, filteringService *MockFilteringService) {
+					dataIterator.EXPECT().Bindings(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, syncConfig *data_source.DataSourceSyncConfig, f func(context.Context, *org.GcpOrgEntity, []iam.IamBinding) error) error {
+						err := f(ctx, &org.GcpOrgEntity{EntryName: "project1", Id: "project1", Type: "project", Name: "project1"}, []iam.IamBinding{{Member: "user:ruben@raito.io", Resource: "project1", ResourceType: "project", Role: "roles/owner"}})
+						if err != nil {
+							return err
+						}
+
+						err = f(ctx, &org.GcpOrgEntity{EntryName: "project1/dataset1", Id: "dataset1", Type: "dataset", Name: "dataset1"}, []iam.IamBinding{{Member: "user:dieter@raito.io", Resource: "project/dataset1", ResourceType: "dataset", Role: "roles/editor"}})
+						if err != nil {
+							return err
+						}
+
+						err = f(ctx, &org.GcpOrgEntity{EntryName: "project1/dataset1/table1", Id: "table1", Type: "table", Name: "table1"}, []iam.IamBinding{{Member: "user:thomas@raito.io", Resource: "project/dataset1/table1", ResourceType: "table", Role: "roles/bigquery.dataviewer"}})
+						if err != nil {
+							return err
+						}
+
+						return f(ctx, &org.GcpOrgEntity{EntryName: "project1/dataset1/table1/column1", Id: "column1", Type: "column", Name: "column1", Location: "eu-west1", PolicyTags: []string{"policytag1"}, FullName: "project1/dataset1/table1/column1"}, []iam.IamBinding{})
+					})
+
+					maskingService.EXPECT().ImportMasks(mock.Anything, mock.Anything, set.NewSet("eu-west1"), map[string][]string{"policytag1": {"project1/dataset1/table1/column1"}}, set.NewSet("raitoMask1")).Return(nil)
+
+					filteringService.EXPECT().ImportFilters(mock.Anything, mock.Anything, mock.Anything, set.Set[string]{}).RunAndReturn(func(ctx context.Context, syncConfig *data_source.DataSourceSyncConfig, handler wrappers.AccessProviderHandler, s set.Set[string]) error {
+						return handler.AddAccessProviders(&sync_from_target.AccessProvider{
+							ExternalId: "filter1",
+							Name:       "filter1",
+							NamingHint: "filter1",
+							What:       []sync_from_target.WhatItem{{DataObject: &data_source.DataObjectReference{Type: "table", FullName: "project1/dataset1/table1"}}},
+							Who:        &sync_from_target.WhoItem{Users: []string{"bart@raito.io"}},
+							Action:     sync_from_target.Filtered,
+							ActualName: "dataPolicyFilter1ActualName",
+							Policy:     "table1 > 10",
+						})
+					})
+				},
+				metadata:             bqMetadata,
+				raitoManagedBindings: []iam.IamBinding{},
+				raitoMasks:           set.NewSet("raitoMask1"),
+			},
+			args: args{
+				ctx: context.Background(),
+				configMap: &config.ConfigMap{
+					Parameters: map[string]string{common.BqCatalogEnabled: "true"},
+				},
+			},
+			expectedAccessProviders: []sync_from_target.AccessProvider{
+				{
+					ExternalId: "project_project1_roles_owner",
+					Name:       "project_project1_roles_owner",
+					NamingHint: "project_project1_roles_owner",
+					Type:       ptr.String(access_provider.AclSet),
+					Action:     sync_from_target.Grant,
+					Who: &sync_from_target.WhoItem{
+						Users:           []string{"ruben@raito.io"},
+						Groups:          []string{},
+						AccessProviders: []string{},
+					},
+					WhoLocked:    ptr.Bool(false),
+					WhatLocked:   ptr.Bool(false),
+					NameLocked:   ptr.Bool(false),
+					DeleteLocked: ptr.Bool(false),
+					ActualName:   "project_project1_roles_owner",
+					What: []sync_from_target.WhatItem{
+						{
+							DataObject:  &data_source.DataObjectReference{Type: "datasource", FullName: "project1"},
+							Permissions: []string{"roles/owner"},
+						},
+					},
+				},
+				{
+					ExternalId: "dataset_project/dataset1_roles_editor",
+					Name:       "dataset_project/dataset1_roles_editor",
+					NamingHint: "dataset_project/dataset1_roles_editor",
+					Type:       ptr.String(access_provider.AclSet),
+					Action:     sync_from_target.Grant,
+					Who: &sync_from_target.WhoItem{
+						Users:           []string{"dieter@raito.io"},
+						Groups:          []string{},
+						AccessProviders: []string{},
+					},
+					WhoLocked:    ptr.Bool(false),
+					WhatLocked:   ptr.Bool(false),
+					NameLocked:   ptr.Bool(false),
+					DeleteLocked: ptr.Bool(false),
+					ActualName:   "dataset_project/dataset1_roles_editor",
+					What: []sync_from_target.WhatItem{
+						{
+							DataObject:  &data_source.DataObjectReference{Type: "dataset", FullName: "project/dataset1"},
+							Permissions: []string{"roles/editor"},
+						},
+					},
+				},
+				{
+					ExternalId: "table_project/dataset1/table1_roles_bigquery.dataviewer",
+					Name:       "table_project/dataset1/table1_roles_bigquery.dataviewer",
+					NamingHint: "table_project/dataset1/table1_roles_bigquery.dataviewer",
+					Type:       ptr.String(access_provider.AclSet),
+					Action:     sync_from_target.Grant,
+					Who: &sync_from_target.WhoItem{
+						Users:           []string{"thomas@raito.io"},
+						Groups:          []string{},
+						AccessProviders: []string{},
+					},
+					WhoLocked:    ptr.Bool(false),
+					WhatLocked:   ptr.Bool(false),
+					NameLocked:   ptr.Bool(false),
+					DeleteLocked: ptr.Bool(false),
+					ActualName:   "table_project/dataset1/table1_roles_bigquery.dataviewer",
+					What: []sync_from_target.WhatItem{
+						{
+							DataObject:  &data_source.DataObjectReference{Type: "table", FullName: "project/dataset1/table1"},
+							Permissions: []string{"roles/bigquery.dataviewer"},
+						},
+					},
+				},
+				{
+					ExternalId: "filter1",
+					Name:       "filter1",
+					NamingHint: "filter1",
+					Action:     sync_from_target.Filtered,
+					Who: &sync_from_target.WhoItem{
+						Users: []string{"bart@raito.io"},
+					},
+					ActualName: "dataPolicyFilter1ActualName",
+					What: []sync_from_target.WhatItem{
+						{
+							DataObject:  &data_source.DataObjectReference{Type: "table", FullName: "project1/dataset1/table1"},
+							Permissions: nil,
+						},
+					},
+					Policy: "table1 > 10",
+				},
+			},
+			wantErr: assert.NoError,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			syncer, gcpMock, projectMock, mockMaskingService := createAccessSyncer(t, tt.fields.metadata, tt.args.configMap)
-			tt.fields.mockSetup(gcpMock, projectMock, mockMaskingService)
+			syncer, gcpMock, projectMock, mockMaskingService, filteringService := createAccessSyncer(t, tt.fields.metadata, tt.args.configMap)
+			tt.fields.mockSetup(gcpMock, projectMock, mockMaskingService, filteringService)
 			syncer.raitoMasks = tt.fields.raitoMasks
 			syncer.raitoManagedBindings = set.NewSet(tt.fields.raitoManagedBindings...)
 
@@ -497,7 +637,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 
 func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 	type fields struct {
-		mocksSetup           func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, mockMaskingService *MockMaskingService)
+		mocksSetup           func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, mockMaskingService *MockMaskingService, filteringService *MockFilteringService)
 		metadata             *data_source.MetaData
 		raitoManagedBindings set.Set[iam.IamBinding]
 	}
@@ -516,7 +656,7 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 		{
 			name: "Regular bindings to Access Provider and no managed bindings",
 			fields: fields{
-				mocksSetup: func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
+				mocksSetup: func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService, filteringService *MockFilteringService) {
 
 				},
 				metadata:             gcp.NewDataSourceMetaData(),
@@ -613,7 +753,7 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 		{
 			name: "Regular bindings to Access Provider and managed bindings",
 			fields: fields{
-				mocksSetup: func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
+				mocksSetup: func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService, filteringService *MockFilteringService) {
 
 				},
 				metadata: gcp.NewDataSourceMetaData(),
@@ -723,7 +863,7 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 		{
 			name: "Regular bindings to Access Provider and include unknown roles",
 			fields: fields{
-				mocksSetup: func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
+				mocksSetup: func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService, filteringService *MockFilteringService) {
 
 				},
 				metadata:             gcp.NewDataSourceMetaData(),
@@ -811,7 +951,7 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 		{
 			name: "Special bindings for project",
 			fields: fields{
-				mocksSetup: func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
+				mocksSetup: func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService, filteringService *MockFilteringService) {
 					projectRepo.EXPECT().GetProjectOwner(mock.Anything, mock.Anything).Return([]string{"user:owner@raito.io"}, []string{"user:editor@raito.io"}, []string{"user:viewer@raito.io"}, nil).Once()
 				},
 				metadata:             gcp.NewDataSourceMetaData(),
@@ -927,7 +1067,7 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 		{
 			name: "Roles to group by identity",
 			fields: fields{
-				mocksSetup: func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
+				mocksSetup: func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService, filteringService *MockFilteringService) {
 
 				},
 				metadata:             gcp.NewDataSourceMetaData(),
@@ -1062,8 +1202,8 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			a, gcpMock, projectMock, mockMaskingService := createAccessSyncer(t, tt.fields.metadata, tt.args.configMap)
-			tt.fields.mocksSetup(gcpMock, projectMock, mockMaskingService)
+			a, gcpMock, projectMock, mockMaskingService, filteringService := createAccessSyncer(t, tt.fields.metadata, tt.args.configMap)
+			tt.fields.mocksSetup(gcpMock, projectMock, mockMaskingService, filteringService)
 
 			a.raitoManagedBindings = tt.fields.raitoManagedBindings
 
@@ -1111,8 +1251,35 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 		},
 	}
 
+	filterInput := importer.AccessProvider{
+		Id:          "filter1",
+		Name:        "filter1",
+		Description: "some filter",
+		NamingHint:  "filter1",
+		ExternalId:  nil,
+		Action:      importer.Filtered,
+		Who: importer.WhoItem{
+			Users: []string{
+				"bart@raito.io",
+			},
+			Groups: []string{
+				"sales@raito.io",
+			},
+		},
+		Delete: false,
+		What: []importer.WhatItem{
+			{
+				DataObject: &data_source.DataObjectReference{
+					FullName: "project1/dataset1/table1",
+					Type:     "table",
+				},
+			},
+		},
+		PolicyRule: ptr.String("column1 = 'value1' AND column2 = 'value2'"),
+	}
+
 	type fields struct {
-		mocksSetup func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService)
+		mocksSetup func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService, filteringService *MockFilteringService)
 		metadata   *data_source.MetaData
 	}
 	type args struct {
@@ -1121,18 +1288,19 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 		configMap       *config.ConfigMap
 	}
 	tests := []struct {
-		name               string
-		fields             fields
-		args               args
-		want               []importer.AccessProviderSyncFeedback
-		expectedBindings   set.Set[iam.IamBinding]
-		expectedRaitoMasks set.Set[string]
-		wantErr            assert.ErrorAssertionFunc
+		name                 string
+		fields               fields
+		args                 args
+		want                 []importer.AccessProviderSyncFeedback
+		expectedBindings     set.Set[iam.IamBinding]
+		expectedRaitoMasks   set.Set[string]
+		expectedRaitoFilters set.Set[string]
+		wantErr              assert.ErrorAssertionFunc
 	}{
 		{
 			name: "No access providers",
 			fields: fields{
-				mocksSetup: func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
+				mocksSetup: func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService, filteringService *MockFilteringService) {
 
 				},
 				metadata: gcp.NewDataSourceMetaData(),
@@ -1142,15 +1310,16 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 				accessProviders: &importer.AccessProviderImport{},
 				configMap:       &config.ConfigMap{Parameters: map[string]string{}},
 			},
-			want:               []importer.AccessProviderSyncFeedback{},
-			expectedBindings:   set.NewSet[iam.IamBinding](),
-			expectedRaitoMasks: set.NewSet[string](),
-			wantErr:            assert.NoError,
+			want:                 []importer.AccessProviderSyncFeedback{},
+			expectedBindings:     set.NewSet[iam.IamBinding](),
+			expectedRaitoMasks:   set.NewSet[string](),
+			expectedRaitoFilters: set.NewSet[string](),
+			wantErr:              assert.NoError,
 		},
 		{
 			name: "Access provider to binding",
 			fields: fields{
-				mocksSetup: func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
+				mocksSetup: func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService, filteringService *MockFilteringService) {
 					gcpRepo.EXPECT().UpdateBindings(mock.Anything, &iam.DataObjectReference{
 						FullName:   "project1",
 						ObjectType: "project",
@@ -1290,13 +1459,14 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 					ResourceType: "folder",
 				},
 			),
-			expectedRaitoMasks: set.NewSet[string](),
-			wantErr:            assert.NoError,
+			expectedRaitoMasks:   set.NewSet[string](),
+			expectedRaitoFilters: set.NewSet[string](),
+			wantErr:              assert.NoError,
 		},
 		{
 			name: "Deleted access provider",
 			fields: fields{
-				mocksSetup: func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
+				mocksSetup: func(gcpRepo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService, filteringService *MockFilteringService) {
 					gcpRepo.EXPECT().UpdateBindings(mock.Anything, &iam.DataObjectReference{
 						FullName:   "project1",
 						ObjectType: "project",
@@ -1436,13 +1606,14 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 					ResourceType: "folder",
 				},
 			),
-			expectedRaitoMasks: set.NewSet[string](),
-			wantErr:            assert.NoError,
+			expectedRaitoMasks:   set.NewSet[string](),
+			expectedRaitoFilters: set.NewSet[string](),
+			wantErr:              assert.NoError,
 		},
 		{
 			name: "Unknown action",
 			fields: fields{
-				mocksSetup: func(repo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
+				mocksSetup: func(repo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService, filteringService *MockFilteringService) {
 				},
 				metadata: bqMetadata,
 			},
@@ -1485,14 +1656,15 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 					Errors:         []string{"unsupported action: 2"},
 				},
 			},
-			expectedBindings:   set.NewSet[iam.IamBinding](),
-			expectedRaitoMasks: set.NewSet[string](),
-			wantErr:            assert.NoError,
+			expectedBindings:     set.NewSet[iam.IamBinding](),
+			expectedRaitoMasks:   set.NewSet[string](),
+			expectedRaitoFilters: set.NewSet[string](),
+			wantErr:              assert.NoError,
 		},
 		{
 			name: "Grants and masks",
 			fields: fields{
-				mocksSetup: func(repo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
+				mocksSetup: func(repo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService, filteringService *MockFilteringService) {
 					maskingService.EXPECT().ExportMasks(mock.Anything, &maskInput, mock.Anything).RunAndReturn(func(ctx context.Context, provider *importer.AccessProvider, handler wrappers.AccessProviderFeedbackHandler) ([]string, error) {
 						err := handler.AddAccessProviderFeedback(importer.AccessProviderSyncFeedback{
 							AccessProvider: provider.Id,
@@ -1567,14 +1739,96 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 					ResourceType: "project",
 				},
 			),
-			expectedRaitoMasks: set.NewSet[string]("eu-mask1", "vs-mask1"),
-			wantErr:            assert.NoError,
+			expectedRaitoMasks:   set.NewSet[string]("eu-mask1", "vs-mask1"),
+			expectedRaitoFilters: set.NewSet[string](),
+			wantErr:              assert.NoError,
+		},
+		{
+			name: "Grants and filters",
+			fields: fields{
+				mocksSetup: func(repo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService, filteringService *MockFilteringService) {
+					filteringService.EXPECT().ExportFilter(mock.Anything, &filterInput, mock.Anything).RunAndReturn(func(ctx context.Context, provider *importer.AccessProvider, handler wrappers.AccessProviderFeedbackHandler) (*string, error) {
+						err := handler.AddAccessProviderFeedback(importer.AccessProviderSyncFeedback{
+							AccessProvider: provider.Id,
+							ActualName:     provider.Name,
+							Type:           provider.Type,
+							ExternalId:     &provider.Name,
+						})
+						if err != nil {
+							return nil, err
+						}
+
+						return ptr.String("filter1"), nil
+					})
+
+					repo.EXPECT().DataSourceType().Return("project")
+
+					repo.EXPECT().UpdateBindings(mock.Anything, &iam.DataObjectReference{FullName: "project1", ObjectType: "project"}, []iam.IamBinding{{Member: "user:ruben@raito.io", Role: "roles/owner", Resource: "project1", ResourceType: "project"}}, []iam.IamBinding{}).Return(nil)
+				},
+				metadata: bqMetadata,
+			},
+			args: args{
+				ctx: context.Background(),
+				accessProviders: &importer.AccessProviderImport{AccessProviders: []*importer.AccessProvider{
+					{
+						Id:          "apId1",
+						Name:        "ap1",
+						Description: "some description",
+						NamingHint:  "ap1",
+						Type:        nil,
+						ExternalId:  nil,
+						Action:      importer.Grant,
+						Who: importer.WhoItem{
+							Users: []string{
+								"ruben@raito.io",
+							},
+						},
+						Delete: false,
+						What: []importer.WhatItem{
+							{
+								DataObject: &data_source.DataObjectReference{
+									FullName: "project1",
+									Type:     "datasource",
+								},
+								Permissions: []string{"roles/owner"},
+							},
+						},
+						DeleteWhat: nil,
+					},
+					&filterInput,
+				}},
+				configMap: &config.ConfigMap{Parameters: map[string]string{}},
+			},
+			want: []importer.AccessProviderSyncFeedback{
+				{
+					AccessProvider: "apId1",
+					ActualName:     "apId1",
+					ExternalId:     nil,
+					Type:           ptr.String(access_provider.AclSet),
+				},
+				{
+					AccessProvider: "filter1",
+					ActualName:     "filter1",
+					ExternalId:     ptr.String("filter1"),
+				},
+			},
+			expectedBindings: set.NewSet[iam.IamBinding](
+				iam.IamBinding{
+					Member:       "user:ruben@raito.io",
+					Role:         "roles/owner",
+					Resource:     "project1",
+					ResourceType: "project",
+				},
+			),
+			expectedRaitoMasks:   set.NewSet[string](),
+			expectedRaitoFilters: set.NewSet[string]("filter1"),
+			wantErr:              assert.NoError,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			a, gcpMock, projectRepoMock, maskingService := createAccessSyncer(t, tt.fields.metadata, tt.args.configMap)
-			tt.fields.mocksSetup(gcpMock, projectRepoMock, maskingService)
+			a, gcpMock, projectRepoMock, maskingService, filteringService := createAccessSyncer(t, tt.fields.metadata, tt.args.configMap)
+			tt.fields.mocksSetup(gcpMock, projectRepoMock, maskingService, filteringService)
 
 			feedbackHandler := mocks.NewSimpleAccessProviderFeedbackHandler(t)
 
@@ -1585,6 +1839,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 			assert.ElementsMatch(t, tt.want, feedbackHandler.AccessProviderFeedback)
 			assert.Equal(t, tt.expectedBindings, a.raitoManagedBindings)
 			assert.Equal(t, tt.expectedRaitoMasks, a.raitoMasks)
+			assert.Equal(t, tt.expectedRaitoFilters, a.raitoFilters)
 		})
 	}
 }
@@ -1706,7 +1961,7 @@ func TestAccessSyncer_convertAccessProviderToBindings(t *testing.T) {
 	}
 
 	type fields struct {
-		mocksSetup func(repo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService)
+		mocksSetup func(repo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService, filteringService *MockFilteringService)
 		metadata   *data_source.MetaData
 		configMap  *config.ConfigMap
 	}
@@ -1723,7 +1978,7 @@ func TestAccessSyncer_convertAccessProviderToBindings(t *testing.T) {
 		{
 			name: "No accessProviders",
 			fields: fields{
-				mocksSetup: func(repo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
+				mocksSetup: func(repo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService, filteringService *MockFilteringService) {
 				},
 				metadata:  gcp.NewDataSourceMetaData(),
 				configMap: &config.ConfigMap{Parameters: map[string]string{}},
@@ -1737,7 +1992,7 @@ func TestAccessSyncer_convertAccessProviderToBindings(t *testing.T) {
 		{
 			name: "New grant accessProviders",
 			fields: fields{
-				mocksSetup: func(repo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
+				mocksSetup: func(repo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService, filteringService *MockFilteringService) {
 				},
 				metadata:  gcp.NewDataSourceMetaData(),
 				configMap: &config.ConfigMap{Parameters: map[string]string{}},
@@ -1763,7 +2018,7 @@ func TestAccessSyncer_convertAccessProviderToBindings(t *testing.T) {
 		{
 			name: "New grant on datasource",
 			fields: fields{
-				mocksSetup: func(repo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
+				mocksSetup: func(repo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService, filteringService *MockFilteringService) {
 					repo.EXPECT().DataSourceType().Return("datasource_real_type")
 				},
 				metadata:  gcp.NewDataSourceMetaData(),
@@ -1790,7 +2045,7 @@ func TestAccessSyncer_convertAccessProviderToBindings(t *testing.T) {
 		{
 			name: "Grant with deleted members",
 			fields: fields{
-				mocksSetup: func(repo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
+				mocksSetup: func(repo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService, filteringService *MockFilteringService) {
 				},
 				metadata:  gcp.NewDataSourceMetaData(),
 				configMap: &config.ConfigMap{Parameters: map[string]string{}},
@@ -1819,7 +2074,7 @@ func TestAccessSyncer_convertAccessProviderToBindings(t *testing.T) {
 		{
 			name: "Grant with deleted what",
 			fields: fields{
-				mocksSetup: func(repo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
+				mocksSetup: func(repo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService, filteringService *MockFilteringService) {
 				},
 				metadata:  gcp.NewDataSourceMetaData(),
 				configMap: &config.ConfigMap{Parameters: map[string]string{}},
@@ -1854,7 +2109,7 @@ func TestAccessSyncer_convertAccessProviderToBindings(t *testing.T) {
 		{
 			name: "Grant with masked reader",
 			fields: fields{
-				mocksSetup: func(repo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService) {
+				mocksSetup: func(repo *MockBindingRepository, projectRepo *MockProjectRepo, maskingService *MockMaskingService, filteringService *MockFilteringService) {
 					maskingService.EXPECT().MaskedBinding(mock.Anything, []string{"user:ruben@raito.io"}).Return([]iam.IamBinding{
 						{
 							Member:       "user:ruben@raito.io",
@@ -1889,8 +2144,8 @@ func TestAccessSyncer_convertAccessProviderToBindings(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			syncer, repoMock, projectRepoMock, maskingService := createAccessSyncer(t, tt.fields.metadata, tt.fields.configMap)
-			tt.fields.mocksSetup(repoMock, projectRepoMock, maskingService)
+			syncer, repoMock, projectRepoMock, maskingService, filteringService := createAccessSyncer(t, tt.fields.metadata, tt.fields.configMap)
+			tt.fields.mocksSetup(repoMock, projectRepoMock, maskingService, filteringService)
 
 			result := syncer.convertAccessProviderToBindings(tt.args.ctx, tt.args.accessProviders)
 
@@ -1908,14 +2163,15 @@ func TestAccessSyncer_convertAccessProviderToBindings(t *testing.T) {
 	}
 }
 
-func createAccessSyncer(t *testing.T, dsMetadata *data_source.MetaData, configMap *config.ConfigMap) (*AccessSyncer, *MockBindingRepository, *MockProjectRepo, *MockMaskingService) {
+func createAccessSyncer(t *testing.T, dsMetadata *data_source.MetaData, configMap *config.ConfigMap) (*AccessSyncer, *MockBindingRepository, *MockProjectRepo, *MockMaskingService, *MockFilteringService) {
 	t.Helper()
 
 	gcpRepo := NewMockBindingRepository(t)
 	projectRepo := NewMockProjectRepo(t)
 	maskingService := NewMockMaskingService(t)
+	filteringService := NewMockFilteringService(t)
 
-	return NewDataAccessSyncer(gcpRepo, projectRepo, maskingService, dsMetadata, configMap), gcpRepo, projectRepo, maskingService
+	return NewDataAccessSyncer(gcpRepo, projectRepo, maskingService, filteringService, dsMetadata, configMap), gcpRepo, projectRepo, maskingService, filteringService
 }
 
 func Test_handleErrors(t *testing.T) {

@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/wire"
 	"github.com/raito-io/cli/base/util/config"
+	bigquery2 "google.golang.org/api/bigquery/v2"
 
 	"github.com/raito-io/cli-plugin-gcp/internal/org"
 )
@@ -16,10 +17,13 @@ var Wired = wire.NewSet(
 	NewBiqQueryClient,
 	NewPolicyTagClient,
 	NewDataPolicyClient,
+	NewServiceClient,
+	NewRowAccessClient,
 
 	NewRepository,
 	NewDataCatalogRepository,
 	NewDataObjectIterator,
+	NewBqFilteringService,
 
 	NewBqMaskingService,
 
@@ -28,6 +32,9 @@ var Wired = wire.NewSet(
 
 	wire.Bind(new(maskingDataCatalogRepository), new(*DataCatalogRepository)),
 	wire.Bind(new(dataCatalogBqRepository), new(*Repository)),
+	wire.Bind(new(filteringRepository), new(*Repository)),
+	wire.Bind(new(filteringDataObjectIterator), new(*DataObjectIterator)),
+	wire.Bind(new(BigQueryRowAccessPoliciesService), new(*bigquery2.RowAccessPoliciesService)),
 )
 
 // TESTING

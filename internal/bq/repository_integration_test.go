@@ -4,6 +4,7 @@ package bigquery
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/api/bigquery/v2"
 
 	"github.com/raito-io/cli-plugin-gcp/internal/common/roles"
 	"github.com/raito-io/cli-plugin-gcp/internal/iam"
@@ -692,6 +694,109 @@ func TestRepository_GetDataUsage(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.NotEmpty(t, dataUsage)
+}
+
+func TestRepository_ListFilters(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	repository, _, _, cleanup, err := createRepository(ctx, t)
+	require.NoError(t, err)
+
+	defer cleanup()
+
+	type filter struct {
+		externaId      string
+		policy         string
+		users          []string
+		groups         []string
+		internalizable bool
+	}
+
+	filters := []filter{}
+
+	err = repository.ListFilters(ctx, &org.GcpOrgEntity{
+		Id:          "raito-integration-test.public_dataset.covid19_open_data",
+		Name:        "covid19_open_data",
+		FullName:    "raito-integration-test.public_dataset.covid19_open_data",
+		Type:        "table",
+		Location:    "europe-west1",
+		Description: "This dataset contains country-level datasets of daily time-series data related to COVID-19 globally. You can find the list of sources available here: https://github.com/open-covid-19/data",
+		Parent: &org.GcpOrgEntity{
+			Id:          "raito-integration-test.public_dataset",
+			Name:        "public_dataset",
+			FullName:    "raito-integration-test.public_dataset",
+			Type:        "dataset",
+			Location:    "europe-west1",
+			Description: "",
+			Parent:      repository.Project(),
+		},
+		Tags: map[string]string{"freebqcovid": ""},
+	}, func(ctx context.Context, rap *bigquery.RowAccessPolicy, users []string, groups []string, internalizable bool) error {
+		filters = append(filters, filter{
+			externaId:      fmt.Sprintf("%s.%s.%s.%s", rap.RowAccessPolicyReference.ProjectId, rap.RowAccessPolicyReference.DatasetId, rap.RowAccessPolicyReference.TableId, rap.RowAccessPolicyReference.PolicyId),
+			policy:         rap.FilterPredicate,
+			users:          users,
+			groups:         groups,
+			internalizable: internalizable,
+		})
+
+		return nil
+	})
+
+	require.NoError(t, err)
+
+	assert.ElementsMatch(t, filters, []filter{
+		{
+			externaId:      "raito-integration-test.public_dataset.covid19_open_data.covid_all",
+			policy:         "true",
+			users:          []string{"ruben@raito.dev"},
+			internalizable: true,
+		},
+		{
+			externaId:      "raito-integration-test.public_dataset.covid19_open_data.covid_us",
+			policy:         "country_code = \"US\"",
+			users:          []string{"d_hayden@raito.dev"},
+			groups:         []string{"dev@raito.dev"},
+			internalizable: true,
+		},
+	})
+}
+
+func TestRepository_CreateAndDeleteFilter(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	repository, _, _, cleanup, err := createRepository(ctx, t)
+	require.NoError(t, err)
+
+	defer cleanup()
+
+	table := BQReferencedTable{
+		Project: "raito-integration-test",
+		Dataset: "public_dataset",
+		Table:   "covid_19_geographic_distribution_worldwide",
+	}
+
+	filterName := "covid_bel"
+
+	t.Run("Create filter", func(t *testing.T) {
+		err = repository.CreateOrUpdateFilter(ctx, &BQFilter{
+			Table:            table,
+			Users:            []string{"m_carissa@raito.dev"},
+			Groups:           []string{"dev@raito.dev"},
+			FilterExpression: "country_territory_code = \"BEL\"",
+			FilterName:       filterName,
+		})
+
+		require.NoError(t, err)
+	})
+
+	t.Run("Delete filter", func(t *testing.T) {
+		err = repository.DeleteFilter(ctx, &table, filterName)
+
+		require.NoError(t, err)
+	})
 }
 
 func createRepository(ctx context.Context, t *testing.T) (*Repository, *bigquery2.Client, *config.ConfigMap, func(), error) {

@@ -11,4 +11,5 @@ var Wired = wire.NewSet(
 	NewDataSourceMetaData,
 	NewIdentityStoreMetadata,
 	NewNoMasking,
+	NewNoFiltering,
 )

@@ -14,9 +14,11 @@ import (
 	"github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/raito-io/golang-set/set"
+	bigquery2 "google.golang.org/api/bigquery/v2"
 	"google.golang.org/api/iterator"
 
 	"github.com/raito-io/cli-plugin-gcp/internal/common"
+	"github.com/raito-io/cli-plugin-gcp/internal/common/roles"
 	iam2 "github.com/raito-io/cli-plugin-gcp/internal/iam"
 	"github.com/raito-io/cli-plugin-gcp/internal/org"
 )
@@ -37,25 +39,33 @@ type ProjectClient interface {
 	UpdateBinding(ctx context.Context, dataObject *iam2.DataObjectReference, bindingsToAdd []iam2.IamBinding, bindingsToDelete []iam2.IamBinding) error
 }
 
+//go:generate go run github.com/vektra/mockery/v2 --name=BigQueryRowAccessPoliciesService --with-expecter --inpackage
+type BigQueryRowAccessPoliciesService interface {
+	List(projectId string, datasetId string, tableId string) *bigquery2.RowAccessPoliciesListCall
+	GetIamPolicy(resource string, getiampolicyrequest *bigquery2.GetIamPolicyRequest) *bigquery2.RowAccessPoliciesGetIamPolicyCall
+}
+
 type RepositoryOptions struct {
 	EnableCache bool
 }
 
 type Repository struct {
-	projectClient ProjectClient
-	client        *bigquery.Client
-	projectId     string
-	listHidden    bool
+	projectClient   ProjectClient
+	client          *bigquery.Client
+	rowAccessClient BigQueryRowAccessPoliciesService
+	projectId       string
+	listHidden      bool
 
 	options *RepositoryOptions
 }
 
-func NewRepository(projectClient ProjectClient, client *bigquery.Client, configMap *config.ConfigMap, options *RepositoryOptions) *Repository {
+func NewRepository(projectClient ProjectClient, client *bigquery.Client, rowAccessClient BigQueryRowAccessPoliciesService, configMap *config.ConfigMap, options *RepositoryOptions) *Repository {
 	return &Repository{
-		projectClient: projectClient,
-		client:        client,
-		projectId:     configMap.GetString(common.GcpProjectId),
-		listHidden:    configMap.GetBool(common.BqIncludeHiddenDatasets),
+		projectClient:   projectClient,
+		client:          client,
+		rowAccessClient: rowAccessClient,
+		projectId:       configMap.GetString(common.GcpProjectId),
+		listHidden:      configMap.GetBool(common.BqIncludeHiddenDatasets),
 
 		options: options,
 	}
@@ -372,7 +382,7 @@ func (c *Repository) GetBindings(ctx context.Context, entity *org.GcpOrgEntity) 
 	return bindings, nil
 }
 
-func (c Repository) UpdateBindings(ctx context.Context, dataObject *iam2.DataObjectReference, addBindings []iam2.IamBinding, removeBindings []iam2.IamBinding) error {
+func (c *Repository) UpdateBindings(ctx context.Context, dataObject *iam2.DataObjectReference, addBindings []iam2.IamBinding, removeBindings []iam2.IamBinding) error {
 	entityIdParts := strings.Split(dataObject.FullName, ".")
 
 	if len(entityIdParts) == 1 {
@@ -447,6 +457,125 @@ func (c *Repository) GetDataUsage(ctx context.Context, windowStart *time.Time, u
 		} else if err != nil {
 			return fmt.Errorf("get data usage: %w", err)
 		}
+	}
+
+	return nil
+}
+
+func (c *Repository) ListFilters(ctx context.Context, table *org.GcpOrgEntity, fn func(ctx context.Context, rap *bigquery2.RowAccessPolicy, users []string, groups []string, internalizable bool) error) error {
+	if table.Type != data_source.Table {
+		return errors.New("only tables can be filtered")
+	}
+
+	err := c.rowAccessClient.List(table.Parent.Parent.Name, table.Parent.Name, table.Name).Pages(ctx, func(response *bigquery2.ListRowAccessPoliciesResponse) error {
+		for _, rap := range response.RowAccessPolicies {
+			policy, err := c.rowAccessClient.GetIamPolicy(fmt.Sprintf("projects/%s/datasets/%s/tables/%s/rowAccessPolicies/%s", rap.RowAccessPolicyReference.ProjectId, rap.RowAccessPolicyReference.DatasetId, rap.RowAccessPolicyReference.TableId, rap.RowAccessPolicyReference.PolicyId), &bigquery2.GetIamPolicyRequest{}).Context(ctx).Do()
+			if err != nil {
+				return fmt.Errorf("get row level iam policy %+v: %w", *rap.RowAccessPolicyReference, err)
+			}
+
+			var users []string
+			var groups []string
+			internalizable := true
+
+			for _, binding := range policy.Bindings {
+				if binding.Role == roles.RolesBigQueryFilteredDataViewer.Name {
+					for _, member := range binding.Members {
+						entity, memberId, err2 := parseMember(member)
+						if err2 != nil {
+							common.Logger.Warn(fmt.Sprintf("Unknown member type for row level filter %s: %s", rap.RowAccessPolicyReference.PolicyId, member))
+							internalizable = false
+						}
+
+						switch entity { //nolint:exhaustive
+						case bigquery.UserEmailEntity:
+							users = append(users, memberId)
+						case bigquery.GroupEmailEntity:
+							groups = append(groups, memberId)
+						}
+					}
+				}
+			}
+
+			err = fn(ctx, rap, users, groups, internalizable)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("list row access policies: %w", err)
+	}
+
+	return nil
+}
+
+func (c *Repository) CreateOrUpdateFilter(ctx context.Context, filter *BQFilter) error {
+	granteeList := make([]string, 0, len(filter.Users)+len(filter.Groups))
+
+	for _, u := range filter.Users {
+		granteeList = append(granteeList, fmt.Sprintf("'user:%s'", u))
+	}
+
+	for _, g := range filter.Groups {
+		granteeList = append(granteeList, fmt.Sprintf("'group:%s'", g))
+	}
+
+	queryStr := fmt.Sprintf("CREATE OR REPLACE ROW ACCESS POLICY `%s` ON `%s`.`%s`.`%s` GRANT TO (%s) FILTER USING (%s);",
+		filter.FilterName, filter.Table.Project, filter.Table.Dataset, filter.Table.Table, strings.Join(granteeList, ", "), filter.FilterExpression)
+	query := c.client.Query(queryStr)
+	common.Logger.Debug(fmt.Sprintf("Executing query: %s", queryStr))
+
+	j, err := query.Run(ctx)
+	if err != nil {
+		return fmt.Errorf("create row access policy: %w", err)
+	}
+
+	status, err := j.Wait(ctx)
+	if err != nil {
+		return fmt.Errorf("wait for creation of row access policy: %w", err)
+	}
+
+	if status.Err() != nil {
+		return fmt.Errorf("create row access policy job: %w", status.Err())
+	}
+
+	return nil
+}
+
+func (c *Repository) DeleteFilter(ctx context.Context, table *BQReferencedTable, filterName string) error {
+	page, err := c.rowAccessClient.List(table.Project, table.Dataset, table.Table).Context(ctx).Do()
+	if err != nil {
+		return fmt.Errorf("list row access policies: %w", err)
+	}
+
+	var queryStr string
+
+	if len(page.RowAccessPolicies) > 1 {
+		queryStr = fmt.Sprintf("DROP ROW ACCESS POLICY IF EXISTS `%s` ON `%s`.`%s`.`%s`;", filterName, table.Project, table.Dataset, table.Table)
+	} else if len(page.RowAccessPolicies) == 1 && page.RowAccessPolicies[0].RowAccessPolicyReference.PolicyId == filterName {
+		queryStr = fmt.Sprintf("DROP ALL ROW ACCESS POLICIES ON `%s`.`%s`.`%s`;", table.Project, table.Dataset, table.Table)
+	} else {
+		return nil
+	}
+
+	query := c.client.Query(queryStr)
+	common.Logger.Debug(fmt.Sprintf("Executing query: %s", queryStr))
+
+	j, err := query.Run(ctx)
+	if err != nil {
+		return fmt.Errorf("delete row access policy: %w", err)
+	}
+
+	status, err := j.Wait(ctx)
+	if err != nil {
+		return fmt.Errorf("wait for deletion of row access policy: %w", err)
+	}
+
+	if status.Err() != nil {
+		return fmt.Errorf("delete row access policy job: %w", status.Err())
 	}
 
 	return nil
