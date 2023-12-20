@@ -832,6 +832,34 @@ func TestRepository_CreateAndDeleteFilter(t *testing.T) {
 
 		require.NoError(t, err)
 	})
+
+	t.Run("Check if filter is deleted", func(t *testing.T) {
+		err := repository.ListFilters(ctx, &org.GcpOrgEntity{
+			Id:       "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide",
+			Name:     "covid_19_geographic_distribution_worldwide",
+			FullName: "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide",
+			Type:     "table",
+			Location: "europe-west1",
+			Parent: &org.GcpOrgEntity{
+				Id:          "raito-integration-test.public_dataset",
+				Name:        "public_dataset",
+				FullName:    "raito-integration-test.public_dataset",
+				Type:        "dataset",
+				Location:    "europe-west1",
+				Description: "",
+				Parent:      repository.Project(),
+			},
+			Tags: map[string]string{"freebqcovid": ""},
+		}, func(ctx context.Context, rap *bigquery.RowAccessPolicy, users []string, groups []string, internalizable bool) error {
+			if rap.RowAccessPolicyReference.PolicyId == filterName {
+				require.Fail(t, "Filter still exists")
+			}
+
+			return nil
+		})
+
+		require.NoError(t, err)
+	})
 }
 
 func createRepository(ctx context.Context, t *testing.T) (*Repository, *bigquery2.Client, *config.ConfigMap, func(), error) {
