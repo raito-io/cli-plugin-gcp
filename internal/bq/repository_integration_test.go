@@ -792,6 +792,41 @@ func TestRepository_CreateAndDeleteFilter(t *testing.T) {
 		require.NoError(t, err)
 	})
 
+	t.Run("List created filter", func(t *testing.T) {
+		foundFilter := false
+
+		err := repository.ListFilters(ctx, &org.GcpOrgEntity{
+			Id:       "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide",
+			Name:     "covid_19_geographic_distribution_worldwide",
+			FullName: "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide",
+			Type:     "table",
+			Location: "europe-west1",
+			Parent: &org.GcpOrgEntity{
+				Id:          "raito-integration-test.public_dataset",
+				Name:        "public_dataset",
+				FullName:    "raito-integration-test.public_dataset",
+				Type:        "dataset",
+				Location:    "europe-west1",
+				Description: "",
+				Parent:      repository.Project(),
+			},
+			Tags: map[string]string{"freebqcovid": ""},
+		}, func(ctx context.Context, rap *bigquery.RowAccessPolicy, users []string, groups []string, internalizable bool) error {
+			if rap.RowAccessPolicyReference.PolicyId == filterName {
+				foundFilter = true
+
+				assert.ElementsMatch(t, []string{"m_carissa@raito.dev"}, users)
+				assert.ElementsMatch(t, []string{"dev@raito.dev"}, groups)
+				assert.Equal(t, "country_territory_code = \"BEL\"", rap.FilterPredicate)
+			}
+
+			return nil
+		})
+
+		require.NoError(t, err)
+		assert.True(t, foundFilter)
+	})
+
 	t.Run("Delete filter", func(t *testing.T) {
 		err = repository.DeleteFilter(ctx, &table, filterName)
 
