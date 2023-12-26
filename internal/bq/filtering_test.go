@@ -7,6 +7,8 @@ import (
 
 	"github.com/aws/smithy-go/ptr"
 	"github.com/raito-io/bexpression"
+	"github.com/raito-io/bexpression/base"
+	"github.com/raito-io/bexpression/datacomparison"
 	"github.com/raito-io/cli/base/access_provider/sync_from_target"
 	"github.com/raito-io/cli/base/access_provider/sync_to_target"
 	ds "github.com/raito-io/cli/base/data_source"
@@ -22,7 +24,7 @@ import (
 
 func Test_createFilterExpression(t *testing.T) {
 	type args struct {
-		expr *bexpression.BinaryExpression
+		expr *bexpression.DataComparisonExpression
 	}
 	tests := []struct {
 		name    string
@@ -33,7 +35,7 @@ func Test_createFilterExpression(t *testing.T) {
 		{
 			name: "simple expression",
 			args: args{
-				expr: &bexpression.BinaryExpression{
+				expr: &bexpression.DataComparisonExpression{
 					Literal: ptr.Bool(true),
 				},
 			},
@@ -43,17 +45,17 @@ func Test_createFilterExpression(t *testing.T) {
 		{
 			name: "simple comparison expression",
 			args: args{
-				expr: &bexpression.BinaryExpression{
-					Comparison: &bexpression.BinaryComparison{
-						Operator: bexpression.ComparisonOperatorGreaterThan,
-						LeftOperand: bexpression.Operand{
-							Reference: &bexpression.Reference{
-								EntityType: bexpression.EntityTypeDataObject,
-								EntityId:   `{"fullName":"bq-demodata.MASTER_DATA.Sales_CreditCard.ExpYear","id":"JJGSpyjrssv94KPk9dNuI","type":"column"}`,
+				expr: &bexpression.DataComparisonExpression{
+					Comparison: &datacomparison.DataComparison{
+						Operator: datacomparison.ComparisonOperatorGreaterThan,
+						LeftOperand: datacomparison.Operand{
+							Reference: &datacomparison.Reference{
+								EntityType: datacomparison.EntityTypeDataObject,
+								EntityID:   `{"fullName":"bq-demodata.MASTER_DATA.Sales_CreditCard.ExpYear","id":"JJGSpyjrssv94KPk9dNuI","type":"column"}`,
 							},
 						},
-						RightOperand: bexpression.Operand{
-							Literal: &bexpression.Literal{
+						RightOperand: datacomparison.Operand{
+							Literal: &datacomparison.Literal{
 								Int: ptr.Int(2020),
 							},
 						},
@@ -66,47 +68,47 @@ func Test_createFilterExpression(t *testing.T) {
 		{
 			name: "aggregation expression",
 			args: args{
-				expr: &bexpression.BinaryExpression{
-					Aggregator: &bexpression.Aggregator{
-						Operator: bexpression.AggregatorOperatorAnd,
-						Operands: []bexpression.BinaryExpression{
+				expr: &bexpression.DataComparisonExpression{
+					Aggregator: &bexpression.DataComparisonAggregator{
+						Operator: base.AggregatorOperatorAnd,
+						Operands: []bexpression.DataComparisonExpression{
 							{
 								Literal: ptr.Bool(true),
 							},
 							{
-								Aggregator: &bexpression.Aggregator{
-									Operator: bexpression.AggregatorOperatorOr,
-									Operands: []bexpression.BinaryExpression{
+								Aggregator: &bexpression.DataComparisonAggregator{
+									Operator: base.AggregatorOperatorOr,
+									Operands: []bexpression.DataComparisonExpression{
 										{
-											Comparison: &bexpression.BinaryComparison{
-												Operator: bexpression.ComparisonOperatorEqual,
-												LeftOperand: bexpression.Operand{
-													Reference: &bexpression.Reference{
-														EntityType: bexpression.EntityTypeDataObject,
-														EntityId:   `{"fullName":"bq-demodata.MASTER_DATA.Sales_CreditCard.State","id":"JJGSpyjrssv94KPk9dNuK","type":"column"}`,
+											Comparison: &datacomparison.DataComparison{
+												Operator: datacomparison.ComparisonOperatorEqual,
+												LeftOperand: datacomparison.Operand{
+													Reference: &datacomparison.Reference{
+														EntityType: datacomparison.EntityTypeDataObject,
+														EntityID:   `{"fullName":"bq-demodata.MASTER_DATA.Sales_CreditCard.State","id":"JJGSpyjrssv94KPk9dNuK","type":"column"}`,
 													},
 												},
-												RightOperand: bexpression.Operand{
-													Literal: &bexpression.Literal{
+												RightOperand: datacomparison.Operand{
+													Literal: &datacomparison.Literal{
 														Str: ptr.String("CA"),
 													},
 												},
 											},
 										},
 										{
-											UnaryExpression: &bexpression.UnaryExpression{
-												Operator: bexpression.UnaryOperatorNot,
-												Operand: bexpression.BinaryExpression{
-													Comparison: &bexpression.BinaryComparison{
-														Operator: bexpression.ComparisonOperatorEqual,
-														LeftOperand: bexpression.Operand{
-															Reference: &bexpression.Reference{
-																EntityType: bexpression.EntityTypeDataObject,
-																EntityId:   `{"fullName":"bq-demodata.MASTER_DATA.Sales_CreditCard.Currency","id":"JJGSpyjrssv94KPk9dNuJ","type":"column"}`,
+											UnaryExpression: &bexpression.DataComparisonUnaryExpression{
+												Operator: base.UnaryOperatorNot,
+												Operand: bexpression.DataComparisonExpression{
+													Comparison: &datacomparison.DataComparison{
+														Operator: datacomparison.ComparisonOperatorEqual,
+														LeftOperand: datacomparison.Operand{
+															Reference: &datacomparison.Reference{
+																EntityType: datacomparison.EntityTypeDataObject,
+																EntityID:   `{"fullName":"bq-demodata.MASTER_DATA.Sales_CreditCard.Currency","id":"JJGSpyjrssv94KPk9dNuJ","type":"column"}`,
 															},
 														},
-														RightOperand: bexpression.Operand{
-															Literal: &bexpression.Literal{
+														RightOperand: datacomparison.Operand{
+															Literal: &datacomparison.Literal{
 																Str: ptr.String("EURO"),
 															},
 														},
@@ -127,7 +129,7 @@ func Test_createFilterExpression(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := createFilterExpression(tt.args.expr)
+			got, err := createFilterExpression(context.Background(), tt.args.expr)
 			if !tt.wantErr(t, err, fmt.Sprintf("createFilterExpression(%v)", tt.args.expr)) {
 				return
 			}
@@ -471,17 +473,17 @@ func TestBqFilteringService_ExportFilter(t *testing.T) {
 					},
 					Delete:     false,
 					PolicyRule: nil,
-					FilterCriteria: &bexpression.BinaryExpression{
-						Comparison: &bexpression.BinaryComparison{
-							Operator: bexpression.ComparisonOperatorEqual,
-							LeftOperand: bexpression.Operand{
-								Reference: &bexpression.Reference{
-									EntityType: bexpression.EntityTypeDataObject,
-									EntityId:   `{"fullName": "project1.dataset1.table1.column1", "type": "column"}`,
+					FilterCriteria: &bexpression.DataComparisonExpression{
+						Comparison: &datacomparison.DataComparison{
+							Operator: datacomparison.ComparisonOperatorEqual,
+							LeftOperand: datacomparison.Operand{
+								Reference: &datacomparison.Reference{
+									EntityType: datacomparison.EntityTypeDataObject,
+									EntityID:   `{"fullName": "project1.dataset1.table1.column1", "type": "column"}`,
 								},
 							},
-							RightOperand: bexpression.Operand{
-								Literal: &bexpression.Literal{
+							RightOperand: datacomparison.Operand{
+								Literal: &datacomparison.Literal{
 									Str: ptr.String("value2"),
 								},
 							},
@@ -528,17 +530,17 @@ func TestBqFilteringService_ExportFilter(t *testing.T) {
 					},
 					Delete:     true,
 					PolicyRule: nil,
-					FilterCriteria: &bexpression.BinaryExpression{
-						Comparison: &bexpression.BinaryComparison{
-							Operator: bexpression.ComparisonOperatorEqual,
-							LeftOperand: bexpression.Operand{
-								Reference: &bexpression.Reference{
-									EntityType: bexpression.EntityTypeDataObject,
-									EntityId:   `{"fullName": "project1.dataset1.table1.column1", "type": "column"}`,
+					FilterCriteria: &bexpression.DataComparisonExpression{
+						Comparison: &datacomparison.DataComparison{
+							Operator: datacomparison.ComparisonOperatorEqual,
+							LeftOperand: datacomparison.Operand{
+								Reference: &datacomparison.Reference{
+									EntityType: datacomparison.EntityTypeDataObject,
+									EntityID:   `{"fullName": "project1.dataset1.table1.column1", "type": "column"}`,
 								},
 							},
-							RightOperand: bexpression.Operand{
-								Literal: &bexpression.Literal{
+							RightOperand: datacomparison.Operand{
+								Literal: &datacomparison.Literal{
 									Str: ptr.String("value2"),
 								},
 							},

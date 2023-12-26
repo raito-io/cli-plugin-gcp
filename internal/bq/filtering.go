@@ -4,10 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/raito-io/bexpression"
+	"github.com/raito-io/bexpression/base"
+	"github.com/raito-io/bexpression/datacomparison"
 	"github.com/raito-io/cli/base/access_provider/sync_from_target"
 	"github.com/raito-io/cli/base/access_provider/sync_to_target"
 	ds "github.com/raito-io/cli/base/data_source"
@@ -166,7 +169,7 @@ func (s *BqFilteringService) createOrUpdateMask(ctx context.Context, table BQRef
 	} else if ap.FilterCriteria != nil {
 		var err error
 
-		filterExpression, err = createFilterExpression(ap.FilterCriteria)
+		filterExpression, err = createFilterExpression(ctx, ap.FilterCriteria)
 		if err != nil {
 			return nil, nil, fmt.Errorf("create filter expression: %w", err)
 		}
@@ -202,146 +205,118 @@ func (s *BqFilteringService) createOrUpdateMask(ctx context.Context, table BQRef
 	return &filterName, &externalId, nil
 }
 
-func createFilterExpression(expr *bexpression.BinaryExpression) (string, error) {
-	var queryBuilder strings.Builder
+func createFilterExpression(ctx context.Context, filterCriteria *bexpression.DataComparisonExpression) (string, error) {
+	filterVisitor := NewFilterExpressionVisitor()
 
-	var aggregatorOperandStack []string
-	binaryExpressionLevel := 0
-
-	traverser := bexpression.NewTraverser(
-		bexpression.WithEnterBinaryExpressionFn(func(node *bexpression.BinaryExpression) error {
-			if binaryExpressionLevel > 0 && node.Literal == nil {
-				queryBuilder.WriteString("(")
-			}
-
-			binaryExpressionLevel++
-
-			return nil
-		}),
-		bexpression.WithLeaveBinaryExpressionFn(func(node *bexpression.BinaryExpression) {
-			binaryExpressionLevel--
-
-			if binaryExpressionLevel > 0 && node.Literal == nil {
-				queryBuilder.WriteString(")")
-			}
-		}),
-		bexpression.WithLiteralBoolFn(func(b bool) error {
-			if b {
-				queryBuilder.WriteString("TRUE")
-			} else {
-				queryBuilder.WriteString("FALSE")
-			}
-
-			return nil
-		}),
-		bexpression.WithLiteralIntFn(func(i int) error {
-			queryBuilder.WriteString(fmt.Sprintf("%d", i))
-
-			return nil
-		}),
-		bexpression.WithLiteralFloatFn(func(f float64) error {
-			queryBuilder.WriteString(fmt.Sprintf("%f", f))
-
-			return nil
-		}),
-		bexpression.WithLiteralStringFn(func(value string) error {
-			queryBuilder.WriteString(fmt.Sprintf("%q", value))
-
-			return nil
-		}),
-
-		bexpression.WithLiteralTimestampFn(func(value time.Time) error {
-			queryBuilder.WriteString(fmt.Sprintf("DATETIME(%d, %d, %d, %d, %d, %d)", value.Year(), value.Month(), value.Day(), value.Hour(), value.Minute(), value.Second()))
-
-			return nil
-		}),
-		bexpression.WithComparisonOperatorFn(func(node bexpression.ComparisonOperator) error {
-			switch node {
-			case bexpression.ComparisonOperatorEqual:
-				queryBuilder.WriteString(" = ")
-			case bexpression.ComparisonOperatorNotEqual:
-				queryBuilder.WriteString(" != ")
-			case bexpression.ComparisonOperatorLessThan:
-				queryBuilder.WriteString(" < ")
-			case bexpression.ComparisonOperatorLessThanOrEqual:
-				queryBuilder.WriteString(" <= ")
-			case bexpression.ComparisonOperatorGreaterThan:
-				queryBuilder.WriteString(" > ")
-			case bexpression.ComparisonOperatorGreaterThanOrEqual:
-				queryBuilder.WriteString(" >= ")
-			default:
-				return fmt.Errorf("unsupported comparison operator: %s", node)
-			}
-
-			return nil
-		}),
-		bexpression.WithReferenceFn(func(node *bexpression.Reference) error {
-			if node.EntityType != bexpression.EntityTypeDataObject {
-				return fmt.Errorf("unsupported reference entity type: %s", node.EntityType)
-			}
-
-			var object ds.DataObjectReference
-
-			err := json.Unmarshal([]byte(node.EntityId), &object)
-			if err != nil {
-				return fmt.Errorf("unmarshal reference entity id: %w", err)
-			}
-
-			if object.Type != ds.Column {
-				return fmt.Errorf("unsupported reference entity type: %s", object.Type)
-			}
-
-			parsedDataObject := strings.SplitN(object.FullName, ".", 4)
-			if len(parsedDataObject) != 4 {
-				return fmt.Errorf("unsupported reference entity id: %s", object.FullName)
-			}
-
-			queryBuilder.WriteString(parsedDataObject[3])
-
-			return nil
-		}),
-		bexpression.WithEnterAggregatorFn(func(node *bexpression.Aggregator) error {
-			var operand string
-
-			switch node.Operator {
-			case bexpression.AggregatorOperatorAnd:
-				operand = "AND"
-			case bexpression.AggregatorOperatorOr:
-				operand = "OR"
-			default:
-				return fmt.Errorf("unsupported aggregation operator: %s", node.Operator)
-			}
-
-			aggregatorOperandStack = append(aggregatorOperandStack, operand)
-
-			return nil
-		}),
-		bexpression.WithNextAggregatorOperand(func() error {
-			queryBuilder.WriteString(fmt.Sprintf(" %s ", aggregatorOperandStack[len(aggregatorOperandStack)-1]))
-
-			return nil
-		}),
-		bexpression.WithLeaveAggregatorFn(func(node *bexpression.Aggregator) {
-			aggregatorOperandStack = aggregatorOperandStack[:len(aggregatorOperandStack)-1]
-		}),
-		bexpression.WithEnterUnaryExpressionFn(func(node *bexpression.UnaryExpression) error {
-			if node.Operator != bexpression.UnaryOperatorNot {
-				return fmt.Errorf("unsupported unary operator: %s", node.Operator)
-			}
-
-			queryBuilder.WriteString("NOT ")
-
-			return nil
-		}),
-		bexpression.WithLeaveUnaryExpressionFn(func(node *bexpression.UnaryExpression) {
-			queryBuilder.WriteString("")
-		}),
-	)
-
-	err := traverser.TraverseBinaryExpression(expr)
+	err := filterCriteria.Accept(ctx, filterVisitor)
 	if err != nil {
-		return "", fmt.Errorf("expression traversal: %w", err)
+		return "", fmt.Errorf("building filter expression: %w", err)
 	}
 
-	return queryBuilder.String(), nil
+	return filterVisitor.GetExpression(), nil
+}
+
+var _ base.Visitor = (*FilterExpressionVisitor)(nil)
+
+type FilterExpressionVisitor struct {
+	stringBuilder strings.Builder
+
+	binaryExpressionLevel int
+}
+
+func NewFilterExpressionVisitor() *FilterExpressionVisitor {
+	return &FilterExpressionVisitor{}
+}
+
+func (f *FilterExpressionVisitor) GetExpression() string {
+	return f.stringBuilder.String()
+}
+
+func (f *FilterExpressionVisitor) EnterExpressionElement(_ context.Context, element base.VisitableElement) error {
+	if node, ok := element.(*bexpression.DataComparisonExpression); ok {
+		if f.binaryExpressionLevel > 0 && node.Literal == nil {
+			f.stringBuilder.WriteString("(")
+		}
+		f.binaryExpressionLevel++
+	}
+
+	return nil
+}
+
+func (f *FilterExpressionVisitor) LeaveExpressionElement(_ context.Context, element base.VisitableElement) {
+	if node, ok := element.(*bexpression.DataComparisonExpression); ok {
+		f.binaryExpressionLevel--
+		if f.binaryExpressionLevel > 0 && node.Literal == nil {
+			f.stringBuilder.WriteString(")")
+		}
+	}
+}
+
+func (f *FilterExpressionVisitor) Literal(_ context.Context, l interface{}) error {
+	switch node := l.(type) {
+	case bool:
+		f.stringBuilder.WriteString(strings.ToUpper(strconv.FormatBool(node)))
+	case int:
+		f.stringBuilder.WriteString(fmt.Sprintf("%d", node))
+	case float64:
+		f.stringBuilder.WriteString(fmt.Sprintf("%f", node))
+	case string:
+		f.stringBuilder.WriteString(fmt.Sprintf("%q", node))
+	case time.Time:
+		f.stringBuilder.WriteString(fmt.Sprintf("DATETIME(%d, %d, %d, %d, %d, %d)", node.Year(), node.Month(), node.Day(), node.Hour(), node.Minute(), node.Second()))
+	case datacomparison.ComparisonOperator:
+		switch node {
+		case datacomparison.ComparisonOperatorEqual:
+			f.stringBuilder.WriteString(" = ")
+		case datacomparison.ComparisonOperatorNotEqual:
+			f.stringBuilder.WriteString(" != ")
+		case datacomparison.ComparisonOperatorLessThan:
+			f.stringBuilder.WriteString(" < ")
+		case datacomparison.ComparisonOperatorLessThanOrEqual:
+			f.stringBuilder.WriteString(" <= ")
+		case datacomparison.ComparisonOperatorGreaterThan:
+			f.stringBuilder.WriteString(" > ")
+		case datacomparison.ComparisonOperatorGreaterThanOrEqual:
+			f.stringBuilder.WriteString(" >= ")
+		}
+	case *datacomparison.Reference:
+		if node.EntityType != datacomparison.EntityTypeDataObject {
+			return fmt.Errorf("unsupported reference entity type: %s", node.EntityType)
+		}
+
+		var object ds.DataObjectReference
+
+		err := json.Unmarshal([]byte(node.EntityID), &object)
+		if err != nil {
+			return fmt.Errorf("unmarshal reference entity id: %w", err)
+		}
+
+		if object.Type != ds.Column {
+			return fmt.Errorf("unsupported reference entity type: %s", object.Type)
+		}
+
+		parsedDataObject := strings.SplitN(object.FullName, ".", 4)
+		if len(parsedDataObject) != 4 {
+			return fmt.Errorf("unsupported reference entity id: %s", object.FullName)
+		}
+
+		f.stringBuilder.WriteString(parsedDataObject[3])
+	case base.AggregatorOperator:
+		switch node {
+		case base.AggregatorOperatorAnd:
+			f.stringBuilder.WriteString(" AND ")
+		case base.AggregatorOperatorOr:
+			f.stringBuilder.WriteString(" OR ")
+		default:
+			return fmt.Errorf("unsupported aggregator operator: %s", node)
+		}
+	case base.UnaryOperator:
+		if node != base.UnaryOperatorNot {
+			return fmt.Errorf("unsupported unary operator: %s", node)
+		}
+
+		f.stringBuilder.WriteString("NOT ")
+	}
+
+	return nil
 }
