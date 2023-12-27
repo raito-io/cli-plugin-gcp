@@ -44,3 +44,41 @@ func Test_getRoleForBQEntity(t *testing.T) {
 		})
 	}
 }
+
+func Test_validSqlName(t *testing.T) {
+	type args struct {
+		originalName string
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "valid name",
+			args: args{
+				originalName: "valid_name",
+			},
+			want: "valid_name",
+		},
+		{
+			name: "replace all spaces",
+			args: args{
+				originalName: "valid name",
+			},
+			want: "valid_name",
+		},
+		{
+			name: "replace all non alphanumeric",
+			args: args{
+				originalName: "valid-name🤦‍^$()#@12+3!",
+			},
+			want: "valid_name12_3",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.want, validSqlName(tt.args.originalName), "validSqlName(%v)", tt.args.originalName)
+		})
+	}
+}

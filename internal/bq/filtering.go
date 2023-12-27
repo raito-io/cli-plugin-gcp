@@ -182,7 +182,7 @@ func (s *BqFilteringService) createOrUpdateMask(ctx context.Context, table BQRef
 	if ap.ExternalId != nil {
 		filterName = strings.SplitN(*ap.ExternalId, ".", 4)[3]
 	} else {
-		filterName = strings.ReplaceAll(strings.ReplaceAll(ap.NamingHint, " ", "_"), "-", "_")
+		filterName = validSqlName(ap.NamingHint)
 	}
 
 	externalId := fmt.Sprintf("%s.%s.%s.%s", table.Project, table.Dataset, table.Table, filterName)

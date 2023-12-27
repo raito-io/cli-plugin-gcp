@@ -464,7 +464,7 @@ func (r *DataCatalogRepository) CreatePolicyTagWithDataPolicy(ctx context.Contex
 }
 
 func createTagDisplayname(ap *sync_to_target.AccessProvider) string {
-	displayName := ap.Name + "_" + gonanoid.MustGenerate(idAlphabet, 8) // Must be unique in taxonomy
+	displayName := validSqlName(ap.NamingHint) + "_" + gonanoid.MustGenerate(idAlphabet, 8) // Must be unique in taxonomy
 	return displayName
 }
 

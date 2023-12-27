@@ -30,7 +30,8 @@ func TestDataCatalogRepository_CrudPolicyTags(t *testing.T) {
 
 	t.Run("CreatePolicyTag", func(t *testing.T) {
 		maskingInformation, err = repo.CreatePolicyTagWithDataPolicy(ctx, "europe-west1", datapoliciespb.DataMaskingPolicy_ALWAYS_NULL, &sync_to_target.AccessProvider{
-			Name: "test_policy_tag",
+			Name:       "test_policy_tag",
+			NamingHint: "test_policy_tag",
 		})
 
 		require.NoError(t, err)
