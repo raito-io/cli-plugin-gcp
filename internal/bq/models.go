@@ -44,6 +44,14 @@ type BQReferencedTable struct {
 	Table   string `bigquery:"table_id"`
 }
 
+type BQFilter struct {
+	FilterName       string
+	Table            BQReferencedTable
+	Users            []string
+	Groups           []string
+	FilterExpression string
+}
+
 type BQMaskingInformation struct {
 	DataPolicy BQDataPolicy
 	PolicyTag  BQPolicyTag

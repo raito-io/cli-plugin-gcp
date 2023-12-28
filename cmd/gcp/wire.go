@@ -54,6 +54,7 @@ func InitializeDataAccessSyncer(ctx context.Context, configMap *config.ConfigMap
 		wire.Bind(new(syncer.ProjectRepo), new(*org.ProjectRepository)),
 		wire.Bind(new(syncer.BindingRepository), new(*org.GcpDataObjectIterator)),
 		wire.Bind(new(syncer.MaskingService), new(*gcp.NoMasking)),
+		wire.Bind(new(syncer.FilteringService), new(*gcp.NoFiltering)),
 	)
 
 	return nil, nil, nil

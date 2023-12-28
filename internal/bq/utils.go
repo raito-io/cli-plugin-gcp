@@ -1,6 +1,8 @@
 package bigquery
 
 import (
+	"regexp"
+
 	"cloud.google.com/go/bigquery"
 )
 
@@ -14,4 +16,11 @@ func getRoleForBQEntity(t bigquery.AccessRole) string {
 	}
 
 	return string(t)
+}
+
+var nonAlphanumericRegex = regexp.MustCompile(`[^a-zA-Z0-9_]+`)
+var nonAlphaNumericToUnderscore = regexp.MustCompile(`[+|\\/\- ]+`)
+
+func validSqlName(originalName string) string {
+	return nonAlphanumericRegex.ReplaceAllString(nonAlphaNumericToUnderscore.ReplaceAllString(originalName, "_"), "")
 }

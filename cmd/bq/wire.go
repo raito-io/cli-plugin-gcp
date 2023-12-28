@@ -64,6 +64,7 @@ func InitializeDataAccessSyncer(ctx context.Context, configMap *config.ConfigMap
 		wire.Bind(new(syncer.BindingRepository), new(*bigquery.DataObjectIterator)),
 		wire.Bind(new(syncer.MaskingService), new(*bigquery.BqMaskingService)),
 		wire.Bind(new(bigquery.ProjectClient), new(*org.ProjectRepository)),
+		wire.Bind(new(syncer.FilteringService), new(*bigquery.BqFilteringService)),
 	)
 
 	return nil, nil, nil

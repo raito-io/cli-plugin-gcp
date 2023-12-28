@@ -13,7 +13,7 @@ import (
 )
 
 func NewDataSourceMetaData(_ context.Context, configParams *config.ConfigMap) (*ds.MetaData, error) {
-	var supportedFeatures []string
+	supportedFeatures := []string{ds.RowFiltering}
 
 	catalogEnabled := configParams.GetBoolWithDefault(common.BqCatalogEnabled, false)
 

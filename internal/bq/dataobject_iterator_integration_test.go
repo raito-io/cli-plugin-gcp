@@ -146,7 +146,7 @@ func TestDataObjectIterator_Sync(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			objectCounts := make(map[string]int)
 
-			err = iterator.sync(tt.args.ctx, tt.args.config, tt.args.skipColumns, func(ctx context.Context, object *org.GcpOrgEntity) error {
+			err = iterator.Sync(tt.args.ctx, tt.args.config, tt.args.skipColumns, func(ctx context.Context, object *org.GcpOrgEntity) error {
 				if _, found := objectCounts[object.Type]; found {
 					objectCounts[object.Type]++
 				} else {

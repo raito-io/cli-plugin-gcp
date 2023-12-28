@@ -43,27 +43,39 @@ type MaskingService interface {
 	MaskedBinding(ctx context.Context, members []string) ([]iam.IamBinding, error)
 }
 
+//go:generate go run github.com/vektra/mockery/v2 --name=FilteringService --with-expecter --inpackage
+type FilteringService interface {
+	ImportFilters(ctx context.Context, config *data_source.DataSourceSyncConfig, accessProviderHandler wrappers.AccessProviderHandler, raitoFilters set.Set[string]) error
+	ExportFilter(ctx context.Context, accessProvider *importer.AccessProvider, accessProviderFeedbackHandler wrappers.AccessProviderFeedbackHandler) (*string, error)
+}
+
 type AccessSyncer struct {
-	bindingRepo    BindingRepository
-	projectRepo    ProjectRepo
-	maskingService MaskingService
-	metadata       *data_source.MetaData
+	bindingRepo      BindingRepository
+	projectRepo      ProjectRepo
+	maskingService   MaskingService
+	filteringService FilteringService
+	metadata         *data_source.MetaData
 
 	maskingSupport  bool
 	addMaskedReader bool
 
+	filteringSupport bool
+
 	// cache
 	raitoManagedBindings set.Set[iam.IamBinding]
 	raitoMasks           set.Set[string]
+	raitoFilters         set.Set[string]
 }
 
-func NewDataAccessSyncer(bindingRepo BindingRepository, projectRepo ProjectRepo, maskingService MaskingService, metadata *data_source.MetaData, configmap *config.ConfigMap) *AccessSyncer {
+func NewDataAccessSyncer(bindingRepo BindingRepository, projectRepo ProjectRepo, maskingService MaskingService, filteringService FilteringService, metadata *data_source.MetaData, configmap *config.ConfigMap) *AccessSyncer {
 	maskingSupport := false
+	filteringSupport := false
 
 	for _, feature := range metadata.SupportedFeatures {
 		if feature == data_source.ColumnMasking {
 			maskingSupport = true
-			break
+		} else if feature == data_source.RowFiltering {
+			filteringSupport = true
 		}
 	}
 
@@ -71,11 +83,14 @@ func NewDataAccessSyncer(bindingRepo BindingRepository, projectRepo ProjectRepo,
 		bindingRepo:          bindingRepo,
 		projectRepo:          projectRepo,
 		maskingService:       maskingService,
+		filteringService:     filteringService,
 		metadata:             metadata,
 		maskingSupport:       maskingSupport,
 		addMaskedReader:      configmap.GetBoolWithDefault(common.GcpMaskedReader, false) || configmap.GetBoolWithDefault(common.BqCatalogEnabled, false),
+		filteringSupport:     filteringSupport,
 		raitoManagedBindings: set.NewSet[iam.IamBinding](),
 		raitoMasks:           set.NewSet[string](),
+		raitoFilters:         set.NewSet[string](),
 	}
 }
 
@@ -84,7 +99,9 @@ func (a *AccessSyncer) SyncAccessProvidersFromTarget(ctx context.Context, access
 	locations := set.NewSet[string]()
 	maskingTags := make(map[string][]string)
 
-	err := a.bindingRepo.Bindings(ctx, &data_source.DataSourceSyncConfig{ConfigMap: configMap}, func(ctx context.Context, dataObject *org.GcpOrgEntity, bindings []iam.IamBinding) error {
+	syncConfig := data_source.DataSourceSyncConfig{ConfigMap: configMap}
+
+	err := a.bindingRepo.Bindings(ctx, &syncConfig, func(ctx context.Context, dataObject *org.GcpOrgEntity, bindings []iam.IamBinding) error {
 		allBindings = append(allBindings, bindings...)
 
 		if a.maskingSupport && dataObject.Type == data_source.Column && len(dataObject.PolicyTags) > 0 {
@@ -120,6 +137,13 @@ func (a *AccessSyncer) SyncAccessProvidersFromTarget(ctx context.Context, access
 		}
 	}
 
+	if a.filteringSupport {
+		err = a.filteringService.ImportFilters(ctx, &syncConfig, accessProviderHandler, a.raitoFilters)
+		if err != nil {
+			return fmt.Errorf("import filters: %w", err)
+		}
+	}
+
 	return nil
 }
 
@@ -141,6 +165,15 @@ func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessPro
 
 			if raitoMask != nil {
 				a.raitoMasks.Add(raitoMask...)
+			}
+		case importer.Filtered:
+			raitoFilter, err := a.filteringService.ExportFilter(ctx, ap, accessProviderFeedbackHandler)
+			if err != nil {
+				return fmt.Errorf("export filters: %w", err)
+			}
+
+			if raitoFilter != nil {
+				a.raitoFilters.Add(*raitoFilter)
 			}
 		default:
 			err := accessProviderFeedbackHandler.AddAccessProviderFeedback(importer.AccessProviderSyncFeedback{

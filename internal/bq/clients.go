@@ -12,6 +12,7 @@ import (
 	"golang.org/x/oauth2/google"
 	"golang.org/x/oauth2/jwt"
 	admin "google.golang.org/api/admin/directory/v1"
+	bigquery2 "google.golang.org/api/bigquery/v2"
 	"google.golang.org/api/option"
 
 	"github.com/raito-io/cli-plugin-gcp/internal/common"
@@ -56,6 +57,19 @@ func NewDataPolicyClient(ctx context.Context, configMap *config.ConfigMap) (*dat
 	return client, func() {
 		client.Close()
 	}, nil
+}
+
+func NewServiceClient(ctx context.Context, configMap *config.ConfigMap) (*bigquery2.Service, error) {
+	service, err := bigquery2.NewService(ctx, option.WithCredentialsFile(configMap.GetString(common.GcpSAFileLocation)), option.WithScopes(admin.CloudPlatformScope, bigquery2.BigqueryScope))
+	if err != nil {
+		return nil, fmt.Errorf("new service client: %w", err)
+	}
+
+	return service, nil
+}
+
+func NewRowAccessClient(service *bigquery2.Service) *bigquery2.RowAccessPoliciesService {
+	return service.RowAccessPolicies
 }
 
 func getConfig(configMap *config.ConfigMap, scopes ...string) (*jwt.Config, error) {
