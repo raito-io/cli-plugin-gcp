@@ -43,7 +43,7 @@ func Test_createFilterExpression(t *testing.T) {
 			wantErr: assert.NoError,
 		},
 		{
-			name: "simple comparison expression",
+			name: "simple comparison expression - data object",
 			args: args{
 				expr: &bexpression.DataComparisonExpression{
 					Comparison: &datacomparison.DataComparison{
@@ -52,6 +52,29 @@ func Test_createFilterExpression(t *testing.T) {
 							Reference: &datacomparison.Reference{
 								EntityType: datacomparison.EntityTypeDataObject,
 								EntityID:   `{"fullName":"bq-demodata.MASTER_DATA.Sales_CreditCard.ExpYear","id":"JJGSpyjrssv94KPk9dNuI","type":"column"}`,
+							},
+						},
+						RightOperand: datacomparison.Operand{
+							Literal: &datacomparison.Literal{
+								Int: ptr.Int(2020),
+							},
+						},
+					},
+				},
+			},
+			want:    "ExpYear > 2020",
+			wantErr: assert.NoError,
+		},
+		{
+			name: "simple comparison expression - column by reference",
+			args: args{
+				expr: &bexpression.DataComparisonExpression{
+					Comparison: &datacomparison.DataComparison{
+						Operator: datacomparison.ComparisonOperatorGreaterThan,
+						LeftOperand: datacomparison.Operand{
+							Reference: &datacomparison.Reference{
+								EntityType: datacomparison.EntityTypeColumnReferenceByName,
+								EntityID:   `ExpYear`,
 							},
 						},
 						RightOperand: datacomparison.Operand{
@@ -84,8 +107,8 @@ func Test_createFilterExpression(t *testing.T) {
 												Operator: datacomparison.ComparisonOperatorEqual,
 												LeftOperand: datacomparison.Operand{
 													Reference: &datacomparison.Reference{
-														EntityType: datacomparison.EntityTypeDataObject,
-														EntityID:   `{"fullName":"bq-demodata.MASTER_DATA.Sales_CreditCard.State","id":"JJGSpyjrssv94KPk9dNuK","type":"column"}`,
+														EntityType: datacomparison.EntityTypeColumnReferenceByName,
+														EntityID:   `State`,
 													},
 												},
 												RightOperand: datacomparison.Operand{
@@ -103,8 +126,8 @@ func Test_createFilterExpression(t *testing.T) {
 														Operator: datacomparison.ComparisonOperatorEqual,
 														LeftOperand: datacomparison.Operand{
 															Reference: &datacomparison.Reference{
-																EntityType: datacomparison.EntityTypeDataObject,
-																EntityID:   `{"fullName":"bq-demodata.MASTER_DATA.Sales_CreditCard.Currency","id":"JJGSpyjrssv94KPk9dNuJ","type":"column"}`,
+																EntityType: datacomparison.EntityTypeColumnReferenceByName,
+																EntityID:   `Currency`,
 															},
 														},
 														RightOperand: datacomparison.Operand{
