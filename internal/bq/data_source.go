@@ -67,7 +67,6 @@ func NewDataSourceMetaData(_ context.Context, configParams *config.ConfigMap) (*
 					roles.RolesBigQueryFilteredDataViewer.ToDataObjectTypePermission(roles.ServiceBigQuery),
 					roles.RolesBigQueryMetadataViewer.ToDataObjectTypePermission(roles.ServiceBigQuery),
 					roles.RolesBigQueryUser.ToDataObjectTypePermission(roles.ServiceBigQuery),
-					roles.RolesBigQueryCatalogFineGrainedAccess.ToDataObjectTypePermission(roles.ServiceBigQuery),
 				},
 				Children: []string{ds.Table, ds.View},
 			},
@@ -84,7 +83,6 @@ func NewDataSourceMetaData(_ context.Context, configParams *config.ConfigMap) (*
 					roles.RolesBigQueryDataViewer.ToDataObjectTypePermission(roles.ServiceBigQuery),
 					roles.RolesBigQueryFilteredDataViewer.ToDataObjectTypePermission(roles.ServiceBigQuery),
 					roles.RolesBigQueryMetadataViewer.ToDataObjectTypePermission(roles.ServiceBigQuery),
-					roles.RolesBigQueryCatalogFineGrainedAccess.ToDataObjectTypePermission(roles.ServiceBigQuery),
 				},
 				Actions: []*ds.DataObjectTypeAction{
 					{
@@ -123,7 +121,6 @@ func NewDataSourceMetaData(_ context.Context, configParams *config.ConfigMap) (*
 					roles.RolesBigQueryDataViewer.ToDataObjectTypePermission(roles.ServiceBigQuery),
 					roles.RolesBigQueryFilteredDataViewer.ToDataObjectTypePermission(roles.ServiceBigQuery),
 					roles.RolesBigQueryMetadataViewer.ToDataObjectTypePermission(roles.ServiceBigQuery),
-					roles.RolesBigQueryCatalogFineGrainedAccess.ToDataObjectTypePermission(roles.ServiceBigQuery),
 				},
 				Actions: []*ds.DataObjectTypeAction{
 					{
