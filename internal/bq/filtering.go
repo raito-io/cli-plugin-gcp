@@ -280,27 +280,10 @@ func (f *FilterExpressionVisitor) Literal(_ context.Context, l interface{}) erro
 			f.stringBuilder.WriteString(" >= ")
 		}
 	case *datacomparison.Reference:
-		if node.EntityType != datacomparison.EntityTypeDataObject {
-			return fmt.Errorf("unsupported reference entity type: %s", node.EntityType)
-		}
-
-		var object ds.DataObjectReference
-
-		err := json.Unmarshal([]byte(node.EntityID), &object)
+		err := f.visitReference(node)
 		if err != nil {
-			return fmt.Errorf("unmarshal reference entity id: %w", err)
+			return err
 		}
-
-		if object.Type != ds.Column {
-			return fmt.Errorf("unsupported reference entity type: %s", object.Type)
-		}
-
-		parsedDataObject := strings.SplitN(object.FullName, ".", 4)
-		if len(parsedDataObject) != 4 {
-			return fmt.Errorf("unsupported reference entity id: %s", object.FullName)
-		}
-
-		f.stringBuilder.WriteString(parsedDataObject[3])
 	case base.AggregatorOperator:
 		switch node {
 		case base.AggregatorOperatorAnd:
@@ -319,4 +302,35 @@ func (f *FilterExpressionVisitor) Literal(_ context.Context, l interface{}) erro
 	}
 
 	return nil
+}
+
+func (f *FilterExpressionVisitor) visitReference(ref *datacomparison.Reference) error {
+	switch ref.EntityType {
+	case datacomparison.EntityTypeDataObject:
+		var object ds.DataObjectReference
+
+		err := json.Unmarshal([]byte(ref.EntityID), &object)
+		if err != nil {
+			return fmt.Errorf("unmarshal reference entity id: %w", err)
+		}
+
+		if object.Type != ds.Column {
+			return fmt.Errorf("unsupported reference entity type: %s", object.Type)
+		}
+
+		parsedDataObject := strings.SplitN(object.FullName, ".", 4)
+		if len(parsedDataObject) != 4 {
+			return fmt.Errorf("unsupported reference entity id: %s", object.FullName)
+		}
+
+		f.stringBuilder.WriteString(parsedDataObject[3])
+
+		return nil
+	case datacomparison.EntityTypeColumnReferenceByName:
+		f.stringBuilder.WriteString(ref.EntityID)
+
+		return nil
+	default:
+		return fmt.Errorf("unsupported reference entity type: %s", ref.EntityType.String())
+	}
 }
