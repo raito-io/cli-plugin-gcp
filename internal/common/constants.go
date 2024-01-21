@@ -10,6 +10,8 @@ const (
 	ExcludeNonAplicablePermissions = "skip-non-applicable-permissions"
 	GcpRolesToGroupByIdentity      = "gcp-roles-to-group-by-identity"
 	GcpMaskedReader                = "gcp-masked-reader"
+	GcpIncludePaths                = "gcp-include-paths"
+	GcpExcludePaths                = "gcp-exclude-paths"
 
 	BqExcludedDatasets      = "bq-excluded-datasets"
 	BqIncludeHiddenDatasets = "bq-include-hidden-datasets"

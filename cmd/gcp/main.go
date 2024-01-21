@@ -33,6 +33,8 @@ func main() {
 					{Name: common.GsuiteImpersonateSubject, Description: "The Subject email to impersonate when syncing from GSuite", Mandatory: false},
 					{Name: common.GsuiteCustomerId, Description: "The Customer ID for the GSuite account", Mandatory: false},
 					{Name: common.GcpRolesToGroupByIdentity, Description: "The optional comma-separate list of role names. When set, the bindings with these roles will be grouped by identity (user or group) instead of by resource. Note that the resulting Access Controls will not be editable from Raito Cloud. This can be used to lower the amount of imported Access Controls for roles like 'roles/owner' and 'roles/bigquery.dataOwner'.", Mandatory: false},
+					{Name: common.GcpIncludePaths, Description: "Optional comma-separated list of paths to include. If specified, only these paths will be handled. For example: /folder1/subfolder,/folder2", Mandatory: false},
+					{Name: common.GcpExcludePaths, Description: "Optional comma-separated list of paths to exclude. If specified, these paths will not be handled. Excludes have preference over includes. For example: /folder2/subfolder", Mandatory: false},
 				},
 			},
 		})

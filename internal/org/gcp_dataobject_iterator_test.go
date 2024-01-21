@@ -3,8 +3,9 @@ package org
 import (
 	"context"
 	"errors"
-	"github.com/raito-io/cli/base/data_source"
 	"testing"
+
+	"github.com/raito-io/cli/base/data_source"
 
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/stretchr/testify/assert"
@@ -24,6 +25,8 @@ func TestGcpDataObjectIterator_DataObjects(t *testing.T) {
 	type fields struct {
 		organisationId string
 		mockSetup      func(projectRepo *mockProjectRepo, folderRepo *mockFolderRepo, orgRepo *mockOrganizationRepo)
+		includes       string
+		excludes       string
 	}
 	tests := []struct {
 		name            string
@@ -245,6 +248,192 @@ func TestGcpDataObjectIterator_DataObjects(t *testing.T) {
 			wantErr: assert.NoError,
 		},
 		{
+			name: "Folder and projects with includes and excludes",
+			fields: fields{
+				organisationId: "orgId",
+				includes:       "/folderName1/,/folderName3/folderName5",
+				excludes:       "/folderName1/projectName2",
+				mockSetup: func(projectRepo *mockProjectRepo, folderRepo *mockFolderRepo, orgRepo *mockOrganizationRepo) {
+					orgRepo.EXPECT().GetOrganization(mock.Anything).Return(&org, nil)
+
+					// Returning a top-level project that won't be in the result
+					projectRepo.EXPECT().GetProjects(mock.Anything, mock.Anything, org.EntryName, &org, mock.Anything).RunAndReturn(func(ctx context.Context, config *data_source.DataSourceSyncConfig, s string, entity *GcpOrgEntity, f func(context.Context, *GcpOrgEntity) error) error {
+						return f(ctx,
+							&GcpOrgEntity{
+								EntryName: "projects/projectId1",
+								Id:        "projectId1",
+								Name:      "projectName1",
+								Type:      "project",
+								Parent:    &org,
+							},
+						)
+					})
+
+					folderRepo.EXPECT().GetFolders(mock.Anything, org.EntryName, &org, mock.Anything).RunAndReturn(func(ctx context.Context, s string, entity *GcpOrgEntity, f func(context.Context, *GcpOrgEntity) error) error {
+						err := f(ctx,
+							&GcpOrgEntity{
+								EntryName: "folders/folder1",
+								Id:        "folderId1",
+								Name:      "folderName1",
+								Type:      "folder",
+								Parent:    &org,
+							},
+						)
+						if err != nil {
+							return err
+						}
+
+						err = f(ctx,
+							&GcpOrgEntity{
+								EntryName: "folders/folder2",
+								Id:        "folderId2",
+								Name:      "folderName2",
+								Type:      "folder",
+								Parent:    &org,
+							},
+						)
+						if err != nil {
+							return err
+						}
+
+						return f(ctx,
+							&GcpOrgEntity{
+								EntryName: "folders/folder3",
+								Id:        "folderId3",
+								Name:      "folderName3",
+								Type:      "folder",
+								Parent:    &org,
+							},
+						)
+					})
+
+					projectRepo.EXPECT().GetProjects(mock.Anything, mock.Anything, "folders/folder1", &GcpOrgEntity{EntryName: "folders/folder1", Id: "folderId1", Name: "folderName1", Type: "folder", Parent: &org}, mock.Anything).RunAndReturn(func(ctx context.Context, config *data_source.DataSourceSyncConfig, s string, entity *GcpOrgEntity, f func(context.Context, *GcpOrgEntity) error) error {
+						f(ctx,
+							&GcpOrgEntity{
+								EntryName: "projects/projectId2",
+								Id:        "projectId2",
+								Name:      "projectName2",
+								Type:      "project",
+								Parent:    &GcpOrgEntity{EntryName: "folders/folder1", Id: "folderId1", Name: "folderName1", Type: "folder", Parent: &org},
+							},
+						)
+
+						return f(ctx,
+							&GcpOrgEntity{
+								EntryName: "projects/projectId3",
+								Id:        "projectId3",
+								Name:      "projectName3",
+								Type:      "project",
+								Parent:    &GcpOrgEntity{EntryName: "folders/folder1", Id: "folderId1", Name: "folderName1", Type: "folder", Parent: &org},
+							},
+						)
+					})
+
+					folderRepo.EXPECT().GetFolders(mock.Anything, "folders/folder1", &GcpOrgEntity{EntryName: "folders/folder1", Id: "folderId1", Name: "folderName1", Type: "folder", Parent: &org}, mock.Anything).RunAndReturn(func(ctx context.Context, s string, entity *GcpOrgEntity, f func(context.Context, *GcpOrgEntity) error) error {
+						return f(ctx,
+							&GcpOrgEntity{
+								EntryName: "folders/folder4",
+								Id:        "folderId4",
+								Name:      "folderName4",
+								Type:      "folder",
+								Parent:    &GcpOrgEntity{EntryName: "folders/folder1", Id: "folderId1", Name: "folderName1", Type: "folder", Parent: &org},
+							},
+						)
+					})
+
+					folderRepo.EXPECT().GetFolders(mock.Anything, "folders/folder4", &GcpOrgEntity{EntryName: "folders/folder4", Id: "folderId4", Name: "folderName4", Type: "folder", Parent: &GcpOrgEntity{EntryName: "folders/folder1", Id: "folderId1", Name: "folderName1", Type: "folder", Parent: &org}}, mock.Anything).RunAndReturn(func(ctx context.Context, s string, entity *GcpOrgEntity, f func(context.Context, *GcpOrgEntity) error) error {
+						return nil
+					})
+
+					projectRepo.EXPECT().GetProjects(mock.Anything, mock.Anything, "folders/folder4", &GcpOrgEntity{EntryName: "folders/folder4", Id: "folderId4", Name: "folderName4", Type: "folder", Parent: &GcpOrgEntity{EntryName: "folders/folder1", Id: "folderId1", Name: "folderName1", Type: "folder", Parent: &org}}, mock.Anything).RunAndReturn(func(ctx context.Context, config *data_source.DataSourceSyncConfig, s string, entity *GcpOrgEntity, f func(context.Context, *GcpOrgEntity) error) error {
+						return nil
+					})
+
+					projectRepo.EXPECT().GetProjects(mock.Anything, mock.Anything, "folders/folder3", &GcpOrgEntity{EntryName: "folders/folder3", Id: "folderId3", Name: "folderName3", Type: "folder", Parent: &org}, mock.Anything).RunAndReturn(func(ctx context.Context, config *data_source.DataSourceSyncConfig, s string, entity *GcpOrgEntity, f func(context.Context, *GcpOrgEntity) error) error {
+						return f(ctx, &GcpOrgEntity{
+							EntryName: "projects/projectId4",
+							Id:        "projectId4",
+							Name:      "projectName4",
+							Type:      "project",
+							Parent:    &GcpOrgEntity{EntryName: "folders/folder3", Id: "folderId3", Name: "folderName3", Type: "folder", Parent: &org},
+						})
+					})
+
+					folderRepo.EXPECT().GetFolders(mock.Anything, "folders/folder3", &GcpOrgEntity{EntryName: "folders/folder3", Id: "folderId3", Name: "folderName3", Type: "folder", Parent: &org}, mock.Anything).RunAndReturn(func(ctx context.Context, s string, entity *GcpOrgEntity, f func(context.Context, *GcpOrgEntity) error) error {
+						return f(ctx,
+							&GcpOrgEntity{
+								EntryName: "folders/folder5",
+								Id:        "folderId5",
+								Name:      "folderName5",
+								Type:      "folder",
+								Parent:    &GcpOrgEntity{EntryName: "folders/folder3", Id: "folderId3", Name: "folderName3", Type: "folder", Parent: &org},
+							},
+						)
+					})
+
+					folderRepo.EXPECT().GetFolders(mock.Anything, "folders/folder5", &GcpOrgEntity{EntryName: "folders/folder5", Id: "folderId5", Name: "folderName5", Type: "folder", Parent: &GcpOrgEntity{EntryName: "folders/folder3", Id: "folderId3", Name: "folderName3", Type: "folder", Parent: &org}}, mock.Anything).RunAndReturn(func(ctx context.Context, s string, entity *GcpOrgEntity, f func(context.Context, *GcpOrgEntity) error) error {
+						return nil
+					})
+
+					projectRepo.EXPECT().GetProjects(mock.Anything, mock.Anything, "folders/folder5", &GcpOrgEntity{EntryName: "folders/folder5", Id: "folderId5", Name: "folderName5", Type: "folder", Parent: &GcpOrgEntity{EntryName: "folders/folder3", Id: "folderId3", Name: "folderName3", Type: "folder", Parent: &org}}, mock.Anything).RunAndReturn(func(ctx context.Context, config *data_source.DataSourceSyncConfig, s string, entity *GcpOrgEntity, f func(context.Context, *GcpOrgEntity) error) error {
+						return f(ctx, &GcpOrgEntity{
+							EntryName: "projects/projectId5",
+							Id:        "projectId5",
+							Name:      "projectName5",
+							Type:      "project",
+							Parent:    &GcpOrgEntity{EntryName: "folders/folder5", Id: "folderId5", Name: "folderName5", Type: "folder", Parent: &GcpOrgEntity{EntryName: "folders/folder3", Id: "folderId3", Name: "folderName3", Type: "folder", Parent: &org}},
+						})
+					})
+				},
+			},
+			expectedObjects: []*GcpOrgEntity{
+				&org,
+				{
+					EntryName: "folders/folder1",
+					Id:        "folderId1",
+					Name:      "folderName1",
+					Type:      "folder",
+					Parent:    &org,
+				},
+				{
+					EntryName: "folders/folder4",
+					Id:        "folderId4",
+					Name:      "folderName4",
+					Type:      "folder",
+					Parent:    &GcpOrgEntity{EntryName: "folders/folder1", Id: "folderId1", Name: "folderName1", Type: "folder", Parent: &org},
+				},
+				{
+					EntryName: "projects/projectId3",
+					Id:        "projectId3",
+					Name:      "projectName3",
+					Type:      "project",
+					Parent:    &GcpOrgEntity{EntryName: "folders/folder1", Id: "folderId1", Name: "folderName1", Type: "folder", Parent: &org},
+				},
+				{
+					EntryName: "folders/folder3",
+					Id:        "folderId3",
+					Name:      "folderName3",
+					Type:      "folder",
+					Parent:    &org,
+				},
+				{
+					EntryName: "folders/folder5",
+					Id:        "folderId5",
+					Name:      "folderName5",
+					Type:      "folder",
+					Parent:    &GcpOrgEntity{EntryName: "folders/folder3", Id: "folderId3", Name: "folderName3", Type: "folder", Parent: &org},
+				},
+				{
+					EntryName: "projects/projectId5",
+					Id:        "projectId5",
+					Name:      "projectName5",
+					Type:      "project",
+					Parent:    &GcpOrgEntity{EntryName: "folders/folder5", Id: "folderId5", Name: "folderName5", Type: "folder", Parent: &GcpOrgEntity{EntryName: "folders/folder3", Id: "folderId3", Name: "folderName3", Type: "folder", Parent: &org}},
+				},
+			},
+			wantErr: assert.NoError,
+		},
+		{
 			name: "processing errors",
 			fields: fields{
 				organisationId: "orgId",
@@ -288,7 +477,7 @@ func TestGcpDataObjectIterator_DataObjects(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			iterator, projectRepo, folderRepo, orgRepo := createGcpDataObjectIteratorTest(t, tt.fields.organisationId)
+			iterator, projectRepo, folderRepo, orgRepo := createGcpDataObjectIteratorTest(t, tt.fields.organisationId, tt.fields.includes, tt.fields.excludes)
 			tt.fields.mockSetup(projectRepo, folderRepo, orgRepo)
 
 			var actualDataObjects []*GcpOrgEntity
@@ -305,14 +494,14 @@ func TestGcpDataObjectIterator_DataObjects(t *testing.T) {
 	}
 }
 
-func createGcpDataObjectIteratorTest(t *testing.T, organisationId string) (*GcpDataObjectIterator, *mockProjectRepo, *mockFolderRepo, *mockOrganizationRepo) {
+func createGcpDataObjectIteratorTest(t *testing.T, organisationId, includes, excludes string) (*GcpDataObjectIterator, *mockProjectRepo, *mockFolderRepo, *mockOrganizationRepo) {
 	t.Helper()
 
 	projectRepo := newMockProjectRepo(t)
 	folderRepo := newMockFolderRepo(t)
 	organisationRepo := newMockOrganizationRepo(t)
 
-	r := NewGcpDataObjectIterator(projectRepo, folderRepo, organisationRepo, &config.ConfigMap{Parameters: map[string]string{common.GcpOrgId: organisationId}})
+	r := NewGcpDataObjectIterator(projectRepo, folderRepo, organisationRepo, &config.ConfigMap{Parameters: map[string]string{common.GcpOrgId: organisationId, common.GcpIncludePaths: includes, common.GcpExcludePaths: excludes}})
 
 	return r, projectRepo, folderRepo, organisationRepo
 }
