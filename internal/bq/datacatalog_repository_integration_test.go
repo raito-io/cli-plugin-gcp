@@ -76,7 +76,7 @@ func TestDataCatalogRepository_UpdateWhatOfDataPolicy(t *testing.T) {
 
 	defer cleanup()
 
-	maskingInformation, err := repo.CreatePolicyTagWithDataPolicy(ctx, "europe-west1", datapoliciespb.DataMaskingPolicy_ALWAYS_NULL, &sync_to_target.AccessProvider{
+	maskingInformation, err := repo.CreatePolicyTagWithDataPolicy(ctx, "eu", datapoliciespb.DataMaskingPolicy_ALWAYS_NULL, &sync_to_target.AccessProvider{
 		Name: "update_what_test",
 	})
 
@@ -169,8 +169,8 @@ func TestDataCatalogRepository_GetLocationsForDataObjects(t *testing.T) {
 
 	// Then
 	require.NoError(t, err)
-	assert.Equal(t, resultDos, map[string]string{"raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide.deaths": "europe-west1"})
-	assert.Equal(t, resultDeletedDos, map[string]string{"raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide.confirmed_cases": "europe-west1"})
+	assert.Equal(t, resultDos, map[string]string{"raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide.deaths": "eu"})
+	assert.Equal(t, resultDeletedDos, map[string]string{"raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide.confirmed_cases": "eu"})
 }
 
 func TestDataCatalogRepository_UpdateAccess(t *testing.T) {
@@ -181,7 +181,7 @@ func TestDataCatalogRepository_UpdateAccess(t *testing.T) {
 
 	defer cleanup()
 
-	maskingInformation, err := repo.CreatePolicyTagWithDataPolicy(ctx, "europe-west1", datapoliciespb.DataMaskingPolicy_ALWAYS_NULL, &sync_to_target.AccessProvider{
+	maskingInformation, err := repo.CreatePolicyTagWithDataPolicy(ctx, "eu", datapoliciespb.DataMaskingPolicy_ALWAYS_NULL, &sync_to_target.AccessProvider{
 		Name: "update_access_test",
 	})
 
