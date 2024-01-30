@@ -3,7 +3,6 @@ package syncer
 import (
 	"context"
 	"errors"
-	"github.com/raito-io/cli/base/data_source"
 	"sort"
 	"testing"
 
@@ -16,12 +15,11 @@ import (
 	"github.com/raito-io/cli-plugin-gcp/internal/common"
 	"github.com/raito-io/cli-plugin-gcp/internal/gcp"
 	"github.com/raito-io/cli-plugin-gcp/internal/iam"
-	"github.com/raito-io/cli-plugin-gcp/internal/org"
 )
 
 func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 	type fields struct {
-		mockSetup func(adminRepoMock *MockAdminRepository, doRepoMock *MockDataObjectRepository)
+		mockSetup func(adminRepoMock *MockAdminRepository)
 	}
 	type args struct {
 		ctx       context.Context
@@ -40,10 +38,9 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 	}{
 		{
 			name: "No users and groups",
-			fields: fields{mockSetup: func(adminRepoMock *MockAdminRepository, doRepoMock *MockDataObjectRepository) {
+			fields: fields{mockSetup: func(adminRepoMock *MockAdminRepository) {
 				adminRepoMock.EXPECT().GetGroups(mock.Anything, mock.Anything).Return(nil)
 				adminRepoMock.EXPECT().GetUsers(mock.Anything, mock.Anything).Return(nil)
-				doRepoMock.EXPECT().Bindings(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 			}},
 			args: args{
 				ctx:       context.Background(),
@@ -53,8 +50,8 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 			wantErr:  assert.NoError,
 		},
 		{
-			name: "Users in gcp and bindings",
-			fields: fields{mockSetup: func(adminRepoMock *MockAdminRepository, doRepoMock *MockDataObjectRepository) {
+			name: "Users in gcp",
+			fields: fields{mockSetup: func(adminRepoMock *MockAdminRepository) {
 				adminRepoMock.EXPECT().GetGroups(mock.Anything, mock.Anything).Return(nil)
 				adminRepoMock.EXPECT().GetUsers(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, fn func(context.Context, *iam.UserEntity) error) error {
 					err := fn(ctx, &iam.UserEntity{ExternalId: "user:dieter@raitio.io", Email: "dieter@raito.io", Name: "Dieter Wachters"})
@@ -63,26 +60,6 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 					}
 
 					return fn(ctx, &iam.UserEntity{ExternalId: "user:ruben@raitio.io", Email: "ruben@raito.io", Name: "Ruben Mennes"})
-				})
-
-				doRepoMock.EXPECT().Bindings(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, config *data_source.DataSourceSyncConfig, f func(context.Context, *org.GcpOrgEntity, []iam.IamBinding) error) error {
-					err := f(ctx, &org.GcpOrgEntity{FullName: "gcp.projectId1", Type: "project", Id: "projectId1"},
-						[]iam.IamBinding{
-							{Member: "user:dieter@raitio.io", Role: "roles/editor", ResourceType: "project", Resource: "projectId1"},
-							{Member: "user:bart@raitio.io", Role: "roles/editor", ResourceType: "project", Resource: "projectId1"},
-						},
-					)
-
-					if err != nil {
-						return err
-					}
-
-					return f(ctx, &org.GcpOrgEntity{FullName: "gcp.folderId1", Type: "folder", Id: "folderId1"},
-						[]iam.IamBinding{
-							{Member: "serviceAccount:serviceAccount123@raito.io", Role: "roles/editor", ResourceType: "folder", Resource: "folderId1"},
-							{Member: "user:bart@raitio.io", Role: "roles/editor", ResourceType: "folder", Resource: "folderId1"},
-						},
-					)
 				})
 			}},
 			args: args{
@@ -104,25 +81,13 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 						Name:       "Ruben Mennes",
 						UserName:   "ruben@raito.io",
 					},
-					{
-						ExternalId: "user:bart@raitio.io",
-						Name:       "bart@raitio.io",
-						UserName:   "bart@raitio.io",
-						Email:      "bart@raitio.io",
-					},
-					{
-						ExternalId: "serviceAccount:serviceAccount123@raito.io",
-						Name:       "serviceAccount123@raito.io",
-						UserName:   "serviceAccount123@raito.io",
-						Email:      "serviceAccount123@raito.io",
-					},
 				},
 			},
 			wantErr: assert.NoError,
 		},
 		{
 			name: "Groups and users in gcp and bindings",
-			fields: fields{mockSetup: func(adminRepoMock *MockAdminRepository, doRepoMock *MockDataObjectRepository) {
+			fields: fields{mockSetup: func(adminRepoMock *MockAdminRepository) {
 				adminRepoMock.EXPECT().GetGroups(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, fn func(context.Context, *iam.GroupEntity) error) error {
 					err := fn(ctx, &iam.GroupEntity{ExternalId: "group:admin@raito.io", Email: "administrators@raito.io", Members: []string{"user:dieter@raito.io", "serviceAccount:sa@raito.io"}})
 					if err != nil {
@@ -143,27 +108,6 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 					}
 
 					return fn(ctx, &iam.UserEntity{ExternalId: "user:ruben@raito.io", Email: "ruben@raito.io", Name: "Ruben Mennes"})
-				})
-
-				// TODO
-				doRepoMock.EXPECT().Bindings(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, config *data_source.DataSourceSyncConfig, f func(context.Context, *org.GcpOrgEntity, []iam.IamBinding) error) error {
-					err := f(ctx, &org.GcpOrgEntity{FullName: "gcp.projectId1", Type: "project", Id: "projectId1"},
-						[]iam.IamBinding{
-							{Member: "user:dieter@raito.io", Role: "roles/editor", ResourceType: "project", Resource: "projectId1"},
-							{Member: "user:bart@raito.io", Role: "roles/editor", ResourceType: "project", Resource: "projectId1"},
-						},
-					)
-
-					if err != nil {
-						return err
-					}
-
-					return f(ctx, &org.GcpOrgEntity{FullName: "gcp.folderId1", Type: "folder", Id: "folderId1"},
-						[]iam.IamBinding{
-							{Member: "serviceAccount:serviceAccount123@raito.io", Role: "roles/editor", ResourceType: "folder", Resource: "folderId1"},
-							{Member: "user:bart@raito.io", Role: "roles/editor", ResourceType: "folder", Resource: "folderId1"},
-						},
-					)
 				})
 			}},
 			args: args{
@@ -200,18 +144,6 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 						GroupExternalIds: []string{"group:engineers@raito.io"},
 					},
 					{
-						ExternalId: "user:bart@raito.io",
-						Name:       "bart@raito.io",
-						UserName:   "bart@raito.io",
-						Email:      "bart@raito.io",
-					},
-					{
-						ExternalId: "serviceAccount:serviceAccount123@raito.io",
-						Name:       "serviceAccount123@raito.io",
-						UserName:   "serviceAccount123@raito.io",
-						Email:      "serviceAccount123@raito.io",
-					},
-					{
 						ExternalId:       "serviceAccount:sa@raito.io",
 						Name:             "sa@raito.io",
 						UserName:         "sa@raito.io",
@@ -224,7 +156,7 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 		},
 		{
 			name: "Error during processing",
-			fields: fields{mockSetup: func(adminRepoMock *MockAdminRepository, doRepoMock *MockDataObjectRepository) {
+			fields: fields{mockSetup: func(adminRepoMock *MockAdminRepository) {
 				adminRepoMock.EXPECT().GetGroups(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, fn func(context.Context, *iam.GroupEntity) error) error {
 					err := fn(ctx, &iam.GroupEntity{ExternalId: "group:admin@raito.io", Email: "administrators@raito.io", Members: []string{"user:dieter@raito.io", "serviceAccount:sa@raito.io"}})
 					if err != nil {
@@ -272,69 +204,11 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 			},
 			wantErr: assert.Error,
 		},
-		{
-			name: "Groups and users in bindings only",
-			fields: fields{mockSetup: func(adminRepoMock *MockAdminRepository, doRepoMock *MockDataObjectRepository) {
-				doRepoMock.EXPECT().Bindings(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, config *data_source.DataSourceSyncConfig, f func(context.Context, *org.GcpOrgEntity, []iam.IamBinding) error) error {
-					err := f(ctx, &org.GcpOrgEntity{FullName: "gcp.projectId1", Type: "project", Id: "projectId1"},
-						[]iam.IamBinding{
-							{Member: "user:dieter@raito.io", Role: "roles/editor", ResourceType: "project", Resource: "projectId1"},
-							{Member: "user:bart@raito.io", Role: "roles/editor", ResourceType: "project", Resource: "projectId1"},
-						},
-					)
-
-					if err != nil {
-						return err
-					}
-
-					return f(ctx, &org.GcpOrgEntity{FullName: "gcp.folderId1", Type: "folder", Id: "folderId1"},
-						[]iam.IamBinding{
-							{Member: "serviceAccount:serviceAccount123@raito.io", Role: "roles/editor", ResourceType: "folder", Resource: "folderId1"},
-							{Member: "group:engineers@raito.io", Role: "roles/editor", ResourceType: "folder", Resource: "folderId1"},
-						},
-					)
-				})
-			}},
-			args: args{
-				ctx:       context.Background(),
-				configMap: &config.ConfigMap{Parameters: map[string]string{}},
-			},
-			expected: expected{
-				groups: []identity_store.Group{
-					{
-						ExternalId:  "group:engineers@raito.io",
-						Name:        "engineers@raito.io",
-						DisplayName: "engineers@raito.io",
-					},
-				},
-				users: []identity_store.User{
-					{
-						ExternalId: "user:dieter@raito.io",
-						Email:      "dieter@raito.io",
-						Name:       "dieter@raito.io",
-						UserName:   "dieter@raito.io",
-					},
-					{
-						ExternalId: "user:bart@raito.io",
-						Name:       "bart@raito.io",
-						UserName:   "bart@raito.io",
-						Email:      "bart@raito.io",
-					},
-					{
-						ExternalId: "serviceAccount:serviceAccount123@raito.io",
-						Name:       "serviceAccount123@raito.io",
-						UserName:   "serviceAccount123@raito.io",
-						Email:      "serviceAccount123@raito.io",
-					},
-				},
-			},
-			wantErr: assert.NoError,
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s, adminRepoMock, doRepoMock := createIdentityStoreSyncer(t, gcp.NewIdentityStoreMetadata())
-			tt.fields.mockSetup(adminRepoMock, doRepoMock)
+			s, adminRepoMock := createIdentityStoreSyncer(t, gcp.NewIdentityStoreMetadata())
+			tt.fields.mockSetup(adminRepoMock)
 
 			isHandlerMock := mocks.NewSimpleIdentityStoreIdentityHandler(t, 1)
 
@@ -352,11 +226,10 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 	}
 }
 
-func createIdentityStoreSyncer(t *testing.T, metadata *identity_store.MetaData) (*IdentityStoreSyncer, *MockAdminRepository, *MockDataObjectRepository) {
+func createIdentityStoreSyncer(t *testing.T, metadata *identity_store.MetaData) (*IdentityStoreSyncer, *MockAdminRepository) {
 	t.Helper()
 
 	adminRepoMock := NewMockAdminRepository(t)
-	dataObjectRepoMock := NewMockDataObjectRepository(t)
 
-	return NewIdentityStoreSyncer(adminRepoMock, dataObjectRepoMock, metadata), adminRepoMock, dataObjectRepoMock
+	return NewIdentityStoreSyncer(adminRepoMock, metadata), adminRepoMock
 }

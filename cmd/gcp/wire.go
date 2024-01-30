@@ -34,11 +34,9 @@ func InitializeIdentityStoreSyncer(ctx context.Context, configMap *config.Config
 		gcp.Wired,
 		syncer.Wired,
 		admin.Wired,
-		org.Wired,
 
 		wire.Bind(new(wrappers.IdentityStoreSyncer), new(*syncer.IdentityStoreSyncer)),
 		wire.Bind(new(syncer.AdminRepository), new(*admin.AdminRepository)),
-		wire.Bind(new(syncer.DataObjectRepository), new(*org.GcpDataObjectIterator)),
 	)
 
 	return nil, nil, nil
