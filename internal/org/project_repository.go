@@ -10,6 +10,7 @@ import (
 	"cloud.google.com/go/resourcemanager/apiv3/resourcemanagerpb"
 	"github.com/googleapis/gax-go/v2"
 	ds "github.com/raito-io/cli/base/data_source"
+	iam2 "google.golang.org/api/iam/v1"
 	"google.golang.org/api/iterator"
 
 	"github.com/raito-io/cli-plugin-gcp/internal/common"
@@ -25,13 +26,20 @@ type projectClient interface {
 	GetIamPolicy(ctx context.Context, req *iampb.GetIamPolicyRequest, opts ...gax.CallOption) (*iampb.Policy, error)
 	SetIamPolicy(ctx context.Context, req *iampb.SetIamPolicyRequest, opts ...gax.CallOption) (*iampb.Policy, error)
 }
-type ProjectRepository struct {
-	projectClient projectClient
+
+type serviceAccountClient interface {
+	List(name string) *iam2.ProjectsServiceAccountsListCall
 }
 
-func NewProjectRepository(projectClient projectClient) *ProjectRepository {
+type ProjectRepository struct {
+	projectClient        projectClient
+	serviceAccountClient serviceAccountClient
+}
+
+func NewProjectRepository(projectClient projectClient, serviceAccountClient serviceAccountClient) *ProjectRepository {
 	return &ProjectRepository{
-		projectClient: projectClient,
+		projectClient:        projectClient,
+		serviceAccountClient: serviceAccountClient,
 	}
 }
 
@@ -98,4 +106,46 @@ func (r *ProjectRepository) UpdateBinding(ctx context.Context, dataObject *iam.D
 	dataObject.ObjectType = "project"
 
 	return updateBindings(ctx, r.projectClient, dataObject, bindingsToAdd, bindingsToDelete)
+}
+
+func (r *ProjectRepository) GetUsers(ctx context.Context, projectName string, fn func(ctx context.Context, entity *iam.UserEntity) error) error {
+	nextPageToken := ""
+
+	project := "projects/" + projectName
+
+	for {
+		saCall := r.serviceAccountClient.List(project).PageSize(64)
+
+		if nextPageToken != "" {
+			saCall = saCall.PageToken(nextPageToken)
+		}
+
+		serviceAccounts, err := saCall.Do()
+		if common.IsGoogle400Error(err) {
+			common.Logger.Warn(fmt.Sprintf("Encountered 4xx error while fetching users: %s", err.Error()))
+
+			continue
+		} else if err != nil {
+			return fmt.Errorf("listing service account: %s", err.Error())
+		}
+
+		for _, sa := range serviceAccounts.Accounts {
+			err = fn(ctx, &iam.UserEntity{
+				ExternalId: fmt.Sprintf("serviceAccount:%s", sa.Email),
+				Name:       sa.Name,
+				Email:      sa.Email,
+			})
+			if err != nil {
+				return err
+			}
+		}
+
+		if serviceAccounts.NextPageToken != "" {
+			nextPageToken = serviceAccounts.NextPageToken
+		} else {
+			break
+		}
+	}
+
+	return nil
 }
