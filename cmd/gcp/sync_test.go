@@ -157,7 +157,7 @@ func IdentityStoreSync(ctx context.Context, config *config.ConfigMap, t *testing
 		},
 		{
 			ExternalId: "serviceAccount:service-account-for-raito-cli@raito-integration-test.iam.gserviceaccount.com",
-			Name:       "service-account-for-raito-cli@raito-integration-test.iam.gserviceaccount.com",
+			Name:       "Service account for raito-cli",
 			UserName:   "service-account-for-raito-cli@raito-integration-test.iam.gserviceaccount.com",
 			Email:      "service-account-for-raito-cli@raito-integration-test.iam.gserviceaccount.com",
 		},

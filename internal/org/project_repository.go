@@ -108,13 +108,11 @@ func (r *ProjectRepository) UpdateBinding(ctx context.Context, dataObject *iam.D
 	return updateBindings(ctx, r.projectClient, dataObject, bindingsToAdd, bindingsToDelete)
 }
 
-func (r *ProjectRepository) GetUsers(ctx context.Context, projectName string, fn func(ctx context.Context, entity *iam.UserEntity) error) error {
+func (r *ProjectRepository) GetUsers(ctx context.Context, projectEntryName string, fn func(ctx context.Context, entity *iam.UserEntity) error) error {
 	nextPageToken := ""
 
-	project := "projects/" + projectName
-
 	for {
-		saCall := r.serviceAccountClient.List(project).PageSize(64)
+		saCall := r.serviceAccountClient.List(projectEntryName).PageSize(64)
 
 		if nextPageToken != "" {
 			saCall = saCall.PageToken(nextPageToken)
@@ -124,7 +122,11 @@ func (r *ProjectRepository) GetUsers(ctx context.Context, projectName string, fn
 		if common.IsGoogle400Error(err) {
 			common.Logger.Warn(fmt.Sprintf("Encountered 4xx error while fetching users: %s", err.Error()))
 
-			continue
+			return nil
+		} else if common.IsGoogle403Error(err) {
+			common.Logger.Warn(fmt.Sprintf("Encountered 403 error while loading service accounts. Make sure Identity and Access Management (IAM) API is enabled and user has iam.serviceAccounts.list permission: %s", err.Error()))
+
+			return nil
 		} else if err != nil {
 			return fmt.Errorf("listing service account: %s", err.Error())
 		}
@@ -132,7 +134,7 @@ func (r *ProjectRepository) GetUsers(ctx context.Context, projectName string, fn
 		for _, sa := range serviceAccounts.Accounts {
 			err = fn(ctx, &iam.UserEntity{
 				ExternalId: fmt.Sprintf("serviceAccount:%s", sa.Email),
-				Name:       sa.Name,
+				Name:       sa.DisplayName,
 				Email:      sa.Email,
 			})
 			if err != nil {
