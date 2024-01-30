@@ -65,7 +65,7 @@ func (r *ProjectRepository) GetProjects(ctx context.Context, _ *ds.DataSourceSyn
 			Name:      project.DisplayName,
 			Id:        project.ProjectId,
 			FullName:  project.ProjectId,
-			Type:      "project",
+			Type:      TypeProject,
 			Parent:    parent,
 			Tags:      project.Labels,
 		}
@@ -99,11 +99,11 @@ func (r *ProjectRepository) GetProjectOwner(ctx context.Context, projectId strin
 }
 
 func (r *ProjectRepository) GetIamPolicy(ctx context.Context, projectId string) ([]iam.IamBinding, error) {
-	return getAndParseBindings(ctx, r.projectClient, "project", projectId)
+	return getAndParseBindings(ctx, r.projectClient, TypeProject, projectId)
 }
 
 func (r *ProjectRepository) UpdateBinding(ctx context.Context, dataObject *iam.DataObjectReference, bindingsToAdd []iam.IamBinding, bindingsToDelete []iam.IamBinding) error {
-	dataObject.ObjectType = "project"
+	dataObject.ObjectType = TypeProject
 
 	return updateBindings(ctx, r.projectClient, dataObject, bindingsToAdd, bindingsToDelete)
 }

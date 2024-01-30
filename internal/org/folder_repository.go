@@ -56,7 +56,7 @@ func (r *FolderRepository) GetFolders(ctx context.Context, parentName string, pa
 			Name:      folder.DisplayName,
 			Id:        id,
 			FullName:  id,
-			Type:      "folder",
+			Type:      TypeFolder,
 			Parent:    parent,
 		}
 
@@ -70,7 +70,7 @@ func (r *FolderRepository) GetFolders(ctx context.Context, parentName string, pa
 }
 
 func (r *FolderRepository) GetIamPolicy(ctx context.Context, folderId string) ([]iam.IamBinding, error) {
-	return getAndParseBindings(ctx, r.folderClient, "folder", folderId)
+	return getAndParseBindings(ctx, r.folderClient, TypeFolder, folderId)
 }
 
 func (r *FolderRepository) UpdateBinding(ctx context.Context, dataObject *iam.DataObjectReference, bindingsToAdd []iam.IamBinding, bindingsToDelete []iam.IamBinding) error {

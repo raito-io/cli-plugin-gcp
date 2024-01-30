@@ -46,7 +46,7 @@ func (r *OrgIdenityStoreSyncer) GetUsers(ctx context.Context, fn func(ctx contex
 	}
 
 	err = r.gcpDataIterator.DataObjects(ctx, &ds.DataSourceSyncConfig{ConfigMap: r.configMap}, func(ctx context.Context, object *GcpOrgEntity) error {
-		if object.Type == "project" {
+		if object.Type == TypeProject {
 			getUserErr := r.projectRepo.GetUsers(ctx, object.Name, fn)
 			if getUserErr != nil {
 				return fmt.Errorf("get users in project %s: %w", object.Name, getUserErr)
@@ -63,5 +63,10 @@ func (r *OrgIdenityStoreSyncer) GetUsers(ctx context.Context, fn func(ctx contex
 }
 
 func (r *OrgIdenityStoreSyncer) GetGroups(ctx context.Context, fn func(ctx context.Context, entity *iam.GroupEntity) error) error {
-	return r.adminRepo.GetGroups(ctx, fn)
+	err := r.adminRepo.GetGroups(ctx, fn)
+	if err != nil {
+		return fmt.Errorf("get groups in google admin: %w", err)
+	}
+
+	return nil
 }
