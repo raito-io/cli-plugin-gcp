@@ -241,10 +241,6 @@ func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessPro
 	return merr
 }
 
-func (a *AccessSyncer) SyncAccessAsCodeToTarget(_ context.Context, _ *importer.AccessProviderImport, _ string, _ *config.ConfigMap) error {
-	return fmt.Errorf("access as code is not yet supported by this plugin")
-}
-
 func (a *AccessSyncer) ConvertBindingsToAccessProviders(ctx context.Context, configMap *config.ConfigMap, bindings []iam.IamBinding) ([]*exporter.AccessProvider, error) {
 	rolesToGroupByIdentity := set.NewSet[string]()
 
