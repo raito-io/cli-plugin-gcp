@@ -135,7 +135,7 @@ func (r *GcpDataObjectIterator) UpdateBindings(ctx context.Context, dataObject *
 }
 
 func (r *GcpDataObjectIterator) DataSourceType() string {
-	return "organization"
+	return TypeOrg
 }
 
 func (r *GcpDataObjectIterator) sync(ctx context.Context, config *ds.DataSourceSyncConfig, fn func(ctx context.Context, dataObject *GcpOrgEntity) error) error {
@@ -225,11 +225,11 @@ func (r *GcpDataObjectIterator) syncFolder(ctx context.Context, config *ds.DataS
 
 func (r *GcpDataObjectIterator) getIamRepository(resourceType string) iamRepo {
 	switch resourceType {
-	case "project":
+	case TypeProject:
 		return r.projectRepo
-	case "folder":
+	case TypeFolder:
 		return r.folderRepo
-	case "organization":
+	case TypeOrg:
 		return r.organizationRepo
 	default:
 		return nil

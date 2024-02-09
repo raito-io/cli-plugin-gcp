@@ -56,13 +56,13 @@ func (r *OrganizationRepository) GetOrganization(ctx context.Context) (*GcpOrgEn
 		Name:      displayname,
 		Id:        name,
 		FullName:  name,
-		Type:      "organization",
+		Type:      TypeOrg,
 		Parent:    nil,
 	}, nil
 }
 
 func (r *OrganizationRepository) GetIamPolicy(ctx context.Context, _ string) ([]iam.IamBinding, error) {
-	bindings, err := getAndParseBindings(ctx, r.organizationClient, "organization", r.organizationId)
+	bindings, err := getAndParseBindings(ctx, r.organizationClient, TypeOrg, r.organizationId)
 	if err != nil {
 		return nil, err
 	}

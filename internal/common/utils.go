@@ -29,3 +29,16 @@ func IsGoogle400Error(err error) bool {
 
 	return false
 }
+
+func IsGoogle403Error(err error) bool {
+	var apiError *googleapi.Error
+	if !errors.As(err, &apiError) {
+		return false
+	}
+
+	if apiError.Code == 403 {
+		return true
+	}
+
+	return false
+}
