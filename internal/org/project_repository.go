@@ -132,9 +132,19 @@ func (r *ProjectRepository) GetUsers(ctx context.Context, projectEntryName strin
 		}
 
 		for _, sa := range serviceAccounts.Accounts {
+			name := sa.DisplayName
+
+			if name == "" {
+				if sa.Name != "" {
+					name = sa.Name
+				} else {
+					name = sa.Email
+				}
+			}
+
 			err = fn(ctx, &iam.UserEntity{
 				ExternalId: fmt.Sprintf("serviceAccount:%s", sa.Email),
-				Name:       sa.DisplayName,
+				Name:       name,
 				Email:      sa.Email,
 			})
 			if err != nil {
