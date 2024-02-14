@@ -523,8 +523,14 @@ func (c *Repository) CreateOrUpdateFilter(ctx context.Context, filter *BQFilter)
 		granteeList = append(granteeList, fmt.Sprintf("'group:%s'", g))
 	}
 
-	queryStr := fmt.Sprintf("CREATE OR REPLACE ROW ACCESS POLICY `%s` ON `%s`.`%s`.`%s` GRANT TO (%s) FILTER USING (%s);",
-		filter.FilterName, filter.Table.Project, filter.Table.Dataset, filter.Table.Table, strings.Join(granteeList, ", "), filter.FilterExpression)
+	var grantStatement string
+
+	if len(granteeList) > 0 {
+		grantStatement = "GRANT TO (" + strings.Join(granteeList, ", ") + ")"
+	}
+
+	queryStr := fmt.Sprintf("CREATE OR REPLACE ROW ACCESS POLICY `%s` ON `%s`.`%s`.`%s` %s FILTER USING (%s);",
+		filter.FilterName, filter.Table.Project, filter.Table.Dataset, filter.Table.Table, grantStatement, filter.FilterExpression)
 	query := c.client.Query(queryStr)
 	common.Logger.Debug(fmt.Sprintf("Executing query: %s", queryStr))
 
