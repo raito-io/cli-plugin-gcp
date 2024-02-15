@@ -101,9 +101,7 @@ func (s *BqFilteringService) ImportFilters(ctx context.Context, config *ds.DataS
 }
 
 func (s *BqFilteringService) ExportFilter(ctx context.Context, accessProvider *sync_to_target.AccessProvider, accessProviderFeedbackHandler wrappers.AccessProviderFeedbackHandler) (*string, error) {
-	if len(accessProvider.What) == 0 {
-		// Probably a filter on a deleted data object. We can safely ignore this.
-
+	if len(accessProvider.What) == 0 { // Probably a filter on a deleted data object. We can safely ignore this.
 		err := accessProviderFeedbackHandler.AddAccessProviderFeedback(sync_to_target.AccessProviderSyncFeedback{
 			AccessProvider: accessProvider.Id,
 		})
@@ -251,6 +249,7 @@ func (f *FilterExpressionVisitor) EnterExpressionElement(_ context.Context, elem
 		if f.binaryExpressionLevel > 0 && node.Literal == nil {
 			f.stringBuilder.WriteString("(")
 		}
+
 		f.binaryExpressionLevel++
 	}
 
