@@ -505,7 +505,11 @@ func (c *Repository) ListFilters(ctx context.Context, table *org.GcpOrgEntity, f
 
 		return nil
 	})
-	if err != nil {
+	if common.IsGoogle400Error(err) {
+		common.Logger.Warn(fmt.Sprintf("Encountered 4xx error while querying filters on table %s: %s", table.FullName, err.Error()))
+
+		return nil
+	} else if err != nil {
 		return fmt.Errorf("list row access policies: %w", err)
 	}
 
