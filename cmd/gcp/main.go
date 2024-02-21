@@ -36,6 +36,7 @@ func main() {
 					{Name: common.GcpIncludePaths, Description: "Optional comma-separated list of paths to include. If specified, only these paths will be handled. For example: /folder1/subfolder,/folder2", Mandatory: false},
 					{Name: common.GcpExcludePaths, Description: "Optional comma-separated list of paths to exclude. If specified, these paths will not be handled. Excludes have preference over includes. For example: /folder2/subfolder", Mandatory: false},
 				},
+				TagSource: common.TagSource,
 			},
 		})
 

@@ -14,7 +14,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.21'
+          go-version: '1.22'
           cache: true
           check-latest: true
           cache-dependency-path: "**/*.sum"
@@ -28,7 +28,7 @@ jobs:
       - name: Lint
         uses: golangci/golangci-lint-action@v3
         with:
-          version: v1.55.1
+          version: v1.56.1
 
       - name: Generate credentials file
         run: | 
