@@ -36,6 +36,7 @@ func main() {
 					{Name: common.BqDataUsageWindow, Description: "The maximum number of days of BQ usage data to retrieve. Default and maximum is 90 days. ", Mandatory: false},
 					{Name: common.GcpRolesToGroupByIdentity, Description: "The optional comma-separate list of role names. When set, the bindings with these roles will be grouped by identity (user or group) instead of by resource. Note that the resulting Access Controls will not be editable from Raito Cloud. This can be used to lower the amount of imported Access Controls for roles like 'roles/bigquery.dataOwner'.", Mandatory: false},
 				},
+				TagSource: common.TagSource,
 			},
 		})
 

@@ -237,6 +237,7 @@ func (f *FilterExpressionVisitor) EnterExpressionElement(_ context.Context, elem
 		if f.binaryExpressionLevel > 0 && node.Literal == nil {
 			f.stringBuilder.WriteString("(")
 		}
+
 		f.binaryExpressionLevel++
 	}
 
