@@ -505,7 +505,11 @@ func (c *Repository) ListFilters(ctx context.Context, table *org.GcpOrgEntity, f
 
 		return nil
 	})
-	if err != nil {
+	if common.IsGoogle400Error(err) {
+		common.Logger.Warn(fmt.Sprintf("Encountered 4xx error while querying filters on table %s: %s", table.FullName, err.Error()))
+
+		return nil
+	} else if err != nil {
 		return fmt.Errorf("list row access policies: %w", err)
 	}
 
@@ -523,8 +527,14 @@ func (c *Repository) CreateOrUpdateFilter(ctx context.Context, filter *BQFilter)
 		granteeList = append(granteeList, fmt.Sprintf("'group:%s'", g))
 	}
 
-	queryStr := fmt.Sprintf("CREATE OR REPLACE ROW ACCESS POLICY `%s` ON `%s`.`%s`.`%s` GRANT TO (%s) FILTER USING (%s);",
-		filter.FilterName, filter.Table.Project, filter.Table.Dataset, filter.Table.Table, strings.Join(granteeList, ", "), filter.FilterExpression)
+	var grantStatement string
+
+	if len(granteeList) > 0 {
+		grantStatement = "GRANT TO (" + strings.Join(granteeList, ", ") + ")"
+	}
+
+	queryStr := fmt.Sprintf("CREATE OR REPLACE ROW ACCESS POLICY `%s` ON `%s`.`%s`.`%s` %s FILTER USING (%s);",
+		filter.FilterName, filter.Table.Project, filter.Table.Dataset, filter.Table.Table, grantStatement, filter.FilterExpression)
 	query := c.client.Query(queryStr)
 	common.Logger.Debug(fmt.Sprintf("Executing query: %s", queryStr))
 

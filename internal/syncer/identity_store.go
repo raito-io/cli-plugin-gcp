@@ -3,20 +3,16 @@ package syncer
 import (
 	"context"
 	"fmt"
-	"strings"
-
-	"github.com/raito-io/cli/base/data_source"
 
 	"github.com/raito-io/golang-set/set"
 
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/raito-io/cli/base/wrappers"
 
+	is "github.com/raito-io/cli/base/identity_store"
+
 	"github.com/raito-io/cli-plugin-gcp/internal/common"
 	"github.com/raito-io/cli-plugin-gcp/internal/iam"
-	"github.com/raito-io/cli-plugin-gcp/internal/org"
-
-	is "github.com/raito-io/cli/base/identity_store"
 )
 
 //go:generate go run github.com/vektra/mockery/v2 --name=AdminRepository --with-expecter --inpackage
@@ -25,21 +21,14 @@ type AdminRepository interface {
 	GetGroups(ctx context.Context, fn func(ctx context.Context, entity *iam.GroupEntity) error) error
 }
 
-//go:generate go run github.com/vektra/mockery/v2 --name=DataObjectRepository --with-expecter --inpackage
-type DataObjectRepository interface {
-	Bindings(ctx context.Context, config *data_source.DataSourceSyncConfig, fn func(ctx context.Context, dataObject *org.GcpOrgEntity, bindings []iam.IamBinding) error) error
-}
-
 type IdentityStoreSyncer struct {
 	adminRepository AdminRepository
-	dataObjectRepo  DataObjectRepository
 	metadata        *is.MetaData
 }
 
-func NewIdentityStoreSyncer(adminRepo AdminRepository, dataObjectRepo DataObjectRepository, isMetadata *is.MetaData) *IdentityStoreSyncer {
+func NewIdentityStoreSyncer(adminRepo AdminRepository, isMetadata *is.MetaData) *IdentityStoreSyncer {
 	return &IdentityStoreSyncer{
 		adminRepository: adminRepo,
-		dataObjectRepo:  dataObjectRepo,
 		metadata:        isMetadata,
 	}
 }
@@ -51,9 +40,6 @@ func (s *IdentityStoreSyncer) GetIdentityStoreMetaData(_ context.Context, _ *con
 }
 
 func (s *IdentityStoreSyncer) SyncIdentityStore(ctx context.Context, identityHandler wrappers.IdentityStoreIdentityHandler, configMap *config.ConfigMap) error {
-	groups := map[string]*is.Group{}
-	userIds := set.NewSet[string]()
-
 	if configMap.GetBoolWithDefault(common.GsuiteIdentityStoreSync, false) {
 		// get groups and make a membership map key: ID of user/group, value array of Group IDs it is member of
 		common.Logger.Info("Syncing GCP groups")
@@ -61,7 +47,7 @@ func (s *IdentityStoreSyncer) SyncIdentityStore(ctx context.Context, identityHan
 		var groupMembership map[string]set.Set[string]
 		var err error
 
-		groupMembership, groups, err = s.syncGcpGroups(ctx, identityHandler)
+		groupMembership, _, err = s.syncGcpGroups(ctx, identityHandler)
 		if err != nil {
 			return err
 		}
@@ -69,80 +55,10 @@ func (s *IdentityStoreSyncer) SyncIdentityStore(ctx context.Context, identityHan
 		// get GCP users
 		common.Logger.Info("Syncing GCP users")
 
-		userIds, err = s.syncGcpUsers(ctx, identityHandler, groupMembership)
+		_, err = s.syncGcpUsers(ctx, identityHandler, groupMembership)
 		if err != nil {
 			return err
 		}
-	}
-	// Load users and groups from binding
-	common.Logger.Info("Syncing groups and users from bindings in gcp")
-
-	err := s.syncBindingUsersAndGroups(ctx, configMap, identityHandler, userIds, groups)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (s *IdentityStoreSyncer) syncBindingUsersAndGroups(ctx context.Context, configMap *config.ConfigMap, identityHandler wrappers.IdentityStoreIdentityHandler, userIds set.Set[string], groups map[string]*is.Group) error {
-	err := s.dataObjectRepo.Bindings(ctx, &data_source.DataSourceSyncConfig{ConfigMap: configMap}, func(ctx context.Context, dataObject *org.GcpOrgEntity, bindings []iam.IamBinding) error {
-		for _, binding := range bindings {
-			memberParts := strings.SplitN(binding.Member, ":", 2)
-			email := memberParts[1]
-			memberPrefix := memberParts[0]
-
-			switch memberPrefix {
-			case "user", "serviceAccount":
-				if userIds.Contains(binding.Member) {
-					continue
-				}
-
-				userIds.Add(binding.Member)
-
-				common.Logger.Debug(fmt.Sprintf("Found new user %q in bindings", binding.Member))
-
-				user := is.User{
-					ExternalId: binding.Member,
-					Name:       email,
-					UserName:   email,
-					Email:      email,
-				}
-
-				err := identityHandler.AddUsers(&user)
-				if err != nil {
-					common.Logger.Error(fmt.Sprintf("Failed to add user %q: %s", binding.Member, err.Error()))
-				}
-			case "group":
-				if _, found := groups[binding.Member]; found {
-					continue
-				}
-
-				group := is.Group{
-					ExternalId:  binding.Member,
-					Name:        email,
-					DisplayName: email,
-				}
-
-				groups[binding.Member] = &group
-
-				common.Logger.Debug(fmt.Sprintf("Found new group %q in bindings", binding.Member))
-
-				err := identityHandler.AddGroups(&group)
-				if err != nil {
-					common.Logger.Error(fmt.Sprintf("Failed to add group %q: %s", binding.Member, err.Error()))
-				}
-			case "special_group":
-				common.Logger.Info(fmt.Sprintf("Ignore special group %q", binding.Member))
-			default:
-				common.Logger.Warn(fmt.Sprintf("Ignore unknown member type: %s", binding.Member))
-			}
-		}
-
-		return nil
-	})
-	if err != nil {
-		return fmt.Errorf("load users and groups from binding: %w", err)
 	}
 
 	return nil

@@ -862,6 +862,103 @@ func TestRepository_CreateAndDeleteFilter(t *testing.T) {
 	})
 }
 
+func TestRepository_CreateAndDeleteFilter_noGrantees(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	repository, _, _, cleanup, err := createRepository(ctx, t)
+	require.NoError(t, err)
+
+	defer cleanup()
+
+	table := BQReferencedTable{
+		Project: "raito-integration-test",
+		Dataset: "public_dataset",
+		Table:   "covid_19_geographic_distribution_worldwide",
+	}
+
+	filterName := "covid_bel_2"
+
+	t.Run("Create filter", func(t *testing.T) {
+		err = repository.CreateOrUpdateFilter(ctx, &BQFilter{
+			Table:            table,
+			FilterExpression: "country_territory_code = \"BEL\"",
+			FilterName:       filterName,
+		})
+
+		require.NoError(t, err)
+	})
+
+	t.Run("List created filter", func(t *testing.T) {
+		foundFilter := false
+
+		err := repository.ListFilters(ctx, &org.GcpOrgEntity{
+			Id:       "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide",
+			Name:     "covid_19_geographic_distribution_worldwide",
+			FullName: "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide",
+			Type:     "table",
+			Location: "europe-west1",
+			Parent: &org.GcpOrgEntity{
+				Id:          "raito-integration-test.public_dataset",
+				Name:        "public_dataset",
+				FullName:    "raito-integration-test.public_dataset",
+				Type:        "dataset",
+				Location:    "europe-west1",
+				Description: "",
+				Parent:      repository.Project(),
+			},
+			Tags: map[string]string{"freebqcovid": ""},
+		}, func(ctx context.Context, rap *bigquery.RowAccessPolicy, users []string, groups []string, internalizable bool) error {
+			if rap.RowAccessPolicyReference.PolicyId == filterName {
+				foundFilter = true
+
+				assert.Empty(t, users)
+				assert.Empty(t, groups)
+				assert.Equal(t, "country_territory_code = \"BEL\"", rap.FilterPredicate)
+			}
+
+			return nil
+		})
+
+		require.NoError(t, err)
+		assert.True(t, foundFilter)
+	})
+
+	t.Run("Delete filter", func(t *testing.T) {
+		err = repository.DeleteFilter(ctx, &table, filterName)
+
+		require.NoError(t, err)
+	})
+
+	t.Run("Check if filter is deleted", func(t *testing.T) {
+		err := repository.ListFilters(ctx, &org.GcpOrgEntity{
+			Id:       "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide",
+			Name:     "covid_19_geographic_distribution_worldwide",
+			FullName: "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide",
+			Type:     "table",
+			Location: "europe-west1",
+			Parent: &org.GcpOrgEntity{
+				Id:          "raito-integration-test.public_dataset",
+				Name:        "public_dataset",
+				FullName:    "raito-integration-test.public_dataset",
+				Type:        "dataset",
+				Location:    "europe-west1",
+				Description: "",
+				Parent:      repository.Project(),
+			},
+			Tags: map[string]string{"freebqcovid": ""},
+		}, func(ctx context.Context, rap *bigquery.RowAccessPolicy, users []string, groups []string, internalizable bool) error {
+			if rap.RowAccessPolicyReference.PolicyId == filterName {
+				require.Fail(t, "Filter still exists")
+			}
+
+			return nil
+		})
+
+		require.NoError(t, err)
+	})
+}
+
 func createRepository(ctx context.Context, t *testing.T) (*Repository, *bigquery2.Client, *config.ConfigMap, func(), error) {
 	t.Helper()
 

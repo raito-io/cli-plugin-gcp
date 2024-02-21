@@ -101,6 +101,18 @@ func (s *BqFilteringService) ImportFilters(ctx context.Context, config *ds.DataS
 }
 
 func (s *BqFilteringService) ExportFilter(ctx context.Context, accessProvider *sync_to_target.AccessProvider, accessProviderFeedbackHandler wrappers.AccessProviderFeedbackHandler) (*string, error) {
+	if len(accessProvider.What) == 0 { // Probably a filter on a deleted data object. We can safely ignore this.
+		err := accessProviderFeedbackHandler.AddAccessProviderFeedback(sync_to_target.AccessProviderSyncFeedback{
+			AccessProvider: accessProvider.Id,
+		})
+
+		if err != nil {
+			return nil, fmt.Errorf("add access provider feedback: %w", err)
+		}
+
+		return nil, nil
+	}
+
 	if !(len(accessProvider.What) == 1 && accessProvider.What[0].DataObject.Type == ds.Table) {
 		err := accessProviderFeedbackHandler.AddAccessProviderFeedback(sync_to_target.AccessProviderSyncFeedback{
 			AccessProvider: accessProvider.Id,
@@ -135,7 +147,7 @@ func (s *BqFilteringService) ExportFilter(ctx context.Context, accessProvider *s
 			Table:   table[2],
 		}
 
-		actualNamePtr, externalId, err = s.createOrUpdateMask(ctx, tableReference, accessProvider)
+		actualNamePtr, externalId, err = s.createOrUpdateFilter(ctx, tableReference, accessProvider)
 	}
 
 	var errors []string
@@ -161,7 +173,7 @@ func (s *BqFilteringService) ExportFilter(ctx context.Context, accessProvider *s
 	return externalId, nil
 }
 
-func (s *BqFilteringService) createOrUpdateMask(ctx context.Context, table BQReferencedTable, ap *sync_to_target.AccessProvider) (*string, *string, error) {
+func (s *BqFilteringService) createOrUpdateFilter(ctx context.Context, table BQReferencedTable, ap *sync_to_target.AccessProvider) (*string, *string, error) {
 	var filterExpression string
 
 	if ap.PolicyRule != nil {

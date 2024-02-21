@@ -11,7 +11,6 @@ import (
 	"github.com/raito-io/cli/base/access_provider/sync_from_target"
 	"github.com/raito-io/cli/base/access_provider/sync_to_target"
 	"github.com/raito-io/cli/base/data_source"
-	"github.com/raito-io/cli/base/identity_store"
 	"github.com/raito-io/cli/base/tag"
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/raito-io/cli/base/wrappers/mocks"
@@ -119,29 +118,7 @@ func IdentityStoreSync(ctx context.Context, config *config.ConfigMap, t *testing
 	// Then
 	require.NoError(t, err)
 
-	expectedUsers := []identity_store.User{
-		{
-			ExternalId: "serviceAccount:service-account-for-raito-cli@raito-integration-test.iam.gserviceaccount.com",
-			Name:       "service-account-for-raito-cli@raito-integration-test.iam.gserviceaccount.com",
-			UserName:   "service-account-for-raito-cli@raito-integration-test.iam.gserviceaccount.com",
-			Email:      "service-account-for-raito-cli@raito-integration-test.iam.gserviceaccount.com",
-		},
-		{
-			ExternalId: "user:m_carissa@raito.dev",
-			Name:       "m_carissa@raito.dev",
-			UserName:   "m_carissa@raito.dev",
-			Email:      "m_carissa@raito.dev",
-		}, {
-			ExternalId: "user:d_hayden@raito.dev",
-			Name:       "d_hayden@raito.dev",
-			UserName:   "d_hayden@raito.dev",
-			Email:      "d_hayden@raito.dev",
-		},
-	}
-
-	for _, user := range expectedUsers {
-		assert.Containsf(t, isHandler.Users, user, "User %+v not found", user)
-	}
+	assert.Empty(t, isHandler.Users)
 }
 
 func AccessSync(ctx context.Context, config *config.ConfigMap, t *testing.T) {

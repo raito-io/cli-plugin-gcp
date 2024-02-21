@@ -37,16 +37,12 @@ func InitializeDataSourceSyncer(ctx context.Context, configMap *config.ConfigMap
 
 func InitializeIdentityStoreSyncer(ctx context.Context, configMap *config.ConfigMap) (wrappers.IdentityStoreSyncer, func(), error) {
 	wire.Build(
-		optionSet,
 		bigquery.Wired,
-		org.Wired,
 		admin.Wired,
 		syncer.Wired,
 
 		wire.Bind(new(wrappers.IdentityStoreSyncer), new(*syncer.IdentityStoreSyncer)),
 		wire.Bind(new(syncer.AdminRepository), new(*admin.AdminRepository)),
-		wire.Bind(new(syncer.DataObjectRepository), new(*bigquery.DataObjectIterator)),
-		wire.Bind(new(bigquery.ProjectClient), new(*org.ProjectRepository)),
 	)
 
 	return nil, nil, nil

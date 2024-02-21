@@ -315,7 +315,66 @@ func TestProjectRepository_UpdateBinding(t *testing.T) {
 			})
 		})
 	}
+}
 
+func TestProjectRepository_TestGetUsers(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	repo, _, cleanup, err := createProjectRepository(ctx, t)
+	require.NoError(t, err)
+
+	defer cleanup()
+
+	type args struct {
+		ctx              context.Context
+		projectEntryName string
+	}
+	tests := []struct {
+		name                    string
+		args                    args
+		expectedServiceAccounts []*iam.UserEntity
+		wantErr                 require.ErrorAssertionFunc
+	}{
+		{
+			name: "Load service accounts",
+			args: args{
+				ctx:              context.Background(),
+				projectEntryName: "projects/raito-integration-test",
+			},
+			expectedServiceAccounts: []*iam.UserEntity{
+				{
+					ExternalId: "serviceAccount:service-account-for-raito-cli@raito-integration-test.iam.gserviceaccount.com",
+					Name:       "Service account for raito-cli",
+					Email:      "service-account-for-raito-cli@raito-integration-test.iam.gserviceaccount.com",
+				},
+			},
+			wantErr: require.NoError,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var result []*iam.UserEntity
+
+			err := repo.GetUsers(tt.args.ctx, tt.args.projectEntryName, func(ctx context.Context, entity *iam.UserEntity) error {
+				result = append(result, entity)
+
+				return nil
+			})
+
+			tt.wantErr(t, err)
+
+			if err != nil {
+				return
+			}
+
+			for _, expected := range tt.expectedServiceAccounts {
+				assert.Contains(t, result, expected)
+			}
+		})
+	}
 }
 
 func createProjectRepository(ctx context.Context, t *testing.T) (*ProjectRepository, *config.ConfigMap, func(), error) {
