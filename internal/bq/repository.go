@@ -682,7 +682,9 @@ func (c *Repository) getDataUsage(ctx context.Context, region string, windowStar
 		}
 
 		if err != nil {
-			return fmt.Errorf("query row: %w", err)
+			common.Logger.Warn(fmt.Sprintf("Failed to load usage row: %s", err.Error()))
+
+			continue
 		}
 
 		if row.StartTime > maxTime {
@@ -699,10 +701,10 @@ func (c *Repository) getDataUsage(ctx context.Context, region string, windowStar
 
 		for viewIdx := range allViews {
 			if strings.Contains(row.Query, allViews[viewIdx].FullName) {
-				row.Tables = append(row.Tables, BQReferencedTable{
-					Project: c.projectId,
-					Dataset: strings.Split(allViews[viewIdx].Parent.Id, ".")[1],
-					Table:   allViews[viewIdx].Name,
+				row.Tables = append(row.Tables, BQInformationSchemaReferencedTable{
+					Project: bigquery.NullString{StringVal: c.projectId, Valid: true},
+					Dataset: bigquery.NullString{StringVal: strings.Split(allViews[viewIdx].Parent.Id, ".")[1], Valid: true},
+					Table:   bigquery.NullString{StringVal: allViews[viewIdx].Name, Valid: true},
 				})
 
 				common.Logger.Debug(fmt.Sprintf("Query %q contains view %q, adding a reference to it for usage", row.Query, allViews[viewIdx].FullName))

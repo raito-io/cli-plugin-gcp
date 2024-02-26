@@ -3,6 +3,7 @@ package bigquery
 import (
 	"strings"
 
+	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/bigquery/datapolicies/apiv1/datapoliciespb"
 )
 
@@ -29,13 +30,19 @@ type BQEntity struct {
 }
 
 type BQInformationSchemaEntity struct {
-	CachedQuery   bool                `bigquery:"cache_hit"`
-	User          string              `bigquery:"user_email"`
-	Query         string              `bigquery:"query"`
-	StatementType string              `bigquery:"statement_type"`
-	Tables        []BQReferencedTable `bigquery:"referenced_tables"`
-	StartTime     int64               `bigquery:"start_time"`
-	EndTime       int64               `bigquery:"end_time"`
+	CachedQuery   bool                                 `bigquery:"cache_hit"`
+	User          string                               `bigquery:"user_email"`
+	Query         string                               `bigquery:"query"`
+	StatementType string                               `bigquery:"statement_type"`
+	Tables        []BQInformationSchemaReferencedTable `bigquery:"referenced_tables"`
+	StartTime     int64                                `bigquery:"start_time"`
+	EndTime       int64                                `bigquery:"end_time"`
+}
+
+type BQInformationSchemaReferencedTable struct {
+	Project bigquery.NullString `bigquery:"project_id"`
+	Dataset bigquery.NullString `bigquery:"dataset_id"`
+	Table   bigquery.NullString `bigquery:"table_id"`
 }
 
 type BQReferencedTable struct {

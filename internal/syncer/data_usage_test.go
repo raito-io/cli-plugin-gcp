@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	bigquery2 "cloud.google.com/go/bigquery"
 	"github.com/raito-io/cli/base/access_provider/sync_from_target"
 	"github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/cli/base/data_usage"
@@ -45,11 +46,11 @@ func TestDataUsageSyncer_SyncDataUsage(t *testing.T) {
 
 					dataUsageRepoMock.EXPECT().GetDataUsage(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, _ *time.Time, _ *time.Time, _ *time.Time, f func(context.Context, *bigquery.BQInformationSchemaEntity) error) error {
 						err := f(ctx, &bigquery.BQInformationSchemaEntity{
-							Tables: []bigquery.BQReferencedTable{
+							Tables: []bigquery.BQInformationSchemaReferencedTable{
 								{
-									Project: "project1",
-									Table:   "table1",
-									Dataset: "dataset1",
+									Project: bigquery2.NullString{StringVal: "project1", Valid: true},
+									Table:   bigquery2.NullString{StringVal: "table1", Valid: true},
+									Dataset: bigquery2.NullString{StringVal: "dataset1", Valid: true},
 								},
 							},
 							Query:         "SELECT * FROM `project1`.`dataset1`.`table1`",
