@@ -3,6 +3,7 @@ package syncer
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/raito-io/cli/base/access_provider/sync_from_target"
@@ -66,9 +67,25 @@ func (s *DataUsageSyncer) SyncDataUsage(ctx context.Context, fileCreator wrapper
 		accessedResources := []sync_from_target.WhatItem{}
 
 		for _, rt := range du.Tables {
+			fullnameParts := make([]string, 0, 3)
+
+			if rt.Project.Valid {
+				fullnameParts = append(fullnameParts, rt.Project.String())
+
+				if rt.Dataset.Valid {
+					fullnameParts = append(fullnameParts, rt.Dataset.String())
+
+					if rt.Table.Valid {
+						fullnameParts = append(fullnameParts, rt.Table.String())
+					}
+				}
+			} else {
+				continue
+			}
+
 			accessedResources = append(accessedResources, sync_from_target.WhatItem{
 				DataObject: &data_source.DataObjectReference{
-					FullName: fmt.Sprintf("%s.%s.%s", rt.Project, rt.Dataset, rt.Table),
+					FullName: strings.Join(fullnameParts, "."),
 					Type:     data_source.Table,
 				},
 				Permissions: []string{du.StatementType},
