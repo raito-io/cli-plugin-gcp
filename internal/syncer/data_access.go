@@ -3,6 +3,7 @@ package syncer
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"sync"
 
@@ -475,7 +476,12 @@ func handleErrors(err error, apFeedback map[string]*importer.AccessProviderSyncF
 		common.Logger.Error(fmt.Sprintf("error while updating bindings: %s", err.Error()))
 
 		for _, ap := range aps {
-			apFeedback[ap.Id].Errors = append(apFeedback[ap.Id].Errors, err.Error())
+			msg := err.Error()
+
+			// Avoid duplicate error messages
+			if !slices.Contains(apFeedback[ap.Id].Errors, msg) {
+				apFeedback[ap.Id].Errors = append(apFeedback[ap.Id].Errors, msg)
+			}
 		}
 	}
 }
