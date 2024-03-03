@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"cloud.google.com/go/bigquery/datapolicies/apiv1/datapoliciespb"
-
+	"github.com/raito-io/cli/base/access_provider"
 	ds "github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/cli/base/util/config"
 
@@ -168,6 +168,15 @@ func NewDataSourceMetaData(_ context.Context, configParams *config.ConfigMap) (*
 					Name:            ds.Dataset,
 					DataObjectTypes: []string{ds.Dataset},
 				},
+			},
+		},
+		AccessProviderTypes: []*ds.AccessProviderType{
+			{
+				Type:          access_provider.AclSet,
+				Label:         "IAM Policy",
+				CanBeAssumed:  false,
+				CanBeCreated:  true,
+				IsNamedEntity: false,
 			},
 		},
 	}

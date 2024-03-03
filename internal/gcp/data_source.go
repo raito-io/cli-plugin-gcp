@@ -71,7 +71,7 @@ func NewDataSourceMetaData() *ds.MetaData {
 		AccessProviderTypes: []*ds.AccessProviderType{
 			{
 				Type:          access_provider.AclSet,
-				Label:         access_provider.AclSet,
+				Label:         "IAM Policy",
 				CanBeAssumed:  false,
 				CanBeCreated:  true,
 				IsNamedEntity: false,
