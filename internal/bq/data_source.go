@@ -18,7 +18,7 @@ func NewDataSourceMetaData(_ context.Context, configParams *config.ConfigMap) (*
 	catalogEnabled := configParams.GetBoolWithDefault(common.BqCatalogEnabled, false)
 
 	if catalogEnabled {
-		supportedFeatures = append(supportedFeatures, ds.ColumnMasking) // TODO include row filtering
+		supportedFeatures = append(supportedFeatures, ds.ColumnMasking)
 	}
 
 	metaData := &ds.MetaData{
@@ -178,6 +178,9 @@ func NewDataSourceMetaData(_ context.Context, configParams *config.ConfigMap) (*
 				CanBeCreated:  true,
 				IsNamedEntity: false,
 			},
+		},
+		FilterMetadata: &ds.FilterMetadata{
+			FilterOverridePermissions: []string{roles.RolesBigQueryFilteredDataViewer.Name},
 		},
 	}
 
