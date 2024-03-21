@@ -8,6 +8,8 @@ import (
 
 	importer "github.com/raito-io/cli/base/access_provider/sync_to_target"
 	"github.com/raito-io/cli/base/wrappers/mocks"
+
+	"github.com/raito-io/cli-plugin-gcp/internal/iam"
 )
 
 func TestNoMasking_ExportMasks(t *testing.T) {
@@ -87,6 +89,67 @@ func TestNoMasking_ExportMasks(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ExportMasks() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNoMasking_MaskedBinding(t *testing.T) {
+	type fields struct {
+		organisationId string
+	}
+	type args struct {
+		ctx     context.Context
+		members []string
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    []iam.IamBinding
+		wantErr bool
+	}{
+		{
+			name: "should return a list of masked bindings",
+			fields: fields{
+				organisationId: "test-org",
+			},
+			args: args{
+				ctx: context.Background(),
+				members: []string{
+					"user:<EMAIL>",
+					"serviceAccount:<EMAIL>",
+				},
+			},
+			want: []iam.IamBinding{
+				{
+					Member:       "user:<EMAIL>",
+					Role:         "roles/bigquerydatapolicy.maskedReader",
+					Resource:     "test-org",
+					ResourceType: "organization",
+				},
+				{
+					Member:       "serviceAccount:<EMAIL>",
+					Role:         "roles/bigquerydatapolicy.maskedReader",
+					Resource:     "test-org",
+					ResourceType: "organization",
+				},
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			n := &NoMasking{
+				organisationId: tt.fields.organisationId,
+			}
+			got, err := n.MaskedBinding(tt.args.ctx, tt.args.members)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("MaskedBinding() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("MaskedBinding() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
