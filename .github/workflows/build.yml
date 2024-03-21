@@ -53,6 +53,6 @@ jobs:
 
 
       - name: check test coverage
-        uses: vladopajic/go-test-coverage@v2
+        uses: vladopajic/go-test-coverage@dev
         with:
           config: ./.testcoverage.yml
