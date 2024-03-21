@@ -52,5 +52,4 @@ jobs:
           files: ./coverage.txt,./coverage-sync.txt
 
       - name: check test coverage
-        run: |
-          | go run github.com/vladopajic/go-test-coverage/v2@main --config=./.testcoverage.yml
+        run: go run github.com/vladopajic/go-test-coverage/v2@main --config=./.testcoverage.yml
