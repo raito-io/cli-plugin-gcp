@@ -24,7 +24,7 @@ func NewNoMasking(configmap *config.ConfigMap) *NoMasking {
 	}
 }
 
-func (n *NoMasking) ImportMasks(_ context.Context, _ wrappers.AccessProviderHandler, _ set.Set[string], _ map[string][]string, _ set.Set[string]) error {
+func (n *NoMasking) ImportMasks(_ context.Context, _ wrappers.AccessProviderHandler, _ set.Set[string], _ map[string][]string, _ set.Set[string]) error { // coverage-ignore
 	return errors.New("masking is not supported for GCP")
 }
 
