@@ -46,16 +46,13 @@ jobs:
           GCP_PROJECT_ID: ${{ secrets.gcp_project_id }}
           GCP_ORGANIZATION_ID: ${{ secrets.gcp_organization_id }}
 
-      - name: Test Sync
-        run: make test-sync
-        env:
-          GSUITE_CUSTOMER_ID: ${{ secrets.gsuite_customer_id }}
-          GSUITE_IMPERSONATE_SUBJECT: ${{ secrets.gsuite_impersonate_subject }}
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
-          GCP_PROJECT_ID: ${{ secrets.gcp_project_id }}
-          GCP_ORGANIZATION_ID: ${{ secrets.gcp_organization_id }}
-
       - uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.txt,./coverage-sync.txt
+
+
+      - name: check test coverage
+        uses: vladopajic/go-test-coverage@v2
+        with:
+          config: ./.testcoverage.yml

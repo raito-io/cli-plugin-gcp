@@ -18,11 +18,11 @@ func NewNoFiltering() *NoFiltering {
 	return &NoFiltering{}
 }
 
-func (f *NoFiltering) ImportFilters(_ context.Context, _ *data_source.DataSourceSyncConfig, _ wrappers.AccessProviderHandler, _ set.Set[string]) error {
+func (f *NoFiltering) ImportFilters(_ context.Context, _ *data_source.DataSourceSyncConfig, _ wrappers.AccessProviderHandler, _ set.Set[string]) error { // coverage-ignore
 	return errors.New("filtering is not supported for GCP")
 }
 
-func (f *NoFiltering) ExportFilter(_ context.Context, accessProvider *importer.AccessProvider, accessProviderFeedbackHandler wrappers.AccessProviderFeedbackHandler) (*string, error) {
+func (f *NoFiltering) ExportFilter(_ context.Context, accessProvider *importer.AccessProvider, accessProviderFeedbackHandler wrappers.AccessProviderFeedbackHandler) (*string, error) { // coverage-ignore
 	err := accessProviderFeedbackHandler.AddAccessProviderFeedback(importer.AccessProviderSyncFeedback{
 		AccessProvider: accessProvider.Id,
 		ActualName:     accessProvider.Name,
