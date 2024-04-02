@@ -3,13 +3,13 @@ package syncer
 import (
 	"context"
 	"fmt"
+	"regexp"
 
-	"github.com/raito-io/golang-set/set"
-
+	"github.com/aws/smithy-go/ptr"
+	is "github.com/raito-io/cli/base/identity_store"
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/raito-io/cli/base/wrappers"
-
-	is "github.com/raito-io/cli/base/identity_store"
+	"github.com/raito-io/golang-set/set"
 
 	"github.com/raito-io/cli-plugin-gcp/internal/common"
 	"github.com/raito-io/cli-plugin-gcp/internal/iam"
@@ -83,6 +83,10 @@ func (s *IdentityStoreSyncer) syncGcpUsers(ctx context.Context, identityHandler 
 			user.GroupExternalIds = groupMembership[entity.ExternalId].Slice()
 		}
 
+		if s.userIsServiceAccount(entity) {
+			user.IsMachine = ptr.Bool(true)
+		}
+
 		err := identityHandler.AddUsers(&user)
 		if err != nil {
 			return fmt.Errorf("add user to handler: %w", err)
@@ -96,6 +100,12 @@ func (s *IdentityStoreSyncer) syncGcpUsers(ctx context.Context, identityHandler 
 	}
 
 	return userIds, nil
+}
+
+func (s *IdentityStoreSyncer) userIsServiceAccount(userEntity *iam.UserEntity) bool {
+	serviceAccountEmailRegex := regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.gserviceaccount\.com$`)
+
+	return serviceAccountEmailRegex.MatchString(userEntity.Email)
 }
 
 func (s *IdentityStoreSyncer) syncGcpGroups(ctx context.Context, identityHandler wrappers.IdentityStoreIdentityHandler) (map[string]set.Set[string], map[string]*is.Group, error) {
