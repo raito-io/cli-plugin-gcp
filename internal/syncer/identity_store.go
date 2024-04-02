@@ -15,6 +15,8 @@ import (
 	"github.com/raito-io/cli-plugin-gcp/internal/iam"
 )
 
+var serviceAccountEmailRegex = regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.gserviceaccount\.com$`)
+
 //go:generate go run github.com/vektra/mockery/v2 --name=AdminRepository --with-expecter --inpackage
 type AdminRepository interface {
 	GetUsers(ctx context.Context, fn func(ctx context.Context, entity *iam.UserEntity) error) error
@@ -83,7 +85,7 @@ func (s *IdentityStoreSyncer) syncGcpUsers(ctx context.Context, identityHandler 
 			user.GroupExternalIds = groupMembership[entity.ExternalId].Slice()
 		}
 
-		if s.userIsServiceAccount(entity) {
+		if serviceAccountEmailRegex.MatchString(entity.Email) {
 			user.IsMachine = ptr.Bool(true)
 		}
 
@@ -100,12 +102,6 @@ func (s *IdentityStoreSyncer) syncGcpUsers(ctx context.Context, identityHandler 
 	}
 
 	return userIds, nil
-}
-
-func (s *IdentityStoreSyncer) userIsServiceAccount(userEntity *iam.UserEntity) bool {
-	serviceAccountEmailRegex := regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.gserviceaccount\.com$`)
-
-	return serviceAccountEmailRegex.MatchString(userEntity.Email)
 }
 
 func (s *IdentityStoreSyncer) syncGcpGroups(ctx context.Context, identityHandler wrappers.IdentityStoreIdentityHandler) (map[string]set.Set[string], map[string]*is.Group, error) {
