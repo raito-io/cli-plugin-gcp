@@ -3,17 +3,19 @@ package syncer
 import (
 	"context"
 	"fmt"
+	"regexp"
 
-	"github.com/raito-io/golang-set/set"
-
+	"github.com/aws/smithy-go/ptr"
+	is "github.com/raito-io/cli/base/identity_store"
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/raito-io/cli/base/wrappers"
-
-	is "github.com/raito-io/cli/base/identity_store"
+	"github.com/raito-io/golang-set/set"
 
 	"github.com/raito-io/cli-plugin-gcp/internal/common"
 	"github.com/raito-io/cli-plugin-gcp/internal/iam"
 )
+
+var serviceAccountEmailRegex = regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.gserviceaccount\.com$`)
 
 //go:generate go run github.com/vektra/mockery/v2 --name=AdminRepository --with-expecter --inpackage
 type AdminRepository interface {
@@ -81,6 +83,10 @@ func (s *IdentityStoreSyncer) syncGcpUsers(ctx context.Context, identityHandler 
 
 		if _, f := groupMembership[entity.ExternalId]; f {
 			user.GroupExternalIds = groupMembership[entity.ExternalId].Slice()
+		}
+
+		if serviceAccountEmailRegex.MatchString(entity.Email) {
+			user.IsMachine = ptr.Bool(true)
 		}
 
 		err := identityHandler.AddUsers(&user)

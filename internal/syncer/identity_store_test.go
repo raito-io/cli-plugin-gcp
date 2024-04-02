@@ -6,6 +6,7 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/aws/smithy-go/ptr"
 	"github.com/raito-io/cli/base/identity_store"
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/raito-io/cli/base/wrappers/mocks"
@@ -80,6 +81,55 @@ func TestIdentityStoreSyncer_SyncIdentityStore(t *testing.T) {
 						Email:      "ruben@raito.io",
 						Name:       "Ruben Mennes",
 						UserName:   "ruben@raito.io",
+					},
+				},
+			},
+			wantErr: assert.NoError,
+		},
+		{
+			name: "Service Account users in gcp",
+			fields: fields{mockSetup: func(adminRepoMock *MockAdminRepository) {
+				adminRepoMock.EXPECT().GetGroups(mock.Anything, mock.Anything).Return(nil)
+				adminRepoMock.EXPECT().GetUsers(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, fn func(context.Context, *iam.UserEntity) error) error {
+					err := fn(ctx, &iam.UserEntity{ExternalId: "user:fake_service_account", Email: "service-account@raito.io", Name: "Fake service account"})
+					if err != nil {
+						return err
+					}
+
+					err = fn(ctx, &iam.UserEntity{ExternalId: "user:service_account_1", Email: "113061545108@cloudservices.gserviceaccount.com", Name: "Service account 1"})
+					if err != nil {
+						return err
+					}
+
+					return fn(ctx, &iam.UserEntity{ExternalId: "user:service_account_2", Email: "data-engineer-sync@bq-demodata.iam.gserviceaccount.com", Name: "Service account 2"})
+				})
+			}},
+			args: args{
+				ctx:       context.Background(),
+				configMap: &config.ConfigMap{Parameters: map[string]string{common.GsuiteIdentityStoreSync: "true"}},
+			},
+			expected: expected{
+				groups: []identity_store.Group{},
+				users: []identity_store.User{
+					{
+						ExternalId: "user:fake_service_account",
+						Email:      "service-account@raito.io",
+						Name:       "Fake service account",
+						UserName:   "service-account@raito.io",
+					},
+					{
+						ExternalId: "user:service_account_1",
+						Email:      "113061545108@cloudservices.gserviceaccount.com",
+						Name:       "Service account 1",
+						UserName:   "113061545108@cloudservices.gserviceaccount.com",
+						IsMachine:  ptr.Bool(true),
+					},
+					{
+						ExternalId: "user:service_account_2",
+						Email:      "data-engineer-sync@bq-demodata.iam.gserviceaccount.com",
+						Name:       "Service account 2",
+						UserName:   "data-engineer-sync@bq-demodata.iam.gserviceaccount.com",
+						IsMachine:  ptr.Bool(true),
 					},
 				},
 			},

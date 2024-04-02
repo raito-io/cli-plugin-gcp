@@ -160,6 +160,7 @@ func IdentityStoreSync(ctx context.Context, config *config.ConfigMap, t *testing
 			Name:       "Service account for raito-cli",
 			UserName:   "service-account-for-raito-cli@raito-integration-test.iam.gserviceaccount.com",
 			Email:      "service-account-for-raito-cli@raito-integration-test.iam.gserviceaccount.com",
+			IsMachine:  ptr.Bool(true),
 		},
 	}
 
