@@ -28,5 +28,5 @@ test:
 test-sync:
 	$(gotestsum) --debug --format testname -- -mod=readonly -tags=syncintegration -race -coverpkg=./... -covermode=atomic -coverprofile=coverage-sync.txt ./cmd/...
 
-check-coverage:
+check-coverage: test test-sync
 	$(gocheckcov) --config=./.testcov.yml

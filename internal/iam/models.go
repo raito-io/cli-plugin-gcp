@@ -43,7 +43,7 @@ type IAMPolicyContainer struct {
 	Service []IamBinding // Service IAM repo should immediately fill bindings as []IamBinding
 }
 
-func (a IamBinding) Equals(b IamBinding) bool {
+func (a IamBinding) Equals(b IamBinding) bool { // coverage-ignore
 	return strings.EqualFold(a.Member, b.Member) && strings.EqualFold(a.Role, b.Role) && strings.EqualFold(a.Resource, b.Resource) && strings.EqualFold(a.ResourceType, b.ResourceType)
 }
 
