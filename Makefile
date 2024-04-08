@@ -1,6 +1,9 @@
 GO := go
 
 gotestsum := go run gotest.tools/gotestsum@latest
+gocheckcov := go run github.com/vladopajic/go-test-coverage/v2@latest
+
+.PHONY: generate wire build unit-test lint test test-sync check-coverage
 
 generate:
 	go get github.com/raito-io/enumer
@@ -24,3 +27,6 @@ test:
 
 test-sync:
 	$(gotestsum) --debug --format testname -- -mod=readonly -tags=syncintegration -race -coverpkg=./... -covermode=atomic -coverprofile=coverage-sync.txt ./cmd/...
+
+check-coverage:
+	$(gocheckcov) --config=./.testcoverage.yml
