@@ -4,6 +4,9 @@ on:
     branches:
       - 'main'
   pull_request:
+permissions:
+  id-token: write
+  contents: read
 jobs:
   remove-old-infra:
     uses: ./.github/workflows/destroy-infra.yml
