@@ -5,8 +5,41 @@ on:
       - 'main'
   pull_request:
 jobs:
+  remove-old-infra:
+    uses: ./.github/workflows/destroy-infra.yml
+    with:
+      targetEnvironment: integration_testing
+    secrets: inherit
+
+  setup-infra:
+    uses: ./.github/workflows/generate-infra.yml
+    with:
+      targetEnvironment: integration_testing
+      demo-infra: false
+      testing-infra: true
+    secrets: inherit
+
+    needs:
+      - remove-old-infra
+    if: always()
+
+  generate-usage:
+    uses: ./.github/workflows/generate-usage.yml
+    with:
+      targetEnvironment: integration_testing
+    secrets: inherit
+
+    needs:
+      - setup-infra
+
   build:
+    environment: integration_testing
     runs-on: ubuntu-latest
+
+    needs:
+      - setup-infra
+      - generate-usage
+
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
@@ -28,7 +61,7 @@ jobs:
       - name: Lint
         uses: golangci/golangci-lint-action@v6
         with:
-          version: v1.56.1
+          version: v1.58.1
 
       - name: Generate credentials file
         run: | 
@@ -43,7 +76,7 @@ jobs:
           GSUITE_CUSTOMER_ID: ${{ secrets.gsuite_customer_id }}
           GSUITE_IMPERSONATE_SUBJECT: ${{ secrets.gsuite_impersonate_subject }}
           GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
-          GCP_PROJECT_ID: ${{ secrets.gcp_project_id }}
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT }}
           GCP_ORGANIZATION_ID: ${{ secrets.gcp_organization_id }}
 
       - name: Test Sync
@@ -52,7 +85,7 @@ jobs:
           GSUITE_CUSTOMER_ID: ${{ secrets.gsuite_customer_id }}
           GSUITE_IMPERSONATE_SUBJECT: ${{ secrets.gsuite_impersonate_subject }}
           GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
-          GCP_PROJECT_ID: ${{ secrets.gcp_project_id }}
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT }}
           GCP_ORGANIZATION_ID: ${{ secrets.gcp_organization_id }}
 
       - uses: codecov/codecov-action@v4
