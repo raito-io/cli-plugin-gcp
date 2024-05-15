@@ -18,8 +18,6 @@ jobs:
     uses: ./.github/workflows/generate-infra.yml
     with:
       targetEnvironment: integration_testing
-      demo-infra: false
-      testing-infra: true
     secrets: inherit
 
     needs:
