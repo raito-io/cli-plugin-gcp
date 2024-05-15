@@ -14,6 +14,8 @@ on:
         required: true
       AWS_S3_TERRAFORM_KEY:
         required: true
+      AWS_DYNAMODB_TERRAFORM_TABLE:
+        required: true
       GCP_PROJECT:
         required: true
       GCP_REGION:
@@ -103,10 +105,12 @@ jobs:
             -backend-config=access_key=${AWS_ACCESS_KEY_ID} \
             -backend-config=secret_key=${AWS_SECRET_ACCESS_KEY} \
             -backend-config=token=${AWS_SESSION_TOKEN} \
+            -backend-config=dynamodb_table=${AWS_DYNAMODB_TERRAFORM_TABLE}
         working-directory: .infra/infra
         env:
           AWS_S3_TERRAFORM_BUCKET: ${{ secrets.AWS_S3_TERRAFORM_BUCKET }}
           AWS_S3_TERRAFORM_KEY: ${{ secrets.AWS_S3_TERRAFORM_KEY }}
+          AWS_DYNAMODB_TERRAFORM_TABLE: ${{ secrets.AWS_DYNAMODB_TERRAFORM_TABLE }}
 
       - name: Generate infra
         run: make gen-test-infra

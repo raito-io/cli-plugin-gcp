@@ -146,7 +146,12 @@ func GenerateBigQueryUsage(usageConfig *UsageConfig) error {
 		}
 
 		for _, queryableTable := range queryableTables {
-			numQueries := rand.IntN(10)
+			p := rand.Float64() //Only query 6/10 tables
+			if p < 0.4 {
+				continue
+			}
+
+			numQueries := rand.IntN(5)
 			queryString := fmt.Sprintf("SELECT * FROM %s.%s LIMIT %d", usageConfig.Project.Value, queryableTable, rand.IntN(10)+1)
 
 			for i := 0; i < numQueries; i++ {
