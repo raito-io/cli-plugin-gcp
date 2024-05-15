@@ -61,16 +61,6 @@ jobs:
           role-to-assume: ${{ secrets.AWS_OIDC_DEPLOY_ROLE }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Install Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          check-latest: true
-          cache: true
-
-      - name: Mod Tidy
-        run: go mod tidy
-
       - name: Install Terraform
         uses: hashicorp/setup-terraform@v3
 

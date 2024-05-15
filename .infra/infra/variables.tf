@@ -32,10 +32,10 @@ variable "email_d_hayden" {
 }
 
 variable "email_m_carissa" {
-    type      = string
-    nullable  = false
-    sensitive = false
-    default   = "m_carissa@raito.dev"
+  type      = string
+  nullable  = false
+  sensitive = false
+  default   = "m_carissa@raito.dev"
 }
 
 variable "email_n_nguyen" {
@@ -46,15 +46,15 @@ variable "email_n_nguyen" {
 }
 
 variable "email_group_sales" {
-  type = string
-  nullable = false
+  type      = string
+  nullable  = false
   sensitive = false
-  default = "sales@raito.dev"
+  default   = "sales@raito.dev"
 }
 
 variable "email_group_dev" {
-    type = string
-    nullable = false
-    sensitive = false
-    default = "dev@raito.dev"
+  type      = string
+  nullable  = false
+  sensitive = false
+  default   = "dev@raito.dev"
 }
