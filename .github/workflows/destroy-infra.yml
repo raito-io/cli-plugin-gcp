@@ -110,4 +110,6 @@ jobs:
           TF_VAR_email_n_nguyen: ${{ secrets.GCP_EMAIL_N_NGUYEN }}
           TF_VAR_email_group_sales: ${{ secrets.GCP_EMAIL_GROUP_SALES }}
           TF_VAR_email_group_dev: ${{ secrets.GCP_EMAIL_GROUP_DEV }}
+          TF_VAR_testing_dataset: true
+          TF_VAR_demo_dataset: true
           GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}

@@ -5,6 +5,14 @@ on:
       targetEnvironment:
         required: true
         type: string
+      demo-infra:
+        required: false
+        type: boolean
+        default: true
+      testing-infra:
+        required: false
+        type: boolean
+        default: true
     secrets:
       AWS_OIDC_DEPLOY_ROLE:
         required: true
@@ -125,4 +133,6 @@ jobs:
           TF_VAR_email_n_nguyen: ${{ secrets.GCP_EMAIL_N_NGUYEN }}
           TF_VAR_email_group_sales: ${{ secrets.GCP_EMAIL_GROUP_SALES }}
           TF_VAR_email_group_dev: ${{ secrets.GCP_EMAIL_GROUP_DEV }}
+          TF_VAR_testing_dataset: ${{ inputs.testing-infra }}
+          TF_VAR_demo_dataset: ${{ inputs.demo-infra }}
           GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}

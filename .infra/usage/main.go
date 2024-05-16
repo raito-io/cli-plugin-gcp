@@ -37,7 +37,10 @@ type UsageConfig struct {
 		Value string `json:"value"`
 	} `json:"dataset"`
 	Tables struct {
-		Value []string `json:"value"`
+		Value []struct {
+			Dataset string   `json:"dataset"`
+			Tables  []string `json:"tables"`
+		} `json:"value"`
 	} `json:"tables"`
 }
 
@@ -131,11 +134,16 @@ func GenerateBigQueryUsage(usageConfig *UsageConfig) error {
 		defer closeFn()
 
 		// find out which tables a user/service account should have access to, based on all existing tables
-		queryableTables, _ := resolveAccessibleTables([]DatasetTables{{
-			Dataset: usageConfig.Dataset.Value,
-			Tables:  usageConfig.Tables.Value,
-		},
-		}, datasetsWithTables)
+		datasetTables := make([]DatasetTables, 0, len(usageConfig.Tables.Value))
+
+		for i := range usageConfig.Tables.Value {
+			datasetTables = append(datasetTables, DatasetTables{
+				Dataset: usageConfig.Tables.Value[i].Dataset,
+				Tables:  usageConfig.Tables.Value[i].Tables,
+			})
+		}
+
+		queryableTables, _ := resolveAccessibleTables(datasetTables, datasetsWithTables)
 
 		logger.Info(fmt.Sprintf("Generating usage for %s, available tables: %v", emailAddress, queryableTables))
 

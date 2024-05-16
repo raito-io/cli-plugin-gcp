@@ -63,36 +63,36 @@ func DataSourceSync(ctx context.Context, config *config.ConfigMap, t *testing.T)
 			Description: "",
 		},
 		{
-			ExternalId:       "raito-integration-test.public_dataset",
-			Name:             "public_dataset",
-			FullName:         "raito-integration-test.public_dataset",
+			ExternalId:       "raito-integration-test.RAITO_TESTING",
+			Name:             "RAITO_TESTING",
+			FullName:         "raito-integration-test.RAITO_TESTING",
 			Type:             "dataset",
 			Description:      "",
 			ParentExternalId: "raito-integration-test",
 		},
 		{
-			ExternalId:       "raito-integration-test.public_dataset.covid19_open_data",
-			Name:             "covid19_open_data",
-			FullName:         "raito-integration-test.public_dataset.covid19_open_data",
+			ExternalId:       "raito-integration-test.RAITO_TESTING.HumanResources_Department",
+			Name:             "HumanResources_Department",
+			FullName:         "raito-integration-test.RAITO_TESTING.HumanResources_Department",
 			Type:             "table",
-			Description:      "This dataset contains country-level datasets of daily time-series data related to COVID-19 globally. You can find the list of sources available here: https://github.com/open-covid-19/data",
-			ParentExternalId: "raito-integration-test.public_dataset",
+			Description:      "Human resource department table",
+			ParentExternalId: "raito-integration-test.RAITO_TESTING",
 			Tags: []*tag.Tag{
-				{Key: "freebqcovid", Value: "", Source: "gcp"},
+				{Key: "label1", Value: "value1", Source: "gcp"},
 			},
 		},
 		{
-			ExternalId:       "raito-integration-test.public_dataset.covid19_open_data.location_key",
-			Name:             "location_key",
-			FullName:         "raito-integration-test.public_dataset.covid19_open_data.location_key",
+			ExternalId:       "raito-integration-test.RAITO_TESTING.HumanResources_Department.DepartmentID",
+			Name:             "DepartmentID",
+			FullName:         "raito-integration-test.RAITO_TESTING.HumanResources_Department.DepartmentID",
 			Type:             "column",
 			Description:      "",
-			ParentExternalId: "raito-integration-test.public_dataset.covid19_open_data",
-			DataType:         ptr.String("STRING"),
+			ParentExternalId: "raito-integration-test.RAITO_TESTING.HumanResources_Department",
+			DataType:         ptr.String("INTEGER"),
 		},
 	}
 
-	assert.GreaterOrEqual(t, len(dsHandler.DataObjects), 732)
+	assert.GreaterOrEqual(t, len(dsHandler.DataObjects), 567)
 
 	for _, do := range expectedDos {
 		assert.Containsf(t, dsHandler.DataObjects, do, "Data object %+v not found", do)
@@ -144,7 +144,7 @@ func AccessSync(ctx context.Context, config *config.ConfigMap, t *testing.T) {
 					What: []sync_to_target.WhatItem{
 						{
 							DataObject: &data_source.DataObjectReference{
-								FullName: "raito-integration-test.public_dataset.covid19_open_data",
+								FullName: "raito-integration-test.RAITO_TESTING.HumanResources_Department",
 								Type:     "table",
 							},
 							Permissions: []string{
@@ -174,7 +174,7 @@ func AccessSync(ctx context.Context, config *config.ConfigMap, t *testing.T) {
 
 	t.Run("Sync from target", func(t *testing.T) {
 		// Given
-		apHandler := mocks.NewSimpleAccessProviderHandler(t, 15)
+		apHandler := mocks.NewSimpleAccessProviderHandler(t, 35)
 
 		// When
 		err = syncer.SyncAccessProvidersFromTarget(ctx, apHandler, config)
@@ -184,37 +184,31 @@ func AccessSync(ctx context.Context, config *config.ConfigMap, t *testing.T) {
 
 		expectedAPs := []sync_from_target.AccessProvider{
 			{
-				ExternalId: "project_raito-integration-test_roles_bigquery.admin",
-				Name:       "project_raito-integration-test_roles_bigquery.admin",
-				NamingHint: "project_raito-integration-test_roles_bigquery.admin",
-				Type:       ptr.String(access_provider.AclSet),
-				Action:     sync_from_target.Grant,
+				ExternalId: "raito-integration-test.RAITO_TESTING.Person_Address.person_address_group",
+				Name:       "person_address_group",
+				NamingHint: "person_address_group",
+				Type:       nil,
+				Action:     sync_from_target.Filtered,
+				Policy:     "StateProvinceID = 0",
 				Who: &sync_from_target.WhoItem{
-					Users:           []string{"service-account-for-raito-cli@raito-integration-test.iam.gserviceaccount.com"},
-					Groups:          []string{},
-					AccessProviders: []string{},
+					Users:           nil,
+					Groups:          []string{"dev@raito.dev"},
+					AccessProviders: nil,
 				},
-				WhoLocked:    ptr.Bool(false),
-				WhatLocked:   ptr.Bool(false),
-				NameLocked:   ptr.Bool(false),
-				DeleteLocked: ptr.Bool(false),
-				ActualName:   "project_raito-integration-test_roles_bigquery.admin",
+				ActualName: "person_address_group",
 				What: []sync_from_target.WhatItem{
 					{
 						DataObject: &data_source.DataObjectReference{
-							FullName: "raito-integration-test",
-							Type:     "datasource",
-						},
-						Permissions: []string{
-							roles.RolesBigQueryAdmin.Name,
+							FullName: "raito-integration-test.RAITO_TESTING.Person_Address",
+							Type:     "table",
 						},
 					},
 				},
 			},
 			{
-				ExternalId: "dataset_raito-integration-test.private_dataset_roles_bigquery.dataEditor",
-				Name:       "dataset_raito-integration-test.private_dataset_roles_bigquery.dataEditor",
-				NamingHint: "dataset_raito-integration-test.private_dataset_roles_bigquery.dataEditor",
+				ExternalId: "project_raito-integration-test_roles_bigquery.resourceViewer",
+				Name:       "project_raito-integration-test_roles_bigquery.resourceViewer",
+				NamingHint: "project_raito-integration-test_roles_bigquery.resourceViewer",
 				Type:       ptr.String(access_provider.AclSet),
 				Action:     sync_from_target.Grant,
 				Who: &sync_from_target.WhoItem{
@@ -226,15 +220,15 @@ func AccessSync(ctx context.Context, config *config.ConfigMap, t *testing.T) {
 				WhatLocked:   ptr.Bool(false),
 				NameLocked:   ptr.Bool(false),
 				DeleteLocked: ptr.Bool(false),
-				ActualName:   "dataset_raito-integration-test.private_dataset_roles_bigquery.dataEditor",
+				ActualName:   "project_raito-integration-test_roles_bigquery.resourceViewer",
 				What: []sync_from_target.WhatItem{
 					{
 						DataObject: &data_source.DataObjectReference{
-							FullName: "raito-integration-test.private_dataset",
-							Type:     "dataset",
+							FullName: "raito-integration-test",
+							Type:     "datasource",
 						},
 						Permissions: []string{
-							roles.RolesBigQueryEditor.Name,
+							roles.RolesBigQueryResourceViewer.Name,
 						},
 					},
 				},
