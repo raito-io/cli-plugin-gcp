@@ -34,8 +34,8 @@ type UsageConfig struct {
 		Value string `json:"value"`
 	} `json:"project"`
 	Dataset struct {
-		Value string `json:"value"`
-	} `json:"dataset"`
+		Value []string `json:"value"`
+	} `json:"datasets"`
 	Tables struct {
 		Value []struct {
 			Dataset string   `json:"dataset"`
@@ -107,9 +107,7 @@ func connectToBigQuery(ctx context.Context, usageConfig *UsageConfig, targetPrin
 func GenerateBigQueryUsage(usageConfig *UsageConfig) error {
 	userList := usageConfig.Personas.Value
 
-	allDatasets := []string{usageConfig.Dataset.Value}
-
-	datasetsWithTables, err := getDatasetsWithTablesFromGCP(usageConfig, allDatasets)
+	datasetsWithTables, err := getDatasetsWithTablesFromGCP(usageConfig, usageConfig.Dataset.Value)
 	if err != nil {
 		return fmt.Errorf("datasets with tables: %s", err.Error())
 	}
