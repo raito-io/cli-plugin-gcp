@@ -352,14 +352,14 @@ func TestRepository_GetBindings(t *testing.T) {
 					ResourceType: "dataset",
 				},
 				{
-					Member:       "special_group:projectReaders",
-					Role:         "roles/bigquery.dataViewer",
+					Member:       "special_group:projectOwners",
+					Role:         "roles/bigquery.dataOwner",
 					Resource:     "raito-integration-test.RAITO_TESTING",
 					ResourceType: "dataset",
 				},
 				{
 					Member:       "user:d_hayden@raito.dev",
-					Role:         "roles/bigquery.dataOwner",
+					Role:         "roles/bigquery.dataViewer",
 					Resource:     "raito-integration-test.RAITO_TESTING",
 					ResourceType: "dataset",
 				},
