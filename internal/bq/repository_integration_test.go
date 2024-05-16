@@ -51,18 +51,9 @@ func TestRepository_ListDataSets(t *testing.T) {
 
 	assert.ElementsMatch(t, []*org.GcpOrgEntity{
 		{
-			Id:          "raito-integration-test.private_dataset",
-			Name:        "private_dataset",
-			FullName:    "raito-integration-test.private_dataset",
-			Type:        "dataset",
-			Location:    "EU",
-			Description: "",
-			Parent:      project,
-		},
-		{
-			Id:          "raito-integration-test.public_dataset",
-			Name:        "public_dataset",
-			FullName:    "raito-integration-test.public_dataset",
+			Id:          "raito-integration-test.RAITO_TESTING",
+			Name:        "RAITO_TESTING",
+			FullName:    "raito-integration-test.RAITO_TESTING",
 			Type:        "dataset",
 			Location:    "EU",
 			Description: "",
@@ -82,11 +73,11 @@ func TestRepository_ListTables(t *testing.T) {
 
 	defer cleanup()
 
-	dataset := client.Dataset("public_dataset")
+	dataset := client.Dataset("RAITO_TESTING")
 	parent := &org.GcpOrgEntity{
-		Id:          "raito-integration-test.public_dataset",
-		Name:        "public_dataset",
-		FullName:    "raito-integration-test.public_dataset",
+		Id:          "raito-integration-test.RAITO_TESTING",
+		Name:        "RAITO_TESTING",
+		FullName:    "raito-integration-test.RAITO_TESTING",
 		Type:        "dataset",
 		Location:    "EU",
 		Description: "",
@@ -108,37 +99,28 @@ func TestRepository_ListTables(t *testing.T) {
 	// Then
 	require.NoError(t, err)
 
-	assert.ElementsMatch(t, []*org.GcpOrgEntity{
-		{
-			Id:          "raito-integration-test.public_dataset.covid19_open_data",
-			Name:        "covid19_open_data",
-			FullName:    "raito-integration-test.public_dataset.covid19_open_data",
-			Type:        "table",
-			Location:    "EU",
-			Description: "This dataset contains country-level datasets of daily time-series data related to COVID-19 globally. You can find the list of sources available here: https://github.com/open-covid-19/data",
-			Parent:      parent,
-			Tags:        map[string]string{"freebqcovid": ""},
-		},
-		{
-			Id:          "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide",
-			Name:        "covid_19_geographic_distribution_worldwide",
-			FullName:    "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide",
-			Type:        "table",
-			Location:    "EU",
-			Description: "",
-			Parent:      parent,
-		},
-		{
-			Id:          "raito-integration-test.public_dataset.covid_19_belgium",
-			Name:        "covid_19_belgium",
-			FullName:    "raito-integration-test.public_dataset.covid_19_belgium",
-			Type:        "view",
-			Location:    "EU",
-			Description: "",
-			Parent:      parent,
-			Tags:        map[string]string{"country": "belgium"},
-		},
-	}, tables)
+	assert.Len(t, tables, 72)
+
+	assert.Contains(t, tables, &org.GcpOrgEntity{
+		Id:          "raito-integration-test.RAITO_TESTING.HumanResources_Department",
+		Name:        "HumanResources_Department",
+		FullName:    "raito-integration-test.RAITO_TESTING.HumanResources_Department",
+		Type:        "table",
+		Location:    "EU",
+		Description: "Human resource department table",
+		Parent:      parent,
+		Tags:        map[string]string{"label1": "value1"},
+	})
+
+	assert.Contains(t, tables, &org.GcpOrgEntity{
+		Id:          "raito-integration-test.RAITO_TESTING.HumanResources_Employee",
+		Name:        "HumanResources_Employee",
+		FullName:    "raito-integration-test.RAITO_TESTING.HumanResources_Employee",
+		Type:        "table",
+		Location:    "EU",
+		Description: "",
+		Parent:      parent,
+	})
 }
 
 func TestRepository_ListColumns(t *testing.T) {
@@ -152,19 +134,20 @@ func TestRepository_ListColumns(t *testing.T) {
 
 	defer cleanup()
 
-	dataset := client.Dataset("public_dataset")
-	table := dataset.Table("covid_19_geographic_distribution_worldwide")
+	dataset := client.Dataset("RAITO_TESTING")
+	table := dataset.Table("HumanResources_Department")
 	parent := &org.GcpOrgEntity{
-		Id:          "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide",
-		Name:        "covid_19_geographic_distribution_worldwide",
-		FullName:    "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide",
+		Id:          "raito-integration-test.RAITO_TESTING.HumanResources_Department",
+		Name:        "HumanResources_Department",
+		FullName:    "raito-integration-test.RAITO_TESTING.HumanResources_Department",
 		Type:        "table",
 		Location:    "EU",
-		Description: "",
+		Description: "Human resource department table",
+		Tags:        map[string]string{"label1": "value1"},
 		Parent: &org.GcpOrgEntity{
-			Id:          "raito-integration-test.public_dataset",
+			Id:          "raito-integration-test.RAITO_TESTING",
 			Name:        "public_dataset",
-			FullName:    "raito-integration-test.public_dataset",
+			FullName:    "raito-integration-test.RAITO_TESTING",
 			Type:        "dataset",
 			Location:    "EU",
 			Description: "",
@@ -191,88 +174,18 @@ func TestRepository_ListColumns(t *testing.T) {
 
 	assert.ElementsMatch(t, []*org.GcpOrgEntity{
 		{
-			Id:          "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide.date",
-			Name:        "date",
-			FullName:    "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide.date",
+			Id:          "raito-integration-test.RAITO_TESTING.HumanResources_Department.DepartmentID",
+			Name:        "DepartmentID",
+			FullName:    "raito-integration-test.RAITO_TESTING.HumanResources_Department.DepartmentID",
 			Type:        "column",
 			Location:    "EU",
 			Description: "",
 			Parent:      parent,
-			DataType:    ptr.String("DATE"),
+			DataType:    ptr.String("INTEGER"),
 		}, {
-			Id:          "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide.day",
-			Name:        "day",
-			FullName:    "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide.day",
-			Type:        "column",
-			Location:    "EU",
-			Description: "",
-			Parent:      parent,
-			DataType:    ptr.String("INTEGER"),
-		},
-		{
-			Id:          "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide.month",
-			Name:        "month",
-			FullName:    "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide.month",
-			Type:        "column",
-			Location:    "EU",
-			Description: "",
-			Parent:      parent,
-			DataType:    ptr.String("INTEGER"),
-		},
-		{
-			Id:          "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide.year",
-			Name:        "year",
-			FullName:    "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide.year",
-			Type:        "column",
-			Location:    "EU",
-			Description: "",
-			Parent:      parent,
-			DataType:    ptr.String("INTEGER"),
-		},
-		{
-			Id:          "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide.daily_confirmed_cases",
-			Name:        "daily_confirmed_cases",
-			FullName:    "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide.daily_confirmed_cases",
-			Type:        "column",
-			Location:    "EU",
-			Description: "",
-			Parent:      parent,
-			DataType:    ptr.String("INTEGER"),
-		},
-		{
-			Id:          "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide.daily_deaths",
-			Name:        "daily_deaths",
-			FullName:    "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide.daily_deaths",
-			Type:        "column",
-			Location:    "EU",
-			Description: "",
-			Parent:      parent,
-			DataType:    ptr.String("INTEGER"),
-		},
-		{
-			Id:          "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide.confirmed_cases",
-			Name:        "confirmed_cases",
-			FullName:    "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide.confirmed_cases",
-			Type:        "column",
-			Location:    "EU",
-			Description: "",
-			Parent:      parent,
-			DataType:    ptr.String("INTEGER"),
-		},
-		{
-			Id:          "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide.deaths",
-			Name:        "deaths",
-			FullName:    "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide.deaths",
-			Type:        "column",
-			Location:    "EU",
-			Description: "",
-			Parent:      parent,
-			DataType:    ptr.String("INTEGER"),
-		},
-		{
-			Id:          "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide.countries_and_territories",
-			Name:        "countries_and_territories",
-			FullName:    "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide.countries_and_territories",
+			Id:          "raito-integration-test.RAITO_TESTING.HumanResources_Department.Name",
+			Name:        "Name",
+			FullName:    "raito-integration-test.RAITO_TESTING.HumanResources_Department.Name",
 			Type:        "column",
 			Location:    "EU",
 			Description: "",
@@ -280,9 +193,9 @@ func TestRepository_ListColumns(t *testing.T) {
 			DataType:    ptr.String("STRING"),
 		},
 		{
-			Id:          "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide.geo_id",
-			Name:        "geo_id",
-			FullName:    "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide.geo_id",
+			Id:          "raito-integration-test.RAITO_TESTING.HumanResources_Department.GroupName",
+			Name:        "GroupName",
+			FullName:    "raito-integration-test.RAITO_TESTING.HumanResources_Department.GroupName",
 			Type:        "column",
 			Location:    "EU",
 			Description: "",
@@ -290,24 +203,14 @@ func TestRepository_ListColumns(t *testing.T) {
 			DataType:    ptr.String("STRING"),
 		},
 		{
-			Id:          "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide.country_territory_code",
-			Name:        "country_territory_code",
-			FullName:    "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide.country_territory_code",
+			Id:          "raito-integration-test.RAITO_TESTING.HumanResources_Department.ModifiedDate",
+			Name:        "ModifiedDate",
+			FullName:    "raito-integration-test.RAITO_TESTING.HumanResources_Department.ModifiedDate",
 			Type:        "column",
 			Location:    "EU",
 			Description: "",
 			Parent:      parent,
-			DataType:    ptr.String("STRING"),
-		},
-		{
-			Id:          "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide.pop_data_2019",
-			Name:        "pop_data_2019",
-			FullName:    "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide.pop_data_2019",
-			Type:        "column",
-			Location:    "EU",
-			Description: "",
-			Parent:      parent,
-			DataType:    ptr.String("INTEGER"),
+			DataType:    ptr.String("TIMESTAMP"),
 		},
 	}, columns)
 }
@@ -322,11 +225,11 @@ func TestRepository_ListViews(t *testing.T) {
 
 	defer cleanup()
 
-	dataset := client.Dataset("public_dataset")
+	dataset := client.Dataset("RAITO_TESTING")
 	parent := &org.GcpOrgEntity{
-		Id:          "raito-integration-test.public_dataset",
-		Name:        "public_dataset",
-		FullName:    "raito-integration-test.public_dataset",
+		Id:          "raito-integration-test.RAITO_TESTING",
+		Name:        "RAITO_TESTING",
+		FullName:    "raito-integration-test.RAITO_TESTING",
 		Type:        "dataset",
 		Location:    "EU",
 		Description: "",
@@ -345,14 +248,14 @@ func TestRepository_ListViews(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.ElementsMatch(t, []*org.GcpOrgEntity{{
-		Id:          "raito-integration-test.public_dataset.covid_19_belgium",
-		Name:        "covid_19_belgium",
-		FullName:    "raito-integration-test.public_dataset.covid_19_belgium",
+		Id:          "raito-integration-test.RAITO_TESTING.Sales_Customer_Limited",
+		Name:        "Sales_Customer_Limited",
+		FullName:    "raito-integration-test.RAITO_TESTING.Sales_Customer_Limited",
 		Type:        "view",
 		Location:    "EU",
 		Description: "",
 		Parent:      parent,
-		Tags:        map[string]string{"country": "belgium"},
+		Tags:        map[string]string{"max_store_id": "100"},
 	}}, views)
 }
 
@@ -390,37 +293,38 @@ func TestRepository_GetBindings(t *testing.T) {
 			},
 			wantBindings: []iam.IamBinding{
 				{
-					Member:       "serviceAccount:service-account-for-raito-cli@raito-integration-test.iam.gserviceaccount.com",
-					Role:         "organizations/905493414429/roles/RaitoGcpRole",
+					Member:       "user:b_stewart@raito.dev",
+					Role:         "roles/bigquery.jobUser",
 					Resource:     "raito-integration-test",
 					ResourceType: "project",
 				},
 				{
-					Member:       "serviceAccount:service-account-for-raito-cli@raito-integration-test.iam.gserviceaccount.com",
-					Role:         "organizations/905493414429/roles/RaitoGcpRoleMasking",
+					Member:       "user:c_harris@raito.dev",
+					Role:         "roles/bigquery.jobUser",
 					Resource:     "raito-integration-test",
 					ResourceType: "project",
 				},
 				{
-					Member:       "serviceAccount:service-account-for-raito-cli@raito-integration-test.iam.gserviceaccount.com",
-					Role:         "roles/bigquery.admin",
+					Member:       "user:d_hayden@raito.dev",
+					Role:         "roles/bigquery.jobUser",
 					Resource:     "raito-integration-test",
 					ResourceType: "project",
 				},
 				{
-					Member:       "serviceAccount:service-204677507107@gcp-sa-bigquerydatatransfer.iam.gserviceaccount.com",
-					Role:         "roles/bigquerydatatransfer.serviceAgent",
-					Resource:     "raito-integration-test",
-					ResourceType: "project",
-				}, {
-					Member:       "user:dieter@raito.dev",
-					Role:         "roles/owner",
+					Member:       "user:m_carissa@raito.dev",
+					Role:         "roles/bigquery.jobUser",
 					Resource:     "raito-integration-test",
 					ResourceType: "project",
 				},
 				{
-					Member:       "user:ruben@raito.dev",
-					Role:         "roles/owner",
+					Member:       "user:n_nguyen@raito.dev",
+					Role:         "roles/bigquery.jobUser",
+					Resource:     "raito-integration-test",
+					ResourceType: "project",
+				},
+				{
+					Member:       "user:n_nguyen@raito.dev",
+					Role:         "roles/editor",
 					Resource:     "raito-integration-test",
 					ResourceType: "project",
 				},
@@ -432,43 +336,31 @@ func TestRepository_GetBindings(t *testing.T) {
 			args: args{
 				ctx: ctx,
 				entity: &org.GcpOrgEntity{
-					Id:          "raito-integration-test.public_dataset",
-					Name:        "public_dataset",
-					FullName:    "raito-integration-test.public_dataset",
+					Id:          "raito-integration-test.RAITO_TESTING",
+					Name:        "RAITO_TESTING",
+					FullName:    "raito-integration-test.RAITO_TESTING",
 					Type:        data_source.Dataset,
 					Location:    "EU",
-					Description: "BigQuery project raito-integration-test",
+					Description: "",
 				},
 			},
 			wantBindings: []iam.IamBinding{
 				{
 					Member:       "special_group:projectWriters",
 					Role:         "roles/bigquery.dataEditor",
-					Resource:     "raito-integration-test.public_dataset",
+					Resource:     "raito-integration-test.RAITO_TESTING",
 					ResourceType: "dataset",
 				},
 				{
 					Member:       "special_group:projectOwners",
 					Role:         "roles/bigquery.dataOwner",
-					Resource:     "raito-integration-test.public_dataset",
-					ResourceType: "dataset",
-				},
-				{
-					Member:       "special_group:projectReaders",
-					Role:         "roles/bigquery.dataViewer",
-					Resource:     "raito-integration-test.public_dataset",
+					Resource:     "raito-integration-test.RAITO_TESTING",
 					ResourceType: "dataset",
 				},
 				{
 					Member:       "user:d_hayden@raito.dev",
-					Role:         "roles/bigquery.dataOwner",
-					Resource:     "raito-integration-test.public_dataset",
-					ResourceType: "dataset",
-				},
-				{
-					Member:       "user:ruben@raito.dev",
-					Role:         "roles/bigquery.dataOwner",
-					Resource:     "raito-integration-test.public_dataset",
+					Role:         "roles/bigquery.dataViewer",
+					Resource:     "raito-integration-test.RAITO_TESTING",
 					ResourceType: "dataset",
 				},
 			},
@@ -479,11 +371,11 @@ func TestRepository_GetBindings(t *testing.T) {
 			args: args{
 				ctx: ctx,
 				entity: &org.GcpOrgEntity{
-					Id:          "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide",
-					Name:        "covid_19_geographic_distribution_worldwide",
-					FullName:    "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide",
+					Id:          "raito-integration-test.RAITO_TESTING.Sales_CountryRegionCurrency",
+					Name:        "Sales_CountryRegionCurrency",
+					FullName:    "raito-integration-test.RAITO_TESTING.Sales_CountryRegionCurrency",
 					Type:        data_source.Table,
-					Location:    "europe-west1",
+					Location:    "eu",
 					Description: "",
 				},
 			},
@@ -491,7 +383,25 @@ func TestRepository_GetBindings(t *testing.T) {
 				{
 					Member:       "user:m_carissa@raito.dev",
 					Role:         "roles/bigquery.dataViewer",
-					Resource:     "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide",
+					Resource:     "raito-integration-test.RAITO_TESTING.Sales_CountryRegionCurrency",
+					ResourceType: "table",
+				},
+				{
+					Member:       "user:d_hayden@raito.dev",
+					Role:         "roles/bigquery.dataViewer",
+					Resource:     "raito-integration-test.RAITO_TESTING.Sales_CountryRegionCurrency",
+					ResourceType: "table",
+				},
+				{
+					Member:       "group:sales@raito.dev",
+					Role:         "roles/bigquery.dataViewer",
+					Resource:     "raito-integration-test.RAITO_TESTING.Sales_CountryRegionCurrency",
+					ResourceType: "table",
+				},
+				{
+					Member:       "group:dev@raito.dev",
+					Role:         "roles/bigquery.dataViewer",
+					Resource:     "raito-integration-test.RAITO_TESTING.Sales_CountryRegionCurrency",
 					ResourceType: "table",
 				},
 			},
@@ -519,11 +429,11 @@ func TestRepository_GetBindings(t *testing.T) {
 		t.Parallel()
 
 		result, err := repository.GetBindings(ctx, &org.GcpOrgEntity{
-			Id:          "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide.deaths",
-			Name:        "deaths",
-			FullName:    "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide.deaths",
+			Id:          "raito-integration-test.RAITO_TESTING.Sales_CountryRegionCurrency.CurrencyCode",
+			Name:        "CurrencyCode",
+			FullName:    "raito-integration-test.RAITO_TESTING.Sales_CountryRegionCurrency.CurrencyCode",
 			Type:        data_source.Column,
-			Location:    "europe-west1",
+			Location:    "eu",
 			Description: "",
 		})
 
@@ -556,11 +466,11 @@ func TestRepository_UpdateBindings(t *testing.T) {
 			args: args{
 				ctx: ctx,
 				dataObject: &org.GcpOrgEntity{
-					Id:          "raito-integration-test.public_dataset",
-					Name:        "public_dataset",
-					FullName:    "raito-integration-test.public_dataset",
+					Id:          "raito-integration-test.RAITO_TESTING",
+					Name:        "RAITO_TESTING",
+					FullName:    "raito-integration-test.RAITO_TESTING",
 					Type:        "dataset",
-					Location:    "europe-west1",
+					Location:    "eu",
 					Description: "",
 					Parent:      repository.Project(),
 				},
@@ -574,9 +484,9 @@ func TestRepository_UpdateBindings(t *testing.T) {
 			args: args{
 				ctx: ctx,
 				dataObject: &org.GcpOrgEntity{
-					Id:          "raito-integration-test.private_dataset",
-					Name:        "private_dataset",
-					FullName:    "raito-integration-test.private_dataset",
+					Id:          "raito-integration-test.RAITO_TESTING",
+					Name:        "RAITO_TESTING",
+					FullName:    "raito-integration-test.RAITO_TESTING",
 					Type:        "dataset",
 					Location:    "EU",
 					Description: "",
@@ -585,9 +495,9 @@ func TestRepository_UpdateBindings(t *testing.T) {
 				bindings: []iam.IamBinding{
 					{
 						Member:       "user:m_carissa@raito.dev",
-						Role:         roles.RolesBigQueryDataViewer.Name,
+						Role:         roles.RolesBigQueryMetadataViewer.Name,
 						ResourceType: "dataset",
-						Resource:     "raito-integration-test.private_dataset",
+						Resource:     "raito-integration-test.RAITO_TESTING",
 					},
 				},
 			},
@@ -598,15 +508,15 @@ func TestRepository_UpdateBindings(t *testing.T) {
 			args: args{
 				ctx: ctx,
 				dataObject: &org.GcpOrgEntity{
-					Id:       "raito-integration-test.private_dataset.private_table",
-					Name:     "private_table",
-					FullName: "raito-integration-test.private_dataset.private_table",
+					Id:       "raito-integration-test.RAITO_TESTING.Sales_SalesTerritoryHistory",
+					Name:     "Sales_SalesTerritoryHistory",
+					FullName: "raito-integration-test.RAITO_TESTING.Sales_SalesTerritoryHistory",
 					Type:     "table",
 					Location: "EU",
 					Parent: &org.GcpOrgEntity{
-						Id:          "raito-integration-test.private_dataset",
-						Name:        "private_dataset",
-						FullName:    "raito-integration-test.private_dataset",
+						Id:          "raito-integration-test.RAITO_TESTING",
+						Name:        "RAITO_TESTING",
+						FullName:    "raito-integration-test.RAITO_TESTING",
 						Type:        "dataset",
 						Location:    "EU",
 						Description: "",
@@ -618,7 +528,7 @@ func TestRepository_UpdateBindings(t *testing.T) {
 						Member:       "user:m_carissa@raito.dev",
 						Role:         roles.RolesBigQueryEditor.Name,
 						ResourceType: "table",
-						Resource:     "raito-integration-test.private_dataset.private_table",
+						Resource:     "raito-integration-test.RAITO_TESTING.Sales_SalesTerritoryHistory",
 					},
 				},
 			},
@@ -716,22 +626,21 @@ func TestRepository_ListFilters(t *testing.T) {
 	filters := []filter{}
 
 	err = repository.ListFilters(ctx, &org.GcpOrgEntity{
-		Id:          "raito-integration-test.public_dataset.covid19_open_data",
-		Name:        "covid19_open_data",
-		FullName:    "raito-integration-test.public_dataset.covid19_open_data",
+		Id:          "raito-integration-test.RAITO_TESTING.Person_Address",
+		Name:        "Person_Address",
+		FullName:    "raito-integration-test.RAITO_TESTING.Person_Address",
 		Type:        "table",
 		Location:    "EU",
-		Description: "This dataset contains country-level datasets of daily time-series data related to COVID-19 globally. You can find the list of sources available here: https://github.com/open-covid-19/data",
+		Description: "",
 		Parent: &org.GcpOrgEntity{
-			Id:          "raito-integration-test.public_dataset",
-			Name:        "public_dataset",
-			FullName:    "raito-integration-test.public_dataset",
+			Id:          "raito-integration-test.RAITO_TESTING",
+			Name:        "RAITO_TESTING",
+			FullName:    "raito-integration-test.RAITO_TESTING",
 			Type:        "dataset",
 			Location:    "EU",
 			Description: "",
 			Parent:      repository.Project(),
 		},
-		Tags: map[string]string{"freebqcovid": ""},
 	}, func(ctx context.Context, rap *bigquery.RowAccessPolicy, users []string, groups []string, internalizable bool) error {
 		filters = append(filters, filter{
 			externaId:      fmt.Sprintf("%s.%s.%s.%s", rap.RowAccessPolicyReference.ProjectId, rap.RowAccessPolicyReference.DatasetId, rap.RowAccessPolicyReference.TableId, rap.RowAccessPolicyReference.PolicyId),
@@ -748,16 +657,15 @@ func TestRepository_ListFilters(t *testing.T) {
 
 	assert.ElementsMatch(t, filters, []filter{
 		{
-			externaId:      "raito-integration-test.public_dataset.covid19_open_data.covid_all",
-			policy:         "true",
-			users:          []string{"ruben@raito.dev"},
+			externaId:      "raito-integration-test.RAITO_TESTING.Person_Address.person_address_group",
+			policy:         "StateProvinceID = 0",
+			groups:         []string{"dev@raito.dev"},
 			internalizable: true,
 		},
 		{
-			externaId:      "raito-integration-test.public_dataset.covid19_open_data.covid_us",
-			policy:         "country_code = \"US\"",
-			users:          []string{"d_hayden@raito.dev"},
-			groups:         []string{"dev@raito.dev"},
+			externaId:      "raito-integration-test.RAITO_TESTING.Person_Address.person_address_user",
+			policy:         "true",
+			users:          []string{"n_nguyen@raito.dev"},
 			internalizable: true,
 		},
 	})
@@ -774,18 +682,18 @@ func TestRepository_CreateAndDeleteFilter(t *testing.T) {
 
 	table := BQReferencedTable{
 		Project: "raito-integration-test",
-		Dataset: "public_dataset",
-		Table:   "covid_19_geographic_distribution_worldwide",
+		Dataset: "RAITO_TESTING",
+		Table:   "Person_BusinessEntityAddress",
 	}
 
-	filterName := "covid_bel"
+	filterName := "BusinessEntityID_invalid"
 
 	t.Run("Create filter", func(t *testing.T) {
 		err = repository.CreateOrUpdateFilter(ctx, &BQFilter{
 			Table:            table,
 			Users:            []string{"m_carissa@raito.dev"},
 			Groups:           []string{"dev@raito.dev"},
-			FilterExpression: "country_territory_code = \"BEL\"",
+			FilterExpression: "BusinessEntityID < 0",
 			FilterName:       filterName,
 		})
 
@@ -796,28 +704,27 @@ func TestRepository_CreateAndDeleteFilter(t *testing.T) {
 		foundFilter := false
 
 		err := repository.ListFilters(ctx, &org.GcpOrgEntity{
-			Id:       "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide",
-			Name:     "covid_19_geographic_distribution_worldwide",
-			FullName: "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide",
+			Id:       "raito-integration-test.RAITO_TESTING.Person_BusinessEntityAddress",
+			Name:     "Person_BusinessEntityAddress",
+			FullName: "raito-integration-test.RAITO_TESTING.Person_BusinessEntityAddress",
 			Type:     "table",
-			Location: "europe-west1",
+			Location: "eu",
 			Parent: &org.GcpOrgEntity{
-				Id:          "raito-integration-test.public_dataset",
-				Name:        "public_dataset",
-				FullName:    "raito-integration-test.public_dataset",
+				Id:          "raito-integration-test.RAITO_TESTING",
+				Name:        "RAITO_TESTING",
+				FullName:    "raito-integration-test.RAITO_TESTING",
 				Type:        "dataset",
-				Location:    "europe-west1",
+				Location:    "eu",
 				Description: "",
 				Parent:      repository.Project(),
 			},
-			Tags: map[string]string{"freebqcovid": ""},
 		}, func(ctx context.Context, rap *bigquery.RowAccessPolicy, users []string, groups []string, internalizable bool) error {
 			if rap.RowAccessPolicyReference.PolicyId == filterName {
 				foundFilter = true
 
 				assert.ElementsMatch(t, []string{"m_carissa@raito.dev"}, users)
 				assert.ElementsMatch(t, []string{"dev@raito.dev"}, groups)
-				assert.Equal(t, "country_territory_code = \"BEL\"", rap.FilterPredicate)
+				assert.Equal(t, "BusinessEntityID < 0", rap.FilterPredicate)
 			}
 
 			return nil
@@ -835,21 +742,20 @@ func TestRepository_CreateAndDeleteFilter(t *testing.T) {
 
 	t.Run("Check if filter is deleted", func(t *testing.T) {
 		err := repository.ListFilters(ctx, &org.GcpOrgEntity{
-			Id:       "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide",
-			Name:     "covid_19_geographic_distribution_worldwide",
-			FullName: "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide",
+			Id:       "raito-integration-test.RAITO_TESTING.Person_BusinessEntityAddress",
+			Name:     "Person_BusinessEntityAddress",
+			FullName: "raito-integration-test.RAITO_TESTING.Person_BusinessEntityAddress",
 			Type:     "table",
-			Location: "europe-west1",
+			Location: "eu",
 			Parent: &org.GcpOrgEntity{
-				Id:          "raito-integration-test.public_dataset",
-				Name:        "public_dataset",
-				FullName:    "raito-integration-test.public_dataset",
+				Id:          "raito-integration-test.RAITO_TESTING",
+				Name:        "RAITO_TESTING",
+				FullName:    "raito-integration-test.RAITO_TESTING",
 				Type:        "dataset",
-				Location:    "europe-west1",
+				Location:    "eu",
 				Description: "",
 				Parent:      repository.Project(),
 			},
-			Tags: map[string]string{"freebqcovid": ""},
 		}, func(ctx context.Context, rap *bigquery.RowAccessPolicy, users []string, groups []string, internalizable bool) error {
 			if rap.RowAccessPolicyReference.PolicyId == filterName {
 				require.Fail(t, "Filter still exists")
@@ -873,16 +779,16 @@ func TestRepository_CreateAndDeleteFilter_noGrantees(t *testing.T) {
 
 	table := BQReferencedTable{
 		Project: "raito-integration-test",
-		Dataset: "public_dataset",
-		Table:   "covid_19_geographic_distribution_worldwide",
+		Dataset: "RAITO_TESTING",
+		Table:   "Person_Person",
 	}
 
-	filterName := "covid_bel_2"
+	filterName := "Person_Person_BE_1"
 
 	t.Run("Create filter", func(t *testing.T) {
 		err = repository.CreateOrUpdateFilter(ctx, &BQFilter{
 			Table:            table,
-			FilterExpression: "country_territory_code = \"BEL\"",
+			FilterExpression: "Demographics = \"BEL\"",
 			FilterName:       filterName,
 		})
 
@@ -893,28 +799,27 @@ func TestRepository_CreateAndDeleteFilter_noGrantees(t *testing.T) {
 		foundFilter := false
 
 		err := repository.ListFilters(ctx, &org.GcpOrgEntity{
-			Id:       "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide",
-			Name:     "covid_19_geographic_distribution_worldwide",
-			FullName: "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide",
+			Id:       "raito-integration-test.RAITO_TESTING.Person_Person",
+			Name:     "Person_Person",
+			FullName: "raito-integration-test.RAITO_TESTING.Person_Person",
 			Type:     "table",
-			Location: "europe-west1",
+			Location: "EU",
 			Parent: &org.GcpOrgEntity{
-				Id:          "raito-integration-test.public_dataset",
-				Name:        "public_dataset",
-				FullName:    "raito-integration-test.public_dataset",
+				Id:          "raito-integration-test.RAITO_TESTING",
+				Name:        "RAITO_TESTING",
+				FullName:    "raito-integration-test.RAITO_TESTING",
 				Type:        "dataset",
-				Location:    "europe-west1",
+				Location:    "EU",
 				Description: "",
 				Parent:      repository.Project(),
 			},
-			Tags: map[string]string{"freebqcovid": ""},
 		}, func(ctx context.Context, rap *bigquery.RowAccessPolicy, users []string, groups []string, internalizable bool) error {
 			if rap.RowAccessPolicyReference.PolicyId == filterName {
 				foundFilter = true
 
 				assert.Empty(t, users)
 				assert.Empty(t, groups)
-				assert.Equal(t, "country_territory_code = \"BEL\"", rap.FilterPredicate)
+				assert.Equal(t, "Demographics = \"BEL\"", rap.FilterPredicate)
 			}
 
 			return nil
@@ -932,21 +837,20 @@ func TestRepository_CreateAndDeleteFilter_noGrantees(t *testing.T) {
 
 	t.Run("Check if filter is deleted", func(t *testing.T) {
 		err := repository.ListFilters(ctx, &org.GcpOrgEntity{
-			Id:       "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide",
-			Name:     "covid_19_geographic_distribution_worldwide",
-			FullName: "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide",
+			Id:       "raito-integration-test.RAITO_TESTING.Person_Person",
+			Name:     "Person_Person",
+			FullName: "raito-integration-test.RAITO_TESTING.Person_Person",
 			Type:     "table",
-			Location: "europe-west1",
+			Location: "eu",
 			Parent: &org.GcpOrgEntity{
-				Id:          "raito-integration-test.public_dataset",
-				Name:        "public_dataset",
-				FullName:    "raito-integration-test.public_dataset",
+				Id:          "raito-integration-test.RAITO_TESTING",
+				Name:        "RAITO_TESTING",
+				FullName:    "raito-integration-test.RAITO_TESTING",
 				Type:        "dataset",
-				Location:    "europe-west1",
+				Location:    "eu",
 				Description: "",
 				Parent:      repository.Project(),
 			},
-			Tags: map[string]string{"freebqcovid": ""},
 		}, func(ctx context.Context, rap *bigquery.RowAccessPolicy, users []string, groups []string, internalizable bool) error {
 			if rap.RowAccessPolicyReference.PolicyId == filterName {
 				require.Fail(t, "Filter still exists")

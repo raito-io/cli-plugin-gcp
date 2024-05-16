@@ -30,8 +30,7 @@ func TestDataObjectIterator_Sync(t *testing.T) {
 		skipColumns bool
 	}
 	type wants struct {
-		minimalObjectsPerType map[string]int
-		maximalObjectsPerType map[string]int
+		objectsPerType map[string]int
 	}
 	tests := []struct {
 		name    string
@@ -46,18 +45,18 @@ func TestDataObjectIterator_Sync(t *testing.T) {
 				config: &ds.DataSourceSyncConfig{
 					ConfigMap:          configMap,
 					DataSourceId:       "datasourceId1",
-					DataObjectExcludes: nil,
+					DataObjectExcludes: []string{"raito-integration-test.MASTER_DATA"},
 					DataObjectParent:   "",
 				},
 				skipColumns: false,
 			},
 			wants: wants{
-				minimalObjectsPerType: map[string]int{
+				objectsPerType: map[string]int{
 					"datasource": 1,
-					"dataset":    2,
-					"table":      3,
+					"dataset":    1,
+					"table":      71,
 					"view":       1,
-					"column":     700,
+					"column":     493,
 				},
 			},
 			wantErr: require.NoError,
@@ -69,20 +68,18 @@ func TestDataObjectIterator_Sync(t *testing.T) {
 				config: &ds.DataSourceSyncConfig{
 					ConfigMap:          configMap,
 					DataSourceId:       "datasourceId1",
-					DataObjectExcludes: nil,
+					DataObjectExcludes: []string{"raito-integration-test.MASTER_DATA"},
 					DataObjectParent:   "",
 				},
 				skipColumns: true,
 			},
 			wants: wants{
-				minimalObjectsPerType: map[string]int{
+				objectsPerType: map[string]int{
 					"datasource": 1,
-					"dataset":    2,
-					"table":      3,
+					"dataset":    1,
+					"table":      71,
 					"view":       1,
-				},
-				maximalObjectsPerType: map[string]int{
-					"column": 0,
+					"column":     0,
 				},
 			},
 			wantErr: require.NoError,
@@ -95,20 +92,17 @@ func TestDataObjectIterator_Sync(t *testing.T) {
 					ConfigMap:          configMap,
 					DataSourceId:       "datasourceId1",
 					DataObjectExcludes: nil,
-					DataObjectParent:   "raito-integration-test.public_dataset",
+					DataObjectParent:   "raito-integration-test.RAITO_TESTING",
 				},
 				skipColumns: false,
 			},
 			wants: wants{
-				minimalObjectsPerType: map[string]int{
-					"table":  2,
-					"view":   1,
-					"column": 700,
-				},
-				maximalObjectsPerType: map[string]int{
+				objectsPerType: map[string]int{
 					"datasource": 0,
 					"dataset":    0,
-					"table":      2,
+					"table":      71,
+					"view":       1,
+					"column":     493,
 				},
 			},
 			wantErr: require.NoError,
@@ -121,21 +115,17 @@ func TestDataObjectIterator_Sync(t *testing.T) {
 					ConfigMap:          configMap,
 					DataSourceId:       "datasourceId1",
 					DataObjectParent:   "raito-integration-test",
-					DataObjectExcludes: []string{"private_dataset", "public_dataset.covid_19_geographic_distribution_worldwide"},
+					DataObjectExcludes: []string{"RAITO_TESTING.dbo_AWBuildVersion", "RAITO_TESTING.dbo_DatabaseLog", "RAITO_TESTING.dbo_ErrorLog"},
 				},
 				skipColumns: false,
 			},
 			wants: wants{
-				minimalObjectsPerType: map[string]int{
-					"dataset": 1,
-					"table":   1,
-					"view":    1,
-					"column":  700,
-				},
-				maximalObjectsPerType: map[string]int{
+				objectsPerType: map[string]int{
 					"datasource": 0,
 					"dataset":    1,
-					"table":      1,
+					"table":      68,
+					"view":       1,
+					"column":     472,
 				},
 			},
 			wantErr: require.NoError,
@@ -162,12 +152,8 @@ func TestDataObjectIterator_Sync(t *testing.T) {
 				return
 			}
 
-			for objectType, count := range tt.wants.minimalObjectsPerType {
-				assert.GreaterOrEqualf(t, objectCounts[objectType], count, "Found %d objects of type %q. Expected at least %d", objectCounts[objectType], objectType, count)
-			}
-
-			for objectType, count := range tt.wants.maximalObjectsPerType {
-				assert.LessOrEqualf(t, objectCounts[objectType], count, "Found %d objects of type %q. Expected at most %d", objectCounts[objectType], objectType, count)
+			for objectType, count := range tt.wants.objectsPerType {
+				assert.Equalf(t, objectCounts[objectType], count, "Found %d objects of type %q. Expected at least %d", objectCounts[objectType], objectType, count)
 			}
 		})
 	}

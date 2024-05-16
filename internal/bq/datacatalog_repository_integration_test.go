@@ -86,13 +86,13 @@ func TestDataCatalogRepository_UpdateWhatOfDataPolicy(t *testing.T) {
 		err = repo.DeletePolicyAndTag(ctx, maskingInformation.DataPolicy.FullName)
 	}(maskingInformation)
 
-	columnName := "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide.daily_deaths"
+	columnName := "raito-integration-test.RAITO_TESTING.Person_Password.PasswordSalt"
 
 	t.Run("Add policy tag to column", func(t *testing.T) {
 		err = repo.UpdateWhatOfDataPolicy(ctx, maskingInformation, []string{columnName}, nil)
 		require.NoError(t, err)
 
-		metadata, err := repo.bigQueryClient.Dataset("public_dataset").Table("covid_19_geographic_distribution_worldwide").Metadata(ctx)
+		metadata, err := repo.bigQueryClient.Dataset("RAITO_TESTING").Table("Person_Password").Metadata(ctx)
 		require.NoError(t, err)
 
 		for _, column := range metadata.Schema {
@@ -127,7 +127,7 @@ func TestDataCatalogRepository_UpdateWhatOfDataPolicy(t *testing.T) {
 		err = repo.UpdateWhatOfDataPolicy(ctx, maskingInformation, nil, []string{columnName})
 		require.NoError(t, err)
 
-		metadata, err := repo.bigQueryClient.Dataset("public_dataset").Table("covid_19_geographic_distribution_worldwide").Metadata(ctx)
+		metadata, err := repo.bigQueryClient.Dataset("RAITO_TESTING").Table("Person_Password").Metadata(ctx)
 		require.NoError(t, err)
 
 		for _, column := range metadata.Schema {
@@ -151,14 +151,14 @@ func TestDataCatalogRepository_GetLocationsForDataObjects(t *testing.T) {
 		What: []sync_to_target.WhatItem{
 			{
 				DataObject: &data_source.DataObjectReference{
-					FullName: "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide.deaths",
+					FullName: "raito-integration-test.RAITO_TESTING.Person_PersonPhone.PhoneNumber",
 				},
 			},
 		},
 		DeleteWhat: []sync_to_target.WhatItem{
 			{
 				DataObject: &data_source.DataObjectReference{
-					FullName: "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide.confirmed_cases",
+					FullName: "raito-integration-test.RAITO_TESTING.Production_Culture.name",
 				},
 			},
 		},
@@ -169,8 +169,8 @@ func TestDataCatalogRepository_GetLocationsForDataObjects(t *testing.T) {
 
 	// Then
 	require.NoError(t, err)
-	assert.Equal(t, resultDos, map[string]string{"raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide.deaths": "eu"})
-	assert.Equal(t, resultDeletedDos, map[string]string{"raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide.confirmed_cases": "eu"})
+	assert.Equal(t, resultDos, map[string]string{"raito-integration-test.RAITO_TESTING.Person_PersonPhone.PhoneNumber": "eu"})
+	assert.Equal(t, resultDeletedDos, map[string]string{"raito-integration-test.RAITO_TESTING.Production_Culture.name": "eu"})
 }
 
 func TestDataCatalogRepository_UpdateAccess(t *testing.T) {
@@ -191,7 +191,7 @@ func TestDataCatalogRepository_UpdateAccess(t *testing.T) {
 		err = repo.DeletePolicyAndTag(ctx, maskingInformation.DataPolicy.FullName)
 	}()
 
-	columnName := "raito-integration-test.public_dataset.covid_19_geographic_distribution_worldwide.daily_confirmed_cases"
+	columnName := "raito-integration-test.RAITO_TESTING.Production_ProductCategory.Name"
 
 	err = repo.UpdateWhatOfDataPolicy(ctx, maskingInformation, []string{columnName}, nil)
 	require.NoError(t, err)

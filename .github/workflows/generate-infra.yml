@@ -1,0 +1,138 @@
+name: Manual - Generate infra
+on:
+  workflow_call:
+    inputs:
+      targetEnvironment:
+        required: true
+        type: string
+      demo-infra:
+        required: false
+        type: boolean
+        default: true
+      testing-infra:
+        required: false
+        type: boolean
+        default: true
+    secrets:
+      AWS_OIDC_DEPLOY_ROLE:
+        required: true
+      AWS_REGION:
+        required: true
+      AWS_S3_TERRAFORM_BUCKET:
+        required: true
+      AWS_S3_TERRAFORM_KEY:
+        required: true
+      AWS_DYNAMODB_TERRAFORM_TABLE:
+        required: true
+      GCP_PROJECT:
+        required: true
+      GCP_REGION:
+        required: true
+      GCP_EMAIL_B_STEWART:
+        required: true
+      GCP_EMAIL_C_HARRIS:
+        required: true
+      GCP_EMAIL_D_HAYDEN:
+        required: true
+      GCP_EMAIL_M_CARISSA:
+        required: true
+      GCP_EMAIL_N_NGUYEN:
+        required: true
+      GCP_EMAIL_GROUP_SALES:
+        required: true
+      GCP_EMAIL_GROUP_DEV:
+        required: true
+      gcp_credentials:
+        required: true
+  workflow_dispatch:
+    inputs:
+      targetEnvironment:
+        type: choice
+        description: Please select a target environment
+        required: true
+        default: 'integration_testing'
+        options:
+          - integration_testing
+          - testing
+      demo-infra:
+        type: boolean
+        description: Indicate if demo infrastructure should be generated
+        required: false
+        default: true
+      testing-infra:
+        type: boolean
+        description: Indicate if testing infrastructure should be generated
+        required: false
+        default: false
+permissions:
+  id-token: write
+  contents: read
+jobs:
+  generate-infra:
+    environment: ${{ inputs.targetEnvironment }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - name: Assume role using OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_DEPLOY_ROLE }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Generate credentials file
+        run: |
+          echo $GCP_CREDENTIALS > $RUNNER_TEMP/credentials.json
+          echo GOOGLE_APPLICATION_CREDENTIALS=$(echo "$RUNNER_TEMP/credentials.json") >> $GITHUB_ENV
+        env:
+          GCP_CREDENTIALS: ${{ secrets.gcp_credentials }}
+
+      - name: Format terraform
+        run: terraform fmt -check -recursive
+        working-directory: .infra/infra
+
+      - name: Terraform backend
+        run: |
+          cat <<EOF > .infra/infra/backend_override.tf
+          terraform {
+            backend "s3" {
+            }
+          }
+          EOF
+
+      - name: Terraform init
+        run: |
+          terraform init \
+            -backend-config=bucket=${AWS_S3_TERRAFORM_BUCKET} \
+            -backend-config=key=${AWS_S3_TERRAFORM_KEY} \
+            -backend-config=region=${AWS_REGION} \
+            -backend-config=access_key=${AWS_ACCESS_KEY_ID} \
+            -backend-config=secret_key=${AWS_SECRET_ACCESS_KEY} \
+            -backend-config=token=${AWS_SESSION_TOKEN} \
+            -backend-config=dynamodb_table=${AWS_DYNAMODB_TERRAFORM_TABLE}
+        working-directory: .infra/infra
+        env:
+          AWS_S3_TERRAFORM_BUCKET: ${{ secrets.AWS_S3_TERRAFORM_BUCKET }}
+          AWS_S3_TERRAFORM_KEY: ${{ secrets.AWS_S3_TERRAFORM_KEY }}
+          AWS_DYNAMODB_TERRAFORM_TABLE: ${{ secrets.AWS_DYNAMODB_TERRAFORM_TABLE }}
+
+      - name: Generate infra
+        run: make gen-test-infra
+        env:
+
+          TF_VAR_gcp_project: ${{ secrets.GCP_PROJECT }}
+          TF_VAR_gcp_region: ${{ secrets.GCP_REGION }}
+          TF_VAR_email_b_stewart: ${{ secrets.GCP_EMAIL_B_STEWART }}
+          TF_VAR_email_c_harris: ${{ secrets.GCP_EMAIL_C_HARRIS }}
+          TF_VAR_email_d_hayden: ${{ secrets.GCP_EMAIL_D_HAYDEN }}
+          TF_VAR_email_m_carissa: ${{ secrets.GCP_EMAIL_M_CARISSA }}
+          TF_VAR_email_n_nguyen: ${{ secrets.GCP_EMAIL_N_NGUYEN }}
+          TF_VAR_email_group_sales: ${{ secrets.GCP_EMAIL_GROUP_SALES }}
+          TF_VAR_email_group_dev: ${{ secrets.GCP_EMAIL_GROUP_DEV }}
+          TF_VAR_testing_dataset: ${{ inputs.testing-infra }}
+          TF_VAR_demo_dataset: ${{ inputs.demo-infra }}
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_APPLICATION_CREDENTIALS }}
