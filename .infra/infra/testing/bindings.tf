@@ -60,5 +60,5 @@ resource "google_bigquery_dataset_iam_binding" "db_dataset_binding" {
   members = [
     "user:${var.email_d_hayden}"
   ]
-  role = "roles/bigquery.dataOwner"
+  role = "roles/bigquery.dataViewer"
 }
