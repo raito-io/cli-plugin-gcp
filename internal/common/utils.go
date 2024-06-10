@@ -2,6 +2,7 @@ package common
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	hclog "github.com/hashicorp/go-hclog"
@@ -24,6 +25,8 @@ func IsGoogle400Error(err error) bool {
 	}
 
 	if apiError.Code >= 400 && apiError.Code < 500 && apiError.Code != 403 {
+		Logger.Debug(fmt.Sprintf("Google 400 error: {Code :%d, Message: %s, Details: %+v, Body: %+v, Errors: %+v, err: %s}", apiError.Code, apiError.Message, apiError.Details, apiError.Body, apiError.Errors, apiError.Error()))
+
 		return true
 	}
 
