@@ -167,9 +167,9 @@ func (c *Repository) ListTables(ctx context.Context, ds *bigquery.Dataset, paren
 		if errors.Is(err, iterator.Done) {
 			break
 		} else if common.IsGoogle400Error(err) {
-			common.Logger.Warn(fmt.Sprintf("Encountered 4xx error while fetching table in dataset %q: %s", ds.DatasetID, err.Error()))
+			common.Logger.Warn(fmt.Sprintf("Encountered 4xx error while fetching table in dataset %q: %s. Ignore further tables of dataset", ds.DatasetID, err.Error()))
 
-			continue
+			break // As the iterator will not move on, we break here to avoid an infinite loop
 		} else if err != nil {
 			return fmt.Errorf("table iterator: %w", err)
 		}
@@ -298,9 +298,9 @@ func (c *Repository) ListViews(ctx context.Context, ds *bigquery.Dataset, parent
 		if errors.Is(err, iterator.Done) {
 			break
 		} else if common.IsGoogle400Error(err) {
-			common.Logger.Warn(fmt.Sprintf("Encountered 4xx error while fetching table in dataset %q: %s", ds.DatasetID, err.Error()))
+			common.Logger.Warn(fmt.Sprintf("Encountered 4xx error while fetching table in dataset %q: %s. Ignore furher of dataset", ds.DatasetID, err.Error()))
 
-			continue
+			break // As the iterator will not move on, we break here to avoid an infinite loop
 		} else if err != nil {
 			return fmt.Errorf("table iterator: %w", err)
 		}
