@@ -6,7 +6,6 @@ import (
 	"time"
 
 	bigquery2 "cloud.google.com/go/bigquery"
-	"github.com/raito-io/cli/base/access_provider/sync_from_target"
 	"github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/cli/base/data_usage"
 	"github.com/raito-io/cli/base/util/config"
@@ -76,13 +75,13 @@ func TestDataUsageSyncer_SyncDataUsage(t *testing.T) {
 					User:       "ruben@raito.io",
 					StartTime:  startTime,
 					EndTime:    endTime,
-					AccessedDataObjects: []sync_from_target.WhatItem{
+					AccessedDataObjects: []data_usage.UsageDataObjectItem{
 						{
-							DataObject: &data_source.DataObjectReference{
+							DataObject: data_usage.UsageDataObjectReference{
 								FullName: "project1.dataset1.table1",
 								Type:     data_source.Table,
 							},
-							Permissions: []string{"SELECT"},
+							GlobalPermission: data_usage.Read,
 						},
 					},
 					Success: true,

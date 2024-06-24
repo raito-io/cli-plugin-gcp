@@ -12,8 +12,10 @@ import (
 	"cloud.google.com/go/iam"
 	"github.com/aws/smithy-go/ptr"
 	"github.com/raito-io/cli/base/data_source"
+	"github.com/raito-io/cli/base/data_usage"
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/raito-io/golang-set/set"
+	"golang.org/x/exp/maps"
 	bigquery2 "google.golang.org/api/bigquery/v2"
 	"google.golang.org/api/iterator"
 
@@ -609,6 +611,50 @@ func (c *Repository) getAllViews(ctx context.Context) ([]org.GcpOrgEntity, error
 	return allViews, nil
 }
 
+// Table based on https://cloud.google.com/bigquery/docs/reference/auditlogs/rest/Shared.Types/BigQueryAuditMetadata.QueryStatementType
+var QueryStatementTypeMap = map[string]data_usage.ActionType{
+	"SELECT": data_usage.Read,
+	//"ASSERT": data_usage.UnknownAction,
+	"INSERT":                   data_usage.Write,
+	"UPDATE":                   data_usage.Write,
+	"DELETE":                   data_usage.Write,
+	"MERGE":                    data_usage.Write,
+	"TRUNCATE_TABLE":           data_usage.Write,
+	"LOAD_DATA":                data_usage.Write,
+	"CREATE_TABLE":             data_usage.Admin,
+	"CREATE_TABLE_AS_SELECT":   data_usage.Admin,
+	"CREATE_VIEW":              data_usage.Admin,
+	"CREATE_MODEL":             data_usage.Admin,
+	"CREATE_MATERIALIZED_VIEW": data_usage.Admin,
+	"CREATE_APPROX_VIEW":       data_usage.Admin,
+	"CREATE_FUNCTION":          data_usage.Admin,
+	"CREATE_TABLE_FUNCTION":    data_usage.Admin,
+	"CREATE_PROCEDURE":         data_usage.Admin,
+	"CREATE_ROW_ACCESS_POLICY": data_usage.Admin,
+	"CREATE_SCHEMA":            data_usage.Admin,
+	"CREATE_SNAPSHOT_TABLE":    data_usage.Admin,
+	"DROP_TABLE":               data_usage.Admin,
+	"DROP_EXTERNAL_TABLE":      data_usage.Admin,
+	"DROP_VIEW":                data_usage.Admin,
+	"DROP_MODEL":               data_usage.Admin,
+	"DROP_MATERIALIZED_VIEW":   data_usage.Admin,
+	"DROP_APPROX_VIEW":         data_usage.Admin,
+	"DROP_FUNCTION":            data_usage.Admin,
+	"DROP_PROCEDURE":           data_usage.Admin,
+	"DROP_SCHEMA":              data_usage.Admin,
+	"DROP_ROW_ACCESS_POLICY":   data_usage.Admin,
+	"DROP_SNAPSHOT_TABLE":      data_usage.Admin,
+	"ALTER_TABLE":              data_usage.Admin,
+	"ALTER_VIEW":               data_usage.Admin,
+	"ALTER_MATERIALIZED_VIEW":  data_usage.Admin,
+	"ALTER_APPROX_VIEW":        data_usage.Admin,
+	"ALTER_SCHEMA":             data_usage.Admin,
+	//"SCRIPT":                   data_usage.UnknownAction,
+	"CREATE_EXTERNAL_TABLE": data_usage.Admin,
+	"EXPORT_DATA":           data_usage.Read,
+	"CALL":                  data_usage.Read,
+}
+
 func (c *Repository) getDataUsage(ctx context.Context, region string, windowStart *time.Time, usageFirstUsed *time.Time, usageLastUsed *time.Time, allViews []org.GcpOrgEntity, fn func(ctx context.Context, entity *BQInformationSchemaEntity) error) error {
 	if usageFirstUsed != nil && usageLastUsed != nil {
 		common.Logger.Info(fmt.Sprintf("Using start date %s, excluding [%s, %s]", windowStart.Format(time.RFC3339), usageFirstUsed.Format(time.RFC3339), usageLastUsed.Format(time.RFC3339)))
@@ -622,6 +668,8 @@ func (c *Repository) getDataUsage(ctx context.Context, region string, windowStar
 	}
 
 	common.Logger.Info(fmt.Sprintf("time fragment query: %s", timeQueryFragment))
+
+	statementTypes := `"` + strings.Join(maps.Keys(QueryStatementTypeMap), `", "`) + `"`
 
 	query := c.client.Query(fmt.Sprintf(`
 		WITH hits as (
@@ -637,7 +685,7 @@ func (c *Repository) getDataUsage(ctx context.Context, region string, windowStar
 				%[1]s.INFORMATION_SCHEMA.JOBS AS cache_hits
 			WHERE
 				state = "DONE"
-				AND statement_type in ("SELECT", "INSERT", "UPDATE", "DELETE", "MERGE", "TRUNCATE_TABLE")
+				AND statement_type in (%[3]s)
 				AND NOT CONTAINS_SUBSTR(query,"INFORMATION_SCHEMA")
 		), cache_hits as (
 			SELECT cache_hit,user_email,query,statement_type,start_time,end_time from hits WHERE %[2]s AND cache_hit
@@ -652,7 +700,7 @@ func (c *Repository) getDataUsage(ctx context.Context, region string, windowStar
 		SELECT cache_hit,user_email,cache_hits.query,statement_type,referenced_tables,start_time,end_time FROM cache_hits LEFT JOIN query_lookup ON cache_hits.query = query_lookup.query 
 		UNION ALL SELECT * FROM non_cache_hits
 		ORDER BY
-			end_time ASC`, fmt.Sprintf("`region-%s`", region), timeQueryFragment))
+			end_time ASC`, fmt.Sprintf("`region-%s`", region), timeQueryFragment, statementTypes))
 
 	start := time.Now()
 	rows, err := query.Read(ctx)
