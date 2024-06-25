@@ -109,6 +109,7 @@ func (s *DataUsageSyncer) SyncDataUsage(ctx context.Context, fileCreator wrapper
 				User:                du.User,
 				StartTime:           du.StartTime,
 				EndTime:             du.EndTime,
+				Query:               du.Query,
 				AccessedDataObjects: accessedResources,
 				Success:             true,
 			},
