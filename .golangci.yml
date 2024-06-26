@@ -24,7 +24,8 @@ linters-settings:
       - paramTypeCombine
 
   govet:
-    check-shadowing: true
+    enable:
+      - shadow
 
   revive:
     rules:
@@ -50,7 +51,7 @@ linters-settings:
   predeclared:
     ignore: "error"
 
-  gomnd:
+  mnd:
     ignored-functions:
       - 'math.*' # Magic number generation, should be fixed and removed?
 

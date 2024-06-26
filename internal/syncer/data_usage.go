@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/raito-io/cli/base/access_provider/sync_from_target"
 	"github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/cli/base/data_usage"
 	"github.com/raito-io/cli/base/util/config"
@@ -64,7 +63,7 @@ func (s *DataUsageSyncer) SyncDataUsage(ctx context.Context, fileCreator wrapper
 			return nil
 		}
 
-		accessedResources := []sync_from_target.WhatItem{}
+		accessedResources := []data_usage.UsageDataObjectItem{}
 
 		for _, rt := range du.Tables {
 			fullnameParts := make([]string, 0, 3)
@@ -83,12 +82,19 @@ func (s *DataUsageSyncer) SyncDataUsage(ctx context.Context, fileCreator wrapper
 				continue
 			}
 
-			accessedResources = append(accessedResources, sync_from_target.WhatItem{
-				DataObject: &data_source.DataObjectReference{
+			globalPermission, found := bigquery.QueryStatementTypeMap[du.StatementType]
+			if !found {
+				common.Logger.Warn(fmt.Sprintf("Unknown statement type %s", du.StatementType))
+
+				continue
+			}
+
+			accessedResources = append(accessedResources, data_usage.UsageDataObjectItem{
+				DataObject: data_usage.UsageDataObjectReference{
 					FullName: strings.Join(fullnameParts, "."),
 					Type:     data_source.Table,
 				},
-				Permissions: []string{du.StatementType},
+				GlobalPermission: globalPermission,
 			})
 		}
 
@@ -103,6 +109,7 @@ func (s *DataUsageSyncer) SyncDataUsage(ctx context.Context, fileCreator wrapper
 				User:                du.User,
 				StartTime:           du.StartTime,
 				EndTime:             du.EndTime,
+				Query:               du.Query,
 				AccessedDataObjects: accessedResources,
 				Success:             true,
 			},
