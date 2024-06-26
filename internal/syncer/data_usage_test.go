@@ -85,6 +85,7 @@ func TestDataUsageSyncer_SyncDataUsage(t *testing.T) {
 						},
 					},
 					Success: true,
+					Query:   "SELECT * FROM `project1`.`dataset1`.`table1`",
 				},
 			},
 			wantErr: assert.NoError,
