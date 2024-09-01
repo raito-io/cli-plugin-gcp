@@ -6,9 +6,9 @@ import (
 
 	"cloud.google.com/go/iam/apiv1/iampb"
 	"github.com/googleapis/gax-go/v2"
-	"github.com/raito-io/golang-set/set"
-
+	"github.com/raito-io/cli-plugin-gcp/internal/common"
 	"github.com/raito-io/cli-plugin-gcp/internal/iam"
+	"github.com/raito-io/golang-set/set"
 )
 
 type getPolicyClient interface {
@@ -69,6 +69,8 @@ func updateBindings(ctx context.Context, policyClient setPolicyClient, dataObjec
 		return fmt.Errorf("get iam policy for %q: %w", resourceName, err)
 	}
 
+	common.Logger.Debug(fmt.Sprintf("Updating bindings for policy %q. Adding: %+v; Deleting: %+v", resourceName, membersToRemoveFromRole, membersToAddToRole))
+
 	for i := range resourcePolicy.Bindings {
 		// Remove old assignees
 		if membersToRemove, found := membersToRemoveFromRole[resourcePolicy.Bindings[i].Role]; found {
@@ -96,6 +98,8 @@ func updateBindings(ctx context.Context, policyClient setPolicyClient, dataObjec
 			Members: membersToAddToRole[role],
 		})
 	}
+
+	common.Logger.Debug(fmt.Sprintf("Setting IAM policy for %q: %+v", resourceName, resourcePolicy))
 
 	_, err = policyClient.SetIamPolicy(ctx, &iampb.SetIamPolicyRequest{Resource: resourceName, Policy: resourcePolicy})
 	if err != nil {

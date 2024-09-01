@@ -208,10 +208,10 @@ func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessPro
 		go func(do iam.DataObjectReference) {
 			defer wg.Done()
 
-			common.Logger.Debug(fmt.Sprintf("Update bindings for %s %q", do.ObjectType, do.FullName))
-
 			bindingsToAdd := bindings.bindings[do].bindingsToAdd.Slice()
 			bindingsToDelete := bindings.bindings[do].bindingsToDelete.Slice()
+
+			common.Logger.Debug(fmt.Sprintf("Update bindings for %s %q. Adding: %+v; Deleting: %+v)", do.ObjectType, do.FullName, bindingsToAdd, bindingsToDelete))
 
 			err := a.bindingRepo.UpdateBindings(ctx, &do, bindingsToAdd, bindingsToDelete)
 
