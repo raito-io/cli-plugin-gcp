@@ -69,7 +69,7 @@ func updateBindings(ctx context.Context, policyClient setPolicyClient, dataObjec
 		return fmt.Errorf("get iam policy for %q: %w", resourceName, err)
 	}
 
-	common.Logger.Debug(fmt.Sprintf("Updating bindings for policy %q. Adding: %+v; Deleting: %+v", resourceName, membersToRemoveFromRole, membersToAddToRole))
+	common.Logger.Debug(fmt.Sprintf("Updating bindings for policy %q. Adding: %+v; Deleting: %+v", resourceName, membersToAddToRole, membersToRemoveFromRole))
 
 	for i := range resourcePolicy.Bindings {
 		// Remove old assignees
