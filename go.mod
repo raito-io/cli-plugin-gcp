@@ -21,15 +21,15 @@ require (
 	github.com/raito-io/enumer v0.1.4
 	github.com/raito-io/golang-set v0.0.4
 	github.com/stretchr/testify v1.9.0
-	github.com/vektra/mockery/v2 v2.45.0
+	github.com/vektra/mockery/v2 v2.45.1
 	golang.org/x/exp v0.0.0-20240823005443-9b4947da3948
-	golang.org/x/oauth2 v0.22.0
-	google.golang.org/api v0.195.0
+	golang.org/x/oauth2 v0.23.0
+	google.golang.org/api v0.196.0
 )
 
 require (
 	cloud.google.com/go v0.115.1 // indirect
-	cloud.google.com/go/auth v0.9.2 // indirect
+	cloud.google.com/go/auth v0.9.3 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.4 // indirect
 	cloud.google.com/go/compute/metadata v0.5.0 // indirect
 	cloud.google.com/go/longrunning v0.6.0 // indirect
@@ -114,9 +114,9 @@ require (
 	golang.org/x/time v0.6.0 // indirect
 	golang.org/x/tools v0.24.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240716161551-93cc26a95ae9 // indirect
-	google.golang.org/genproto v0.0.0-20240827150818-7e3bb234dfed // indirect
+	google.golang.org/genproto v0.0.0-20240903143218-8af14fe29dc1 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240827150818-7e3bb234dfed // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240827150818-7e3bb234dfed // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240903143218-8af14fe29dc1 // indirect
 	google.golang.org/grpc v1.66.0 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
