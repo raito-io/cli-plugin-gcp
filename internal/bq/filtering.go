@@ -111,12 +111,21 @@ func (s *BqFilteringService) ExportFilter(ctx context.Context, accessProvider *s
 		}
 
 		return nil, nil
-	}
-
-	if !(len(accessProvider.What) == 1 && accessProvider.What[0].DataObject.Type == ds.Table) {
+	} else if len(accessProvider.What) != 1 {
 		err := accessProviderFeedbackHandler.AddAccessProviderFeedback(sync_to_target.AccessProviderSyncFeedback{
 			AccessProvider: accessProvider.Id,
 			Errors:         []string{"filter what is not a single table"},
+		})
+
+		if err != nil {
+			return nil, fmt.Errorf("add access provider feedback: %w", err)
+		}
+
+		return nil, nil
+	} else if accessProvider.What[0].DataObject.Type != ds.Table {
+		err := accessProviderFeedbackHandler.AddAccessProviderFeedback(sync_to_target.AccessProviderSyncFeedback{
+			AccessProvider: accessProvider.Id,
+			Errors:         []string{fmt.Sprintf("filter what type (%s) is not supported", accessProvider.What[0].DataObject.Type)},
 		})
 
 		if err != nil {

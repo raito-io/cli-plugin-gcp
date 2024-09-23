@@ -58,7 +58,7 @@ func (s *DataUsageSyncer) SyncDataUsage(ctx context.Context, fileCreator wrapper
 			return nil
 		}
 
-		if du.Tables == nil || len(du.Tables) == 0 {
+		if len(du.Tables) == 0 {
 			numSkippedNoCachedQuery += 1
 			return nil
 		}
