@@ -21,11 +21,11 @@ var TitleCaser = cases.Title(language.English)
 func splitAndCapitalize(s string) string {
 	var words []string
 	var start int
+
 	for i, r := range s {
 		if i > 0 && unicode.IsUpper(r) {
-			// Add the word up to this capital letter
 			word := s[start:i]
-			words = append(words, strings.Title(word))
+			words = append(words, TitleCaser.String(word))
 			start = i
 		}
 	}
@@ -40,6 +40,7 @@ func splitAndCapitalize(s string) string {
 func RoleToDisplayName(roleName string) string {
 	roleName, _ = strings.CutPrefix(roleName, "roles/")
 	roleName = strings.ReplaceAll(roleName, ".", " ")
+
 	return splitAndCapitalize(roleName)
 }
 

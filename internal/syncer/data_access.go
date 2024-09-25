@@ -305,9 +305,11 @@ func (a *AccessSyncer) ConvertBindingsToAccessProviders(ctx context.Context, con
 func generateAccessProviderDisplayName(binding iam.IamBinding) string {
 	resourceType := roles.TitleCaser.String(binding.ResourceType)
 	resource := binding.Resource
+
 	if strings.Contains(resource, ".") {
 		resource = resource[strings.Index(resource, ".")+1:]
 	}
+
 	return fmt.Sprintf("%s %s - %s", resourceType, resource, roles.RoleToDisplayName(binding.Role))
 }
 
