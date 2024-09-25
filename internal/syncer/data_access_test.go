@@ -27,6 +27,49 @@ import (
 	"github.com/raito-io/cli-plugin-gcp/internal/org"
 )
 
+func TestAccessSyncer_GenerateAccessProviderDisplayName(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    iam.IamBinding
+		expected string
+	}{
+		{
+			name: "Dataset dataEditor",
+			input: iam.IamBinding{
+				Role:         "roles/bigquery.dataEditor",
+				ResourceType: "table",
+				Resource:     "bq-demodata.MASTER_DATA.dbo_ErrorLog",
+			},
+			expected: "Table MASTER_DATA.dbo_ErrorLog - Bigquery Dataeditor",
+		},
+		{
+			name: "Dataset dataViewer",
+			input: iam.IamBinding{
+				Role:         "roles/bigquery.dataViewer",
+				ResourceType: "dataset",
+				Resource:     "bq-demodata.DEMO_VIEWS",
+			},
+			expected: "Dataset DEMO_VIEWS - Bigquery Dataviewer",
+		},
+		{
+			name: "Project owner",
+			input: iam.IamBinding{
+				Role:         "roles/owner",
+				ResourceType: "project",
+				Resource:     "bq-demodata",
+			},
+			expected: "Project bq-demodata - Owner",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := generateAccessProviderDisplayName(tt.input); got != tt.expected {
+				t.Errorf("generateAccessProviderDisplayName() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}
+
 func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 	bqMetadata, err := bigquery.NewDataSourceMetaData(context.Background(), &config.ConfigMap{Parameters: map[string]string{
 		common.BqCatalogEnabled: "true",

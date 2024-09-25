@@ -1,6 +1,12 @@
 package roles
 
-import ds "github.com/raito-io/cli/base/data_source"
+import (
+	"strings"
+
+	ds "github.com/raito-io/cli/base/data_source"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
+)
 
 type Service string
 
@@ -9,8 +15,18 @@ const (
 	ServiceBigQuery = Service("BQ")
 )
 
+var TitleCaser = cases.Title(language.English)
+
+// RoleToDisplayName generates a more human readable role name
+func RoleToDisplayName(roleName string) string {
+	roleName, _ = strings.CutPrefix(roleName, "roles/")
+	roleName = strings.ReplaceAll(roleName, ".", " ")
+	return TitleCaser.String(roleName)
+}
+
 type GcpRole struct {
 	Name        string
+	DisplayName string
 	Description string
 
 	GlobalPermissions      map[Service][]string // global permissions per service
