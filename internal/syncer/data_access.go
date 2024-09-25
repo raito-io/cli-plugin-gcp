@@ -302,8 +302,8 @@ func (a *AccessSyncer) ConvertBindingsToAccessProviders(ctx context.Context, con
 	return aps, nil
 }
 
-func generateAccessProviderDisplayName(binding iam.IamBinding) string {
-	resourceType := roles.TitleCaser.String(binding.ResourceType)
+func generateAccessProviderDisplayName(actualResourceType string, binding iam.IamBinding) string {
+	resourceType := roles.TitleCaser.String(actualResourceType)
 	resource := binding.Resource
 
 	if strings.Contains(resource, ".") {
@@ -314,7 +314,7 @@ func generateAccessProviderDisplayName(binding iam.IamBinding) string {
 }
 
 func (a *AccessSyncer) generateAccessProvider(actualResourceType string, binding iam.IamBinding, accessProviderMap map[string]*exporter.AccessProvider, managed bool) {
-	displayName := generateAccessProviderDisplayName(binding)
+	displayName := generateAccessProviderDisplayName(actualResourceType, binding)
 	apName := fmt.Sprintf("%s_%s_%s", actualResourceType, binding.Resource, strings.Replace(binding.Role, "/", "_", -1))
 
 	if _, f := accessProviderMap[apName]; !f {
