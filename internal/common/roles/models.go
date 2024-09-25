@@ -2,6 +2,7 @@ package roles
 
 import (
 	"strings"
+	"unicode"
 
 	ds "github.com/raito-io/cli/base/data_source"
 	"golang.org/x/text/cases"
@@ -17,11 +18,29 @@ const (
 
 var TitleCaser = cases.Title(language.English)
 
+func splitAndCapitalize(s string) string {
+	var words []string
+	var start int
+	for i, r := range s {
+		if i > 0 && unicode.IsUpper(r) {
+			// Add the word up to this capital letter
+			word := s[start:i]
+			words = append(words, strings.Title(word))
+			start = i
+		}
+	}
+	// Add the last word
+	word := s[start:]
+	words = append(words, TitleCaser.String(word))
+
+	return strings.Join(words, " ")
+}
+
 // RoleToDisplayName generates a more human readable role name
 func RoleToDisplayName(roleName string) string {
 	roleName, _ = strings.CutPrefix(roleName, "roles/")
 	roleName = strings.ReplaceAll(roleName, ".", " ")
-	return TitleCaser.String(roleName)
+	return splitAndCapitalize(roleName)
 }
 
 type GcpRole struct {

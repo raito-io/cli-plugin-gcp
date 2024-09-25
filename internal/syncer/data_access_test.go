@@ -40,7 +40,7 @@ func TestAccessSyncer_GenerateAccessProviderDisplayName(t *testing.T) {
 				ResourceType: "table",
 				Resource:     "bq-demodata.MASTER_DATA.dbo_ErrorLog",
 			},
-			expected: "Table MASTER_DATA.dbo_ErrorLog - Bigquery Dataeditor",
+			expected: "Table MASTER_DATA.dbo_ErrorLog - Bigquery Data Editor",
 		},
 		{
 			name: "Dataset dataViewer",
@@ -49,7 +49,7 @@ func TestAccessSyncer_GenerateAccessProviderDisplayName(t *testing.T) {
 				ResourceType: "dataset",
 				Resource:     "bq-demodata.DEMO_VIEWS",
 			},
-			expected: "Dataset DEMO_VIEWS - Bigquery Dataviewer",
+			expected: "Dataset DEMO_VIEWS - Bigquery Data Viewer",
 		},
 		{
 			name: "Project owner",

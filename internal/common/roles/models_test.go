@@ -21,7 +21,7 @@ func Test_RoleToDisplayName(t *testing.T) {
 		{
 			name:     "Bigquery Dataviewer",
 			input:    "roles/bigquery.dataViewer",
-			expected: "Bigquery Dataviewer",
+			expected: "Bigquery Data Viewer",
 		},
 	}
 	for _, tt := range tests {
