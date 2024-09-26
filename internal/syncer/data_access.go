@@ -7,13 +7,13 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/hashicorp/go-multierror"
-	"github.com/raito-io/golang-set/set"
-
 	"github.com/aws/smithy-go/ptr"
+	"github.com/hashicorp/go-multierror"
+	"github.com/raito-io/cli-plugin-gcp/internal/common/roles"
 	"github.com/raito-io/cli/base/access_provider"
 	"github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/cli/base/wrappers"
+	"github.com/raito-io/golang-set/set"
 
 	exporter "github.com/raito-io/cli/base/access_provider/sync_from_target"
 	importer "github.com/raito-io/cli/base/access_provider/sync_to_target"
@@ -302,13 +302,25 @@ func (a *AccessSyncer) ConvertBindingsToAccessProviders(ctx context.Context, con
 	return aps, nil
 }
 
+func generateAccessProviderDisplayName(actualResourceType string, binding iam.IamBinding) string {
+	resourceType := roles.TitleCaser.String(actualResourceType)
+	resource := binding.Resource
+
+	if strings.Contains(resource, ".") {
+		resource = resource[strings.Index(resource, ".")+1:]
+	}
+
+	return fmt.Sprintf("%s %s - %s", resourceType, resource, roles.RoleToDisplayName(binding.Role))
+}
+
 func (a *AccessSyncer) generateAccessProvider(actualResourceType string, binding iam.IamBinding, accessProviderMap map[string]*exporter.AccessProvider, managed bool) {
+	displayName := generateAccessProviderDisplayName(actualResourceType, binding)
 	apName := fmt.Sprintf("%s_%s_%s", actualResourceType, binding.Resource, strings.Replace(binding.Role, "/", "_", -1))
 
 	if _, f := accessProviderMap[apName]; !f {
 		accessProviderMap[apName] = &exporter.AccessProvider{
 			ExternalId:        apName,
-			Name:              apName,
+			Name:              displayName,
 			NamingHint:        generateNamingHint(apName),
 			NotInternalizable: !managed,
 			WhoLocked:         ptr.Bool(false),

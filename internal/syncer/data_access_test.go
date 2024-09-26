@@ -27,6 +27,49 @@ import (
 	"github.com/raito-io/cli-plugin-gcp/internal/org"
 )
 
+func TestAccessSyncer_GenerateAccessProviderDisplayName(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    iam.IamBinding
+		expected string
+	}{
+		{
+			name: "Dataset dataEditor",
+			input: iam.IamBinding{
+				Role:         "roles/bigquery.dataEditor",
+				ResourceType: "table",
+				Resource:     "bq-demodata.MASTER_DATA.dbo_ErrorLog",
+			},
+			expected: "Table MASTER_DATA.dbo_ErrorLog - Bigquery Data Editor",
+		},
+		{
+			name: "Dataset dataViewer",
+			input: iam.IamBinding{
+				Role:         "roles/bigquery.dataViewer",
+				ResourceType: "dataset",
+				Resource:     "bq-demodata.DEMO_VIEWS",
+			},
+			expected: "Dataset DEMO_VIEWS - Bigquery Data Viewer",
+		},
+		{
+			name: "Project owner",
+			input: iam.IamBinding{
+				Role:         "roles/owner",
+				ResourceType: "project",
+				Resource:     "bq-demodata",
+			},
+			expected: "Project bq-demodata - Owner",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := generateAccessProviderDisplayName(tt.input.ResourceType, tt.input); got != tt.expected {
+				t.Errorf("generateAccessProviderDisplayName() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}
+
 func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 	bqMetadata, err := bigquery.NewDataSourceMetaData(context.Background(), &config.ConfigMap{Parameters: map[string]string{
 		common.BqCatalogEnabled: "true",
@@ -109,7 +152,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			expectedAccessProviders: []sync_from_target.AccessProvider{
 				{
 					ExternalId: "project_project1_roles_owner",
-					Name:       "project_project1_roles_owner",
+					Name:       "Project project1 - Owner",
 					NamingHint: "project_project1_roles_owner",
 					Type:       ptr.String(access_provider.AclSet),
 					Action:     sync_from_target.Grant,
@@ -198,7 +241,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			expectedAccessProviders: []sync_from_target.AccessProvider{
 				{
 					ExternalId: "project_project1_roles_owner",
-					Name:       "project_project1_roles_owner",
+					Name:       "Project project1 - Owner",
 					NamingHint: "project_project1_roles_owner",
 					Type:       ptr.String(access_provider.AclSet),
 					Action:     sync_from_target.Grant,
@@ -225,7 +268,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 				},
 				{
 					ExternalId: "project_project1_roles_viewer",
-					Name:       "project_project1_roles_viewer",
+					Name:       "Project project1 - Viewer",
 					NamingHint: "project_project1_roles_viewer",
 					Type:       ptr.String(access_provider.AclSet),
 					Action:     sync_from_target.Grant,
@@ -252,7 +295,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 				},
 				{
 					ExternalId: "folder_folder1_roles_editor",
-					Name:       "folder_folder1_roles_editor",
+					Name:       "Folder folder1 - Editor",
 					NamingHint: "folder_folder1_roles_editor",
 					Type:       ptr.String(access_provider.AclSet),
 					Action:     sync_from_target.Grant,
@@ -279,7 +322,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 				},
 				{
 					ExternalId: "folder_folder1_roles_viewer",
-					Name:       "folder_folder1_roles_viewer",
+					Name:       "Folder folder1 - Viewer",
 					NamingHint: "folder_folder1_roles_viewer",
 					Type:       ptr.String(access_provider.AclSet),
 					Action:     sync_from_target.Grant,
@@ -393,7 +436,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			expectedAccessProviders: []sync_from_target.AccessProvider{
 				{
 					ExternalId: "project_project1_roles_owner",
-					Name:       "project_project1_roles_owner",
+					Name:       "Project project1 - Owner",
 					NamingHint: "project_project1_roles_owner",
 					Type:       ptr.String(access_provider.AclSet),
 					Action:     sync_from_target.Grant,
@@ -416,7 +459,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 				},
 				{
 					ExternalId: "dataset_project/dataset1_roles_editor",
-					Name:       "dataset_project/dataset1_roles_editor",
+					Name:       "Dataset project/dataset1 - Editor",
 					NamingHint: "dataset_project/dataset1_roles_editor",
 					Type:       ptr.String(access_provider.AclSet),
 					Action:     sync_from_target.Grant,
@@ -439,7 +482,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 				},
 				{
 					ExternalId: "table_project/dataset1/table1_roles_bigquery.dataviewer",
-					Name:       "table_project/dataset1/table1_roles_bigquery.dataviewer",
+					Name:       "Table project/dataset1/table1 - Bigquery Dataviewer",
 					NamingHint: "table_project/dataset1/table1_roles_bigquery.dataviewer",
 					Type:       ptr.String(access_provider.AclSet),
 					Action:     sync_from_target.Grant,
@@ -531,7 +574,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 			expectedAccessProviders: []sync_from_target.AccessProvider{
 				{
 					ExternalId: "project_project1_roles_owner",
-					Name:       "project_project1_roles_owner",
+					Name:       "Project project1 - Owner",
 					NamingHint: "project_project1_roles_owner",
 					Type:       ptr.String(access_provider.AclSet),
 					Action:     sync_from_target.Grant,
@@ -554,7 +597,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 				},
 				{
 					ExternalId: "dataset_project/dataset1_roles_editor",
-					Name:       "dataset_project/dataset1_roles_editor",
+					Name:       "Dataset project/dataset1 - Editor",
 					NamingHint: "dataset_project/dataset1_roles_editor",
 					Type:       ptr.String(access_provider.AclSet),
 					Action:     sync_from_target.Grant,
@@ -577,7 +620,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 				},
 				{
 					ExternalId: "table_project/dataset1/table1_roles_bigquery.dataviewer",
-					Name:       "table_project/dataset1/table1_roles_bigquery.dataviewer",
+					Name:       "Table project/dataset1/table1 - Bigquery Dataviewer",
 					NamingHint: "table_project/dataset1/table1_roles_bigquery.dataviewer",
 					Type:       ptr.String(access_provider.AclSet),
 					Action:     sync_from_target.Grant,
@@ -695,7 +738,7 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 			want: []*sync_from_target.AccessProvider{
 				{
 					ExternalId: "project_project1_roles_owner",
-					Name:       "project_project1_roles_owner",
+					Name:       "Project project1 - Owner",
 					NamingHint: "project_project1_roles_owner",
 					Type:       ptr.String(access_provider.AclSet),
 					Action:     sync_from_target.Grant,
@@ -722,7 +765,7 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 				},
 				{
 					ExternalId: "folder_folder1_roles_viewer",
-					Name:       "folder_folder1_roles_viewer",
+					Name:       "Folder folder1 - Viewer",
 					NamingHint: "folder_folder1_roles_viewer",
 					Type:       ptr.String(access_provider.AclSet),
 					Action:     sync_from_target.Grant,
@@ -805,7 +848,7 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 			want: []*sync_from_target.AccessProvider{
 				{
 					ExternalId: "folder_folder1_roles_editor",
-					Name:       "folder_folder1_roles_editor",
+					Name:       "Folder folder1 - Editor",
 					NamingHint: "folder_folder1_roles_editor",
 					Type:       ptr.String(access_provider.AclSet),
 					Action:     sync_from_target.Grant,
@@ -832,7 +875,7 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 				},
 				{
 					ExternalId: "folder_folder1_roles_viewer",
-					Name:       "folder_folder1_roles_viewer",
+					Name:       "Folder folder1 - Viewer",
 					NamingHint: "folder_folder1_roles_viewer",
 					Type:       ptr.String(access_provider.AclSet),
 					Action:     sync_from_target.Grant,
@@ -893,7 +936,7 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 			want: []*sync_from_target.AccessProvider{
 				{
 					ExternalId: "project_project1_roles_owner",
-					Name:       "project_project1_roles_owner",
+					Name:       "Project project1 - Owner",
 					NamingHint: "project_project1_roles_owner",
 					Type:       ptr.String(access_provider.AclSet),
 					Action:     sync_from_target.Grant,
@@ -920,7 +963,7 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 				},
 				{
 					ExternalId: "folder_folder1_roles_non-raito-managed-binding",
-					Name:       "folder_folder1_roles_non-raito-managed-binding",
+					Name:       "Folder folder1 - Non-Raito-Managed-Binding",
 					NamingHint: "folder_folder1_roles_non-raito-managed-binding",
 					Type:       ptr.String(access_provider.AclSet),
 					Action:     sync_from_target.Grant,
@@ -1115,7 +1158,7 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 			want: []*sync_from_target.AccessProvider{
 				{
 					ExternalId: "project_project1_roles_owner",
-					Name:       "project_project1_roles_owner",
+					Name:       "Project project1 - Owner",
 					NamingHint: "project_project1_roles_owner",
 					Type:       ptr.String(access_provider.AclSet),
 					Action:     sync_from_target.Grant,

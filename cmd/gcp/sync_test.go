@@ -251,7 +251,7 @@ func AccessSync(ctx context.Context, config *config.ConfigMap, t *testing.T) {
 		expectedAps := []sync_from_target.AccessProvider{
 			{
 				ExternalId: "organization_gcp-org-905493414429_roles_bigquery.admin",
-				Name:       "organization_gcp-org-905493414429_roles_bigquery.admin",
+				Name:       "Organization gcp-org-905493414429 - Bigquery Admin",
 				NamingHint: "organization_gcp-org-905493414429_roles_bigquery.admin",
 				Type:       ptr.String(access_provider.AclSet),
 				Action:     sync_from_target.Grant,
@@ -279,7 +279,7 @@ func AccessSync(ctx context.Context, config *config.ConfigMap, t *testing.T) {
 			},
 			{
 				ExternalId: "project_raito-integration-test_roles_bigquery.admin",
-				Name:       "project_raito-integration-test_roles_bigquery.admin",
+				Name:       "Project raito-integration-test - Bigquery Admin",
 				NamingHint: "project_raito-integration-test_roles_bigquery.admin",
 				Type:       ptr.String(access_provider.AclSet),
 				Action:     sync_from_target.Grant,

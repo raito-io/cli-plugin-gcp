@@ -7,6 +7,32 @@ import (
 	ds "github.com/raito-io/cli/base/data_source"
 )
 
+func Test_RoleToDisplayName(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "Owner",
+			input:    "roles/owner",
+			expected: "Owner",
+		},
+		{
+			name:     "Bigquery Dataviewer",
+			input:    "roles/bigquery.dataViewer",
+			expected: "Bigquery Data Viewer",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := RoleToDisplayName(tt.input); got != tt.expected {
+				t.Errorf("RoleToDisplayName() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}
+
 func TestGcpRole_ToDataObjectTypePermission(t *testing.T) {
 	type fields struct {
 		Name                   string
