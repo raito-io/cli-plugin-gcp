@@ -3,6 +3,7 @@ package org
 import (
 	"context"
 	"fmt"
+	"github.com/raito-io/cli-plugin-gcp/internal/common"
 
 	ds "github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/cli/base/util/config"
@@ -48,18 +49,20 @@ func (r *OrgIdenityStoreSyncer) GetUsers(ctx context.Context, fn func(ctx contex
 		return fmt.Errorf("get users in google admin: %w", err)
 	}
 
-	err = r.gcpDataIterator.DataObjects(ctx, &ds.DataSourceSyncConfig{ConfigMap: r.configMap}, func(ctx context.Context, object *GcpOrgEntity) error {
-		if object.Type == TypeProject {
-			getUserErr := r.projectRepo.GetUsers(ctx, "projects/"+object.Id, fn)
-			if getUserErr != nil {
-				return fmt.Errorf("get users in project %s: %w", object.Name, getUserErr)
+	if r.configMap.GetBoolWithDefault(common.GcpServiceAccountsInIdentitySyncEnabled, true) {
+		err = r.gcpDataIterator.DataObjects(ctx, &ds.DataSourceSyncConfig{ConfigMap: r.configMap}, func(ctx context.Context, object *GcpOrgEntity) error {
+			if object.Type == TypeProject {
+				getUserErr := r.projectRepo.GetUsers(ctx, "projects/"+object.Id, fn)
+				if getUserErr != nil {
+					return fmt.Errorf("get users in project %s: %w", object.Name, getUserErr)
+				}
 			}
-		}
 
-		return nil
-	})
-	if err != nil {
-		return fmt.Errorf("get service accounts: %w", err)
+			return nil
+		})
+		if err != nil {
+			return fmt.Errorf("get service accounts: %w", err)
+		}
 	}
 
 	return nil
