@@ -3,12 +3,12 @@ package common
 import (
 	"errors"
 	"fmt"
-	"google.golang.org/grpc/status"
 	"time"
 
 	hclog "github.com/hashicorp/go-hclog"
 	"github.com/raito-io/cli/base"
 	"google.golang.org/api/googleapi"
+	"google.golang.org/grpc/status"
 )
 
 const CONTEXT_TIMEOUT = 10 * time.Second
