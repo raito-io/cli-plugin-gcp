@@ -49,7 +49,7 @@ func (r *OrgIdenityStoreSyncer) GetUsers(ctx context.Context, fn func(ctx contex
 		return fmt.Errorf("get users in google admin: %w", err)
 	}
 
-	if r.configMap.GetBoolWithDefault(common.GcpServiceAccountInIdentitySyncEnabled, true) {
+	if r.configMap.GetBoolWithDefault(common.GcpServiceAccountsInIdentitySyncEnabled, true) {
 		err = r.gcpDataIterator.DataObjects(ctx, &ds.DataSourceSyncConfig{ConfigMap: r.configMap}, func(ctx context.Context, object *GcpOrgEntity) error {
 			if object.Type == TypeProject {
 				getUserErr := r.projectRepo.GetUsers(ctx, "projects/"+object.Id, fn)
