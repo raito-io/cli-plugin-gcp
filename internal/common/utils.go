@@ -3,6 +3,7 @@ package common
 import (
 	"errors"
 	"fmt"
+	"google.golang.org/grpc/status"
 	"time"
 
 	hclog "github.com/hashicorp/go-hclog"
@@ -34,6 +35,14 @@ func IsGoogle400Error(err error) bool {
 }
 
 func IsGoogle403Error(err error) bool {
+	rpcError, isRpcError := status.FromError(err)
+
+	// PermissionDenied Code = 7
+	if isRpcError && rpcError.Code() == 7 {
+		Logger.Debug(fmt.Sprintf("Google GRPC PermissionDenied: {Code :%d, Message: %s, Details: %+v, err: %s}", rpcError.Code(), rpcError.Message(), rpcError.Details(), rpcError.Err()))
+		return true
+	}
+
 	var apiError *googleapi.Error
 	if !errors.As(err, &apiError) {
 		return false
