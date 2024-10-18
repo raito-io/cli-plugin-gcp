@@ -58,7 +58,6 @@ func (r *ProjectRepository) GetProjects(ctx context.Context, _ *ds.DataSourceSyn
 			continue
 		} else if common.IsGoogle403Error(err) {
 			return fmt.Errorf("project unauthorized error: %w", err)
-
 		} else if err != nil {
 			return fmt.Errorf("project iterator: %w", err)
 		}

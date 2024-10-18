@@ -3,12 +3,12 @@ package org
 import (
 	"context"
 	"fmt"
+
 	"github.com/raito-io/cli-plugin-gcp/internal/common"
+	"github.com/raito-io/cli-plugin-gcp/internal/iam"
 
 	ds "github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/cli/base/util/config"
-
-	"github.com/raito-io/cli-plugin-gcp/internal/iam"
 )
 
 //go:generate go run github.com/vektra/mockery/v2 --name=AdminRepository --with-expecter --inpackage
