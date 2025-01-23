@@ -49,6 +49,7 @@ func (s *DataUsageSyncer) SyncDataUsage(ctx context.Context, fileCreator wrapper
 
 	numSkippedNoCachedQuery := 0
 	numSkippedNoResources := 0
+	numSkippedNoUser := 0
 	numStatements := 0
 
 	err := s.repo.GetDataUsage(ctx, &windowStart, usageFirstUsed, usageLastUsed, func(ctx context.Context, du *bigquery.BQInformationSchemaEntity) error {
@@ -103,6 +104,11 @@ func (s *DataUsageSyncer) SyncDataUsage(ctx context.Context, fileCreator wrapper
 			return nil
 		}
 
+		if du.User == "" {
+			numSkippedNoUser += 1
+			return nil
+		}
+
 		err := fileCreator.AddStatements([]data_usage.Statement{
 			{
 				ExternalId:          s.idGenerator.New(),
@@ -139,7 +145,7 @@ func (s *DataUsageSyncer) SyncDataUsage(ctx context.Context, fileCreator wrapper
 		return fmt.Errorf("get data usage: %w", err)
 	}
 
-	common.Logger.Info(fmt.Sprintf("%d statements skipped due to no cached query available, %d statements skipped due to no data objects in statement", numSkippedNoCachedQuery, numSkippedNoResources))
+	common.Logger.Info(fmt.Sprintf("%d statements skipped due to no cached query available; %d statements skipped due to no data objects in statement; %d statements skipped due to no user in statement", numSkippedNoCachedQuery, numSkippedNoResources, numSkippedNoUser))
 
 	return nil
 }
