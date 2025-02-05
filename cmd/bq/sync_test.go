@@ -206,9 +206,9 @@ func AccessSync(ctx context.Context, config *config.ConfigMap, t *testing.T) {
 				},
 			},
 			{
-				ExternalId: "project_raito-integration-test_roles_bigquery.resourceViewer",
-				Name:       "Project raito-integration-test - Bigquery Resource Viewer",
-				NamingHint: "project_raito-integration-test_roles_bigquery.resourceViewer",
+				ExternalId: "table_raito-integration-test.RAITO_TESTING.HumanResources_Department_roles_bigquery.dataViewer",
+				Name:       "Table RAITO_TESTING.HumanResources_Department - Bigquery Data Viewer",
+				NamingHint: "table_raito-integration-test.RAITO_TESTING.HumanResources_Department_roles_bigquery.dataViewer",
 				Type:       ptr.String(access_provider.AclSet),
 				Action:     sync_from_target.Grant,
 				Who: &sync_from_target.WhoItem{
@@ -216,19 +216,20 @@ func AccessSync(ctx context.Context, config *config.ConfigMap, t *testing.T) {
 					Groups:          []string{},
 					AccessProviders: []string{},
 				},
-				WhoLocked:    ptr.Bool(false),
-				WhatLocked:   ptr.Bool(false),
-				NameLocked:   ptr.Bool(false),
-				DeleteLocked: ptr.Bool(false),
-				ActualName:   "project_raito-integration-test_roles_bigquery.resourceViewer",
+				WhoLocked:         ptr.Bool(false),
+				WhatLocked:        ptr.Bool(false),
+				NameLocked:        ptr.Bool(false),
+				DeleteLocked:      ptr.Bool(false),
+				NotInternalizable: false,
+				ActualName:        "table_raito-integration-test.RAITO_TESTING.HumanResources_Department_roles_bigquery.dataViewer",
 				What: []sync_from_target.WhatItem{
 					{
 						DataObject: &data_source.DataObjectReference{
-							FullName: "raito-integration-test",
-							Type:     "datasource",
+							FullName: "raito-integration-test.RAITO_TESTING.HumanResources_Department",
+							Type:     "table",
 						},
 						Permissions: []string{
-							roles.RolesBigQueryResourceViewer.Name,
+							roles.RolesBigQueryDataViewer.Name,
 						},
 					},
 				},
@@ -236,7 +237,7 @@ func AccessSync(ctx context.Context, config *config.ConfigMap, t *testing.T) {
 		}
 
 		assert.GreaterOrEqual(t, len(apHandler.AccessProviders), 10)
-
+		
 		for _, ap := range expectedAPs {
 			assert.Containsf(t, apHandler.AccessProviders, ap, "Access provider %+v not found", ap)
 		}

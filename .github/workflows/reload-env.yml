@@ -1,0 +1,128 @@
+name: Raito CLI - GCP Plugin - Reload
+on:
+  workflow_dispatch:
+    inputs:
+      targetEnvironment:
+        type: string
+        required: true
+        description: ""
+      secretArn:
+        required: true
+        type: string
+        description: "The ARN of the secret to load"
+      secretFiles:
+        required: false
+        type: string
+        description: "The ARN of the secret files to load"
+        default: "[]"
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  reload:
+    name: Reload
+    environment: ${{ inputs.targetEnvironment }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          check-latest: true
+          cache: true
+
+      - name: Mod Tidy
+        run: go mod tidy
+
+      - name: Assume role using OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_DEPLOY_ROLE }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Load secrets
+        uses: aws-actions/aws-secretsmanager-get-secrets@v2
+        with:
+          secret-ids: ",${{ inputs.secretArn }}"
+          parse-json-secrets: true
+
+      - name: Pre load secret files
+        if: ${{ inputs.secretFiles != '[]' }}
+        run: |
+          secretList=$(echo ${{ inputs.secretFiles }} | jq -r '.[] | "\(.name | ascii_upcase),\(.secretArn)"')
+          echo 'secretfilelist<<EOF' >> "$GITHUB_OUTPUT"
+          echo "$secretList" >> "$GITHUB_OUTPUT"
+          echo 'EOF' >> "$GITHUB_OUTPUT"
+
+      - name: Load file secrets
+        if : ${{ inputs.secretFiles != '[]' }}
+        uses: aws-actions/aws-secretsmanager-get-secrets@v2
+        with:
+          secret-ids: ${{ steps.pre-load-secret-files.outputs.secretfilelist }}
+          parse-json-secrets: false
+
+      - name: Store file secrets
+        if: ${{ inputs.secretFiles != '[]' }}
+        run: |
+          echo ${{ inputs.secretFiles }} | jq -r '[] | .name | ascii_upcase' | while read -r secretName; do
+            FILE_PATH="/tmp/${secretName}"
+            ENV_VAR_PATH="FILE_${secretName}"
+            
+            echo "${!secretName}" > "${FILE_PATH}"
+            echo "${ENV_VAR_PATH}=${FILE_PATH}" >> "$GITHUB_ENV"
+          
+            echo "Write secret file to ${FILE_PATH}"
+          
+          done 
+
+      - name: Initiate Terraform
+        uses: ./.github/actions/terraform-init
+        with:
+          S3TerraformBucket: ${AWS_S3_TERRAFORM_BUCKET}
+          S3TerraformKey: ${AWS_S3_TERRAFORM_KEY}
+          DynamoDBTerraformTable: ${AWS_DYNAMODB_TERRAFORM_TABLE}
+
+      - name: Remove old infrastructure
+        uses: ./.github/actions/destroy-infra
+        with:
+          gcpProject: ${{ env.GCP_PROJECT }}
+          gcpRegion: ${{ env.GCP_REGION }}
+          emailStewartB: ${{ env.GCP_EMAIL_B_STEWART }}
+          emailHarrisC: ${{ env.GCP_EMAIL_C_HARRIS }}
+          emailHaydenD: ${{ env.GCP_EMAIL_D_HAYDEN }}
+          emailCarissaM: ${{ env.GCP_EMAIL_M_CARISSA }}
+          emailNguyenN: ${{ env.GCP_EMAIL_N_NGUYEN }}
+          emailGroupSales: ${{ env.GCP_EMAIL_GROUP_SALES }}
+          emailGroupDev: ${{ env.GCP_EMAIL_GROUP_DEV }}
+          gcpCredentials: ${{ env.FILE_GCP_SERVICE_ACCOUNT }}
+
+
+      - name: Setup infrastructure
+        uses: ./.github/actions/generate-infra
+        with:
+          gcpProject: ${{ env.GCP_PROJECT }}
+          gcpRegion: ${{ env.GCP_REGION }}
+          emailStewartB: ${{ env.GCP_EMAIL_B_STEWART }}
+          emailHarrisC: ${{ env.GCP_EMAIL_C_HARRIS }}
+          emailHaydenD: ${{ env.GCP_EMAIL_D_HAYDEN }}
+          emailCarissaM: ${{ env.GCP_EMAIL_M_CARISSA }}
+          emailNguyenN: ${{ env.GCP_EMAIL_N_NGUYEN }}
+          emailGroupSales: ${{ env.GCP_EMAIL_GROUP_SALES }}
+          emailGroupDev: ${{ env.GCP_EMAIL_GROUP_DEV }}
+          testingDataset: ${{ env.TF_testing-infra }}
+          demoDataset: ${{ env.TF_demo-infra }}
+          gcpCredentials: ${{ env.FILE_GCP_SERVICE_ACCOUNT }}
+
+      - name: Generate usage
+        uses: ./.github/actions/generate-usage
+        with:
+          gcpCredentials: ${{ env.FILE_GCP_SERVICE_ACCOUNT }}
+
+
+
+

@@ -1,0 +1,53 @@
+name: "Destroy infra"
+description: "Destroy infrastructure"
+inputs:
+  gcpProject:
+    description: "GCP project name"
+    required: true
+  gcpRegion:
+    description: "GCP region"
+    required: true
+  gcpCredentials:
+    description: "GCP credentials"
+    required: true
+  emailStewartB:
+    description: "B Stewart's email"
+    required: true
+  emailHarrisC:
+    description: "C Harris's email"
+    required: true
+  emailHaydenD:
+    description: "D Hayden's email"
+    required: true
+  emailCarissaM:
+    description: "M Carissa's email"
+    required: true
+  emailNguyenN:
+    description: "N Nguyen's email"
+    required: true
+  emailGroupSales:
+    description: "Sales group email"
+    required: true
+  emailGroupDev:
+    description: "Engineering group email"
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Destroy infrastructure
+      shell: bash
+      run: make destroy-test-infra
+      env:
+        TF_VAR_gcp_project: ${{ inputs.gcpProject }}
+        TF_VAR_gcp_region: ${{ inputs.gcpRegion}}
+        TF_VAR_email_b_stewart: ${{ inputs.gcpProject }}
+        TF_VAR_email_c_harris: ${{ inputs.emailHarrisC }}
+        TF_VAR_email_d_hayden: ${{ inputs.emailHaydenD }}
+        TF_VAR_email_m_carissa: ${{ inputs.emailHarrisC }}
+        TF_VAR_email_n_nguyen: ${{ inputs.emailNguyenN }}
+        TF_VAR_email_group_sales: ${{ inputs.emailGroupSales }}
+        TF_VAR_email_group_dev: ${{ inputs.emailGroupDev }}
+        TF_VAR_testing_dataset: true
+        TF_VAR_demo_dataset: true
+        GOOGLE_APPLICATION_CREDENTIALS: ${{ inputs.gcpCredentials }}
