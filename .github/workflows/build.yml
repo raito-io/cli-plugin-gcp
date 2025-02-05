@@ -8,6 +8,34 @@ permissions:
   id-token: write
   contents: read
 jobs:
+  linting:
+    name: Linting
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          check-latest: true
+          cache: true
+          cache-dependency-path: "**/*.sum"
+
+      - name: Mod Tidy
+        run: go mod tidy
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.61.0
+
+      - name: Terraform Lint
+        run: terraform fmt -check=true -recursive
+        working-directory: .infra/infra
+
   remove-old-infra:
     uses: ./.github/workflows/destroy-infra.yml
     with:
@@ -42,6 +70,7 @@ jobs:
     needs:
       - setup-infra
       - generate-usage
+      - linting
 
     steps:
       - name: Check out repository code
@@ -60,11 +89,6 @@ jobs:
 
       - name: Build
         run: make build
-
-      - name: Lint
-        uses: golangci/golangci-lint-action@v6
-        with:
-          version: v1.61.0
 
       - name: Generate credentials file
         run: | 

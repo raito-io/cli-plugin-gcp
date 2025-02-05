@@ -1,0 +1,15 @@
+name: "Generate usage"
+description: "Generate usage"
+inputs:
+  gcpCredentials:
+    description: "GCP credentials"
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Generate usage
+      shell: bash
+      run: make gen-test-usage
+      env:
+        GOOGLE_APPLICATION_CREDENTIALS: ${{ inputs.gcpCredentials }}
