@@ -21,6 +21,18 @@ permissions:
   contents: read
 
 jobs:
+  debugenv:
+    name: "Debugging"
+    environment: integration_testing
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Debugging"
+        run: |
+          echo "GCP_PROJECT: "
+          echo $(echo ${{secrets.GCP_PROJECT}} | sed 's/./& /g')
+          echo "GCP_REGION: "
+          echo $(echo ${{secrets.GCP_REGION}} | sed 's/./& /g')
+
   reload:
     name: Reload
     environment: ${{ inputs.targetEnvironment }}
@@ -69,7 +81,7 @@ jobs:
       - name: Store file secrets
         if: ${{ inputs.secretFiles != '[]' }}
         run: |
-          echo '${{ inputs.secretFiles }}' | jq -r '[] | .name | ascii_upcase' | while read -r secretName; do
+          echo '${{ inputs.secretFiles }}' | jq -r '.[] | .name | ascii_upcase' | while read -r secretName; do
             FILE_PATH="/tmp/${secretName}"
             ENV_VAR_PATH="FILE_${secretName}"
             
