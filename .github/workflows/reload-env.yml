@@ -21,18 +21,6 @@ permissions:
   contents: read
 
 jobs:
-  debugenv:
-    name: "Debugging"
-    environment: integration_testing
-    runs-on: ubuntu-latest
-    steps:
-      - name: "Debugging"
-        run: |
-          echo "GCP_PROJECT: "
-          echo $(echo ${{secrets.GCP_PROJECT}} | sed 's/./& /g')
-          echo "GCP_REGION: "
-          echo $(echo ${{secrets.GCP_REGION}} | sed 's/./& /g')
-
   reload:
     name: Reload
     environment: ${{ inputs.targetEnvironment }}
