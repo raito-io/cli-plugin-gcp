@@ -52,12 +52,15 @@ jobs:
           parse-json-secrets: true
 
       - name: Pre load secret files
+        id: pre-load-secret-files
         if: ${{ inputs.secretFiles != '[]' }}
         run: |
           secretList=$(echo '${{ inputs.secretFiles }}' | jq -r '.[] | "\(.name | ascii_upcase),\(.secret_arn)"')
           echo 'secretfilelist<<EOF' >> "$GITHUB_OUTPUT"
           echo "$secretList" >> "$GITHUB_OUTPUT"
           echo 'EOF' >> "$GITHUB_OUTPUT"
+          
+          echo "Secret file list ${secretList}"
 
       - name: Load file secrets
         if : ${{ inputs.secretFiles != '[]' }}
