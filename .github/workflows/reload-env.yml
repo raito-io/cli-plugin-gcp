@@ -69,7 +69,7 @@ jobs:
       - name: Store file secrets
         if: ${{ inputs.secretFiles != '[]' }}
         run: |
-          echo ${{ inputs.secretFiles }} | jq -r '[] | .name | ascii_upcase' | while read -r secretName; do
+          echo '${{ inputs.secretFiles }}' | jq -r '[] | .name | ascii_upcase' | while read -r secretName; do
             FILE_PATH="/tmp/${secretName}"
             ENV_VAR_PATH="FILE_${secretName}"
             
