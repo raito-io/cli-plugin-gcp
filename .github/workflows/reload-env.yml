@@ -78,6 +78,8 @@ jobs:
           
             echo "Write secret file to ${FILE_PATH}"
           
+            cat ${FILE_PATH}
+          
           done 
 
       - name: Initiate Terraform
