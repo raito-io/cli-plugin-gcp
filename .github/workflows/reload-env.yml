@@ -72,12 +72,16 @@ jobs:
           echo '${{ inputs.secretFiles }}' | jq -r '.[] | .name | ascii_upcase' | while read -r secretName; do
             FILE_PATH="/tmp/${secretName}"
             ENV_VAR_PATH="FILE_${secretName}"
+          
+            echo "Debug"
+            echo  "${!secretName}"
             
-            echo "${!secretName}" > "${FILE_PATH}"
+            echo "${!secretName}" > ${FILE_PATH}
             echo "${ENV_VAR_PATH}=${FILE_PATH}" >> "$GITHUB_ENV"
           
             echo "Write secret file to ${FILE_PATH}"
           
+            echo "Debug file"
             cat ${FILE_PATH}
           
           done 
