@@ -76,16 +76,10 @@ jobs:
             FILE_PATH="/tmp/${secretName}"
             ENV_VAR_PATH="FILE_${secretName}"
           
-            echo "Debug"
-            echo  "${!secretName}"
-            
             echo "${!secretName}" > ${FILE_PATH}
             echo "${ENV_VAR_PATH}=${FILE_PATH}" >> "$GITHUB_ENV"
           
             echo "Write secret file to ${FILE_PATH}"
-          
-            echo "Debug file"
-            cat ${FILE_PATH}
           
           done 
 
@@ -127,8 +121,8 @@ jobs:
           emailNguyenN: ${{ env.GCP_EMAIL_N_NGUYEN }}
           emailGroupSales: ${{ env.GCP_EMAIL_GROUP_SALES }}
           emailGroupDev: ${{ env.GCP_EMAIL_GROUP_DEV }}
-          testingDataset: ${{ env.TF_testing-infra }}
-          demoDataset: ${{ env.TF_demo-infra }}
+          testingDataset: ${{ env.BQ_TESTING_DATA }}
+          demoDataset: ${{ env.BQ_DEMO_DATA }}
           gcpCredentials: ${{ env.FILE_GCP_SERVICE_ACCOUNT }}
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ env.FILE_GCP_SERVICE_ACCOUNT }}
