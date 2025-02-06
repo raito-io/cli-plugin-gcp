@@ -86,6 +86,8 @@ jobs:
           S3TerraformBucket: ${AWS_S3_TERRAFORM_BUCKET}
           S3TerraformKey: ${AWS_S3_TERRAFORM_KEY}
           DynamoDBTerraformTable: ${AWS_DYNAMODB_TERRAFORM_TABLE}
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ env.FILE_GCP_SERVICE_ACCOUNT }}
 
       - name: Remove old infrastructure
         uses: ./.github/actions/destroy-infra
@@ -100,6 +102,8 @@ jobs:
           emailGroupSales: ${{ env.GCP_EMAIL_GROUP_SALES }}
           emailGroupDev: ${{ env.GCP_EMAIL_GROUP_DEV }}
           gcpCredentials: ${{ env.FILE_GCP_SERVICE_ACCOUNT }}
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ env.FILE_GCP_SERVICE_ACCOUNT }}
 
 
       - name: Setup infrastructure
@@ -117,11 +121,15 @@ jobs:
           testingDataset: ${{ env.TF_testing-infra }}
           demoDataset: ${{ env.TF_demo-infra }}
           gcpCredentials: ${{ env.FILE_GCP_SERVICE_ACCOUNT }}
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ env.FILE_GCP_SERVICE_ACCOUNT }}
 
       - name: Generate usage
         uses: ./.github/actions/generate-usage
         with:
           gcpCredentials: ${{ env.FILE_GCP_SERVICE_ACCOUNT }}
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ env.FILE_GCP_SERVICE_ACCOUNT }}
 
 
 
