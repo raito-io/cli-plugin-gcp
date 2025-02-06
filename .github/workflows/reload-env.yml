@@ -54,7 +54,7 @@ jobs:
       - name: Pre load secret files
         if: ${{ inputs.secretFiles != '[]' }}
         run: |
-          secretList=$(echo ${{ inputs.secretFiles }} | jq -r '.[] | "\(.name | ascii_upcase),\(.secretArn)"')
+          secretList=$(echo '${{ inputs.secretFiles }}' | jq -r '.[] | "\(.name | ascii_upcase),\(.secret_arn)"')
           echo 'secretfilelist<<EOF' >> "$GITHUB_OUTPUT"
           echo "$secretList" >> "$GITHUB_OUTPUT"
           echo 'EOF' >> "$GITHUB_OUTPUT"
