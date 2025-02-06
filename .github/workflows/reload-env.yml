@@ -52,12 +52,15 @@ jobs:
           parse-json-secrets: true
 
       - name: Pre load secret files
+        id: pre-load-secret-files
         if: ${{ inputs.secretFiles != '[]' }}
         run: |
-          secretList=$(echo ${{ inputs.secretFiles }} | jq -r '.[] | "\(.name | ascii_upcase),\(.secretArn)"')
+          secretList=$(echo '${{ inputs.secretFiles }}' | jq -r '.[] | "\(.name | ascii_upcase),\(.secret_arn)"')
           echo 'secretfilelist<<EOF' >> "$GITHUB_OUTPUT"
           echo "$secretList" >> "$GITHUB_OUTPUT"
           echo 'EOF' >> "$GITHUB_OUTPUT"
+          
+          echo "Secret file list ${secretList}"
 
       - name: Load file secrets
         if : ${{ inputs.secretFiles != '[]' }}
@@ -69,11 +72,11 @@ jobs:
       - name: Store file secrets
         if: ${{ inputs.secretFiles != '[]' }}
         run: |
-          echo ${{ inputs.secretFiles }} | jq -r '[] | .name | ascii_upcase' | while read -r secretName; do
+          echo '${{ inputs.secretFiles }}' | jq -r '.[] | .name | ascii_upcase' | while read -r secretName; do
             FILE_PATH="/tmp/${secretName}"
             ENV_VAR_PATH="FILE_${secretName}"
-            
-            echo "${!secretName}" > "${FILE_PATH}"
+          
+            echo "${!secretName}" > ${FILE_PATH}
             echo "${ENV_VAR_PATH}=${FILE_PATH}" >> "$GITHUB_ENV"
           
             echo "Write secret file to ${FILE_PATH}"
@@ -86,6 +89,8 @@ jobs:
           S3TerraformBucket: ${AWS_S3_TERRAFORM_BUCKET}
           S3TerraformKey: ${AWS_S3_TERRAFORM_KEY}
           DynamoDBTerraformTable: ${AWS_DYNAMODB_TERRAFORM_TABLE}
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ env.FILE_GCP_SERVICE_ACCOUNT }}
 
       - name: Remove old infrastructure
         uses: ./.github/actions/destroy-infra
@@ -100,6 +105,8 @@ jobs:
           emailGroupSales: ${{ env.GCP_EMAIL_GROUP_SALES }}
           emailGroupDev: ${{ env.GCP_EMAIL_GROUP_DEV }}
           gcpCredentials: ${{ env.FILE_GCP_SERVICE_ACCOUNT }}
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ env.FILE_GCP_SERVICE_ACCOUNT }}
 
 
       - name: Setup infrastructure
@@ -114,14 +121,18 @@ jobs:
           emailNguyenN: ${{ env.GCP_EMAIL_N_NGUYEN }}
           emailGroupSales: ${{ env.GCP_EMAIL_GROUP_SALES }}
           emailGroupDev: ${{ env.GCP_EMAIL_GROUP_DEV }}
-          testingDataset: ${{ env.TF_testing-infra }}
-          demoDataset: ${{ env.TF_demo-infra }}
+          testingDataset: ${{ env.BQ_TESTING_DATA }}
+          demoDataset: ${{ env.BQ_DEMO_DATA }}
           gcpCredentials: ${{ env.FILE_GCP_SERVICE_ACCOUNT }}
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ env.FILE_GCP_SERVICE_ACCOUNT }}
 
       - name: Generate usage
         uses: ./.github/actions/generate-usage
         with:
           gcpCredentials: ${{ env.FILE_GCP_SERVICE_ACCOUNT }}
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ env.FILE_GCP_SERVICE_ACCOUNT }}
 
 
 
