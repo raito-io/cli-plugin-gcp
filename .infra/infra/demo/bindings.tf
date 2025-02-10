@@ -40,8 +40,8 @@ resource "google_bigquery_table_iam_binding" "bq_data_viewer_sales" {
   members = [
     "user:${var.email_m_carissa}",
     "user:${var.email_d_hayden}",
-    "group:${var.email_group_sales}",
-    "group:${var.email_group_dev}"
+    "serviceAccount:${var.email_group_sales}",
+    "serviceAccount:${var.email_group_dev}"
   ]
 }
 
