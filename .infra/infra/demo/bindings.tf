@@ -41,7 +41,7 @@ resource "google_bigquery_table_iam_binding" "bq_data_viewer_sales" {
     "user:${var.email_m_carissa}",
     "user:${var.email_d_hayden}",
     "user:${var.email_n_nguyen}",
-    "group:${var.email_c_harris}",
+    "user:${var.email_c_harris}",
   ]
 }
 
