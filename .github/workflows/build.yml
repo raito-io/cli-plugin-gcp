@@ -121,7 +121,7 @@ jobs:
           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT }}
           GCP_ORGANIZATION_ID: ${{ secrets.gcp_organization_id }}
 
-      - uses: codecov/codecov-action@v4
+      - uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.txt,./coverage-sync.txt
