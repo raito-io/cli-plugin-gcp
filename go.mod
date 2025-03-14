@@ -1,8 +1,6 @@
 module github.com/raito-io/cli-plugin-gcp
 
-go 1.23.0
-
-toolchain go1.24.0
+go 1.24
 
 require (
 	cloud.google.com/go/bigquery v1.64.0
