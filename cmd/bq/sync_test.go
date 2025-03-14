@@ -237,7 +237,7 @@ func AccessSync(ctx context.Context, config *config.ConfigMap, t *testing.T) {
 		}
 
 		assert.GreaterOrEqual(t, len(apHandler.AccessProviders), 10)
-		
+
 		for _, ap := range expectedAPs {
 			assert.Containsf(t, apHandler.AccessProviders, ap, "Access provider %+v not found", ap)
 		}
