@@ -2,7 +2,7 @@ name: Raito CLI - GCP Plugin - Build
 on:
   push:
     branches:
-      - 'main'
+      - "main"
   pull_request:
 permissions:
   id-token: write
@@ -97,7 +97,7 @@ jobs:
         run: make build
 
       - name: Generate credentials file
-        run: | 
+        run: |
           echo $GCP_CREDENTIALS > $RUNNER_TEMP/credentials.json
           echo GOOGLE_APPLICATION_CREDENTIALS=$(echo "$RUNNER_TEMP/credentials.json") >> $GITHUB_ENV
         env:
@@ -121,7 +121,7 @@ jobs:
           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT }}
           GCP_ORGANIZATION_ID: ${{ secrets.gcp_organization_id }}
 
-      - uses: codecov/codecov-action@v4
+      - uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.txt,./coverage-sync.txt
