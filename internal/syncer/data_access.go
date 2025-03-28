@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/raito-io/cli-plugin-gcp/internal/common/roles"
 	"github.com/raito-io/cli/base/access_provider"
+	"github.com/raito-io/cli/base/access_provider/types"
 	"github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/cli/base/wrappers"
 	"github.com/raito-io/golang-set/set"
@@ -156,9 +157,9 @@ func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessPro
 	// Handle masks
 	for _, ap := range accessProviders.AccessProviders {
 		switch ap.Action {
-		case importer.Grant, importer.Purpose:
+		case types.Grant, types.Purpose:
 			grants = append(grants, ap)
-		case importer.Mask:
+		case types.Mask:
 			raitoMask, err := a.maskingService.ExportMasks(ctx, ap, accessProviderFeedbackHandler)
 			if err != nil {
 				return fmt.Errorf("export masks: %w", err)
@@ -167,7 +168,7 @@ func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessPro
 			if raitoMask != nil {
 				a.raitoMasks.Add(raitoMask...)
 			}
-		case importer.Filtered:
+		case types.Filtered:
 			raitoFilter, err := a.filteringService.ExportFilter(ctx, ap, accessProviderFeedbackHandler)
 			if err != nil {
 				return fmt.Errorf("export filters: %w", err)
@@ -325,7 +326,7 @@ func (a *AccessSyncer) generateAccessProvider(actualResourceType string, binding
 			NotInternalizable: !managed,
 			WhoLocked:         ptr.Bool(false),
 			WhatLocked:        ptr.Bool(false),
-			Action:            exporter.Grant,
+			Action:            types.Grant,
 			NameLocked:        ptr.Bool(false),
 			DeleteLocked:      ptr.Bool(false),
 			ActualName:        apName,
@@ -372,7 +373,7 @@ func (a *AccessSyncer) generateGroupedByIdentityAcccessProvider(binding iam.IamB
 			Name:              apName,
 			NamingHint:        generateNamingHint(apName),
 			NotInternalizable: true,
-			Action:            exporter.Grant,
+			Action:            types.Grant,
 			ActualName:        apName,
 			Type:              ptr.String(access_provider.AclSet),
 			Who:               &exporter.WhoItem{},
@@ -426,7 +427,7 @@ func (a *AccessSyncer) generateSpecialGroupOwnerAccessProvider(binding iam.IamBi
 			Name:              apName,
 			NamingHint:        generateNamingHint(apName),
 			NotInternalizable: true,
-			Action:            exporter.Grant,
+			Action:            types.Grant,
 			ActualName:        apName,
 			Type:              ptr.String(access_provider.AclSet),
 			Who:               r.whoItem,

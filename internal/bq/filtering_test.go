@@ -11,6 +11,7 @@ import (
 	"github.com/raito-io/bexpression/datacomparison"
 	"github.com/raito-io/cli/base/access_provider/sync_from_target"
 	"github.com/raito-io/cli/base/access_provider/sync_to_target"
+	"github.com/raito-io/cli/base/access_provider/types"
 	ds "github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/cli/base/wrappers/mocks"
 	"github.com/raito-io/golang-set/set"
@@ -291,7 +292,7 @@ func TestBqFilteringService_ImportFilters(t *testing.T) {
 					ExternalId: "projectId1.dataset1.table1.policyId1",
 					Name:       "policyId1",
 					NamingHint: "policyId1",
-					Action:     sync_from_target.Filtered,
+					Action:     types.Filtered,
 					Policy:     "column1 = \"value1\"",
 					Who: &sync_from_target.WhoItem{
 						Users:  []string{"ruben@raito.io"},
@@ -357,7 +358,7 @@ func TestBqFilteringService_ImportFilters(t *testing.T) {
 					ExternalId: "projectId1.dataset1.table1.filter1",
 					Name:       "filter1",
 					NamingHint: "filter1",
-					Action:     sync_from_target.Filtered,
+					Action:     types.Filtered,
 					Policy:     "column1 = \"value2\"",
 					Who: &sync_from_target.WhoItem{
 						Users:  []string{"ruben@raito.io"},
@@ -437,7 +438,7 @@ func TestBqFilteringService_ExportFilter(t *testing.T) {
 					Name:        "filter1-name",
 					Description: "filter1 description",
 					NamingHint:  "filter1",
-					Action:      sync_to_target.Filtered,
+					Action:      types.Filtered,
 					Who: sync_to_target.WhoItem{
 						Users:  []string{"ruben@raito.io"},
 						Groups: []string{"sales@raito.io"},
@@ -489,7 +490,7 @@ func TestBqFilteringService_ExportFilter(t *testing.T) {
 					Description: "filter1 description",
 					NamingHint:  "filter1",
 					ExternalId:  ptr.String("project1.dataset1.table1.filter3"),
-					Action:      sync_to_target.Filtered,
+					Action:      types.Filtered,
 					Who: sync_to_target.WhoItem{
 						Users:  []string{"ruben@raito.io"},
 						Groups: []string{"sales@raito.io"},
@@ -546,7 +547,7 @@ func TestBqFilteringService_ExportFilter(t *testing.T) {
 					Description: "filter1 description",
 					NamingHint:  "filter1",
 					ExternalId:  ptr.String("project1.dataset1.table1.filter2"),
-					Action:      sync_to_target.Filtered,
+					Action:      types.Filtered,
 					Who: sync_to_target.WhoItem{
 						Users:  []string{"ruben@raito.io"},
 						Groups: []string{"sales@raito.io"},
