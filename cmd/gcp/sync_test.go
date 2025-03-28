@@ -10,6 +10,7 @@ import (
 	"github.com/raito-io/cli/base/access_provider"
 	"github.com/raito-io/cli/base/access_provider/sync_from_target"
 	"github.com/raito-io/cli/base/access_provider/sync_to_target"
+	"github.com/raito-io/cli/base/access_provider/types"
 	"github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/cli/base/identity_store"
 	"github.com/raito-io/cli/base/tag"
@@ -203,7 +204,7 @@ func AccessSync(ctx context.Context, config *config.ConfigMap, t *testing.T) {
 				{
 					Name:   "Simple AP",
 					Id:     "simple-ap-id",
-					Action: sync_to_target.Grant,
+					Action: types.Grant,
 					Who: sync_to_target.WhoItem{
 						Users: []string{"d_hayden@raito.dev"},
 					},
@@ -254,7 +255,7 @@ func AccessSync(ctx context.Context, config *config.ConfigMap, t *testing.T) {
 				Name:       "Organization gcp-org-905493414429 - Bigquery Admin",
 				NamingHint: "organization_gcp-org-905493414429_roles_bigquery.admin",
 				Type:       ptr.String(access_provider.AclSet),
-				Action:     sync_from_target.Grant,
+				Action:     types.Grant,
 				Who: &sync_from_target.WhoItem{
 					Users:           []string{"service-account-for-raito-cli@raito-integration-test.iam.gserviceaccount.com", "thomas@raito.dev"},
 					Groups:          []string{},
@@ -282,7 +283,7 @@ func AccessSync(ctx context.Context, config *config.ConfigMap, t *testing.T) {
 				Name:       "Project raito-integration-test - Bigquery Admin",
 				NamingHint: "project_raito-integration-test_roles_bigquery.admin",
 				Type:       ptr.String(access_provider.AclSet),
-				Action:     sync_from_target.Grant,
+				Action:     types.Grant,
 				Who: &sync_from_target.WhoItem{
 					Users:           []string{"service-account-for-raito-cli@raito-integration-test.iam.gserviceaccount.com"},
 					Groups:          []string{},

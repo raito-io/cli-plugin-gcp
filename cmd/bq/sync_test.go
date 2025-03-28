@@ -10,6 +10,7 @@ import (
 	"github.com/raito-io/cli/base/access_provider"
 	"github.com/raito-io/cli/base/access_provider/sync_from_target"
 	"github.com/raito-io/cli/base/access_provider/sync_to_target"
+	"github.com/raito-io/cli/base/access_provider/types"
 	"github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/cli/base/tag"
 	"github.com/raito-io/cli/base/util/config"
@@ -137,7 +138,7 @@ func AccessSync(ctx context.Context, config *config.ConfigMap, t *testing.T) {
 				{
 					Name:   "Simple AP",
 					Id:     "simple-ap-id",
-					Action: sync_to_target.Grant,
+					Action: types.Grant,
 					Who: sync_to_target.WhoItem{
 						Users: []string{"d_hayden@raito.dev"},
 					},
@@ -188,7 +189,7 @@ func AccessSync(ctx context.Context, config *config.ConfigMap, t *testing.T) {
 				Name:       "person_address_group",
 				NamingHint: "person_address_group",
 				Type:       nil,
-				Action:     sync_from_target.Filtered,
+				Action:     types.Filtered,
 				Policy:     "StateProvinceID = 0",
 				Who: &sync_from_target.WhoItem{
 					Users:           nil,
@@ -210,7 +211,7 @@ func AccessSync(ctx context.Context, config *config.ConfigMap, t *testing.T) {
 				Name:       "Table RAITO_TESTING.HumanResources_Department - Bigquery Data Viewer",
 				NamingHint: "table_raito-integration-test.RAITO_TESTING.HumanResources_Department_roles_bigquery.dataViewer",
 				Type:       ptr.String(access_provider.AclSet),
-				Action:     sync_from_target.Grant,
+				Action:     types.Grant,
 				Who: &sync_from_target.WhoItem{
 					Users:           []string{"m_carissa@raito.dev"},
 					Groups:          []string{},
