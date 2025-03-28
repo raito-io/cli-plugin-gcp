@@ -10,6 +10,7 @@ import (
 	"github.com/raito-io/cli/base/access_provider"
 	"github.com/raito-io/cli/base/access_provider/sync_from_target"
 	importer "github.com/raito-io/cli/base/access_provider/sync_to_target"
+	"github.com/raito-io/cli/base/access_provider/types"
 	"github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/raito-io/cli/base/wrappers"
@@ -155,7 +156,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 					Name:       "Project project1 - Owner",
 					NamingHint: "project_project1_roles_owner",
 					Type:       ptr.String(access_provider.AclSet),
-					Action:     sync_from_target.Grant,
+					Action:     types.Grant,
 					Who: &sync_from_target.WhoItem{
 						Users:           []string{"ruben@raito.io", "dieter@raito.io"},
 						Groups:          []string{"group1@raito.io"},
@@ -244,7 +245,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 					Name:       "Project project1 - Owner",
 					NamingHint: "project_project1_roles_owner",
 					Type:       ptr.String(access_provider.AclSet),
-					Action:     sync_from_target.Grant,
+					Action:     types.Grant,
 					Who: &sync_from_target.WhoItem{
 						Users:           []string{"ruben@raito.io"},
 						Groups:          []string{},
@@ -271,7 +272,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 					Name:       "Project project1 - Viewer",
 					NamingHint: "project_project1_roles_viewer",
 					Type:       ptr.String(access_provider.AclSet),
-					Action:     sync_from_target.Grant,
+					Action:     types.Grant,
 					Who: &sync_from_target.WhoItem{
 						Users:           []string{"dieter@raito.io"},
 						Groups:          []string{},
@@ -298,7 +299,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 					Name:       "Folder folder1 - Editor",
 					NamingHint: "folder_folder1_roles_editor",
 					Type:       ptr.String(access_provider.AclSet),
-					Action:     sync_from_target.Grant,
+					Action:     types.Grant,
 					Who: &sync_from_target.WhoItem{
 						Users:           []string{"sa@raito.io"},
 						Groups:          []string{},
@@ -325,7 +326,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 					Name:       "Folder folder1 - Viewer",
 					NamingHint: "folder_folder1_roles_viewer",
 					Type:       ptr.String(access_provider.AclSet),
-					Action:     sync_from_target.Grant,
+					Action:     types.Grant,
 					Who: &sync_from_target.WhoItem{
 						Users:           []string{"dieter@raito.io"},
 						Groups:          []string{},
@@ -416,7 +417,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 							Type:       ptr.String("maskType"),
 							What:       []sync_from_target.WhatItem{{DataObject: &data_source.DataObjectReference{Type: "column", FullName: "project1/dataset1/table1/column1"}}},
 							Who:        &sync_from_target.WhoItem{Users: []string{"bart@raito.io"}},
-							Action:     sync_from_target.Mask,
+							Action:     types.Mask,
 							ActualName: "dataPolicyMask1ActualName",
 						})
 					})
@@ -439,7 +440,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 					Name:       "Project project1 - Owner",
 					NamingHint: "project_project1_roles_owner",
 					Type:       ptr.String(access_provider.AclSet),
-					Action:     sync_from_target.Grant,
+					Action:     types.Grant,
 					Who: &sync_from_target.WhoItem{
 						Users:           []string{"ruben@raito.io"},
 						Groups:          []string{},
@@ -462,7 +463,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 					Name:       "Dataset project/dataset1 - Editor",
 					NamingHint: "dataset_project/dataset1_roles_editor",
 					Type:       ptr.String(access_provider.AclSet),
-					Action:     sync_from_target.Grant,
+					Action:     types.Grant,
 					Who: &sync_from_target.WhoItem{
 						Users:           []string{"dieter@raito.io"},
 						Groups:          []string{},
@@ -485,7 +486,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 					Name:       "Table project/dataset1/table1 - Bigquery Dataviewer",
 					NamingHint: "table_project/dataset1/table1_roles_bigquery.dataviewer",
 					Type:       ptr.String(access_provider.AclSet),
-					Action:     sync_from_target.Grant,
+					Action:     types.Grant,
 					Who: &sync_from_target.WhoItem{
 						Users:           []string{"thomas@raito.io"},
 						Groups:          []string{},
@@ -508,7 +509,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 					Name:       "dataPolicyName",
 					NamingHint: "",
 					Type:       ptr.String("maskType"),
-					Action:     sync_from_target.Mask,
+					Action:     types.Mask,
 					Who: &sync_from_target.WhoItem{
 						Users: []string{"bart@raito.io"},
 					},
@@ -555,7 +556,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 							NamingHint: "filter1",
 							What:       []sync_from_target.WhatItem{{DataObject: &data_source.DataObjectReference{Type: "table", FullName: "project1/dataset1/table1"}}},
 							Who:        &sync_from_target.WhoItem{Users: []string{"bart@raito.io"}},
-							Action:     sync_from_target.Filtered,
+							Action:     types.Filtered,
 							ActualName: "dataPolicyFilter1ActualName",
 							Policy:     "table1 > 10",
 						})
@@ -577,7 +578,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 					Name:       "Project project1 - Owner",
 					NamingHint: "project_project1_roles_owner",
 					Type:       ptr.String(access_provider.AclSet),
-					Action:     sync_from_target.Grant,
+					Action:     types.Grant,
 					Who: &sync_from_target.WhoItem{
 						Users:           []string{"ruben@raito.io"},
 						Groups:          []string{},
@@ -600,7 +601,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 					Name:       "Dataset project/dataset1 - Editor",
 					NamingHint: "dataset_project/dataset1_roles_editor",
 					Type:       ptr.String(access_provider.AclSet),
-					Action:     sync_from_target.Grant,
+					Action:     types.Grant,
 					Who: &sync_from_target.WhoItem{
 						Users:           []string{"dieter@raito.io"},
 						Groups:          []string{},
@@ -623,7 +624,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 					Name:       "Table project/dataset1/table1 - Bigquery Dataviewer",
 					NamingHint: "table_project/dataset1/table1_roles_bigquery.dataviewer",
 					Type:       ptr.String(access_provider.AclSet),
-					Action:     sync_from_target.Grant,
+					Action:     types.Grant,
 					Who: &sync_from_target.WhoItem{
 						Users:           []string{"thomas@raito.io"},
 						Groups:          []string{},
@@ -645,7 +646,7 @@ func TestAccessSyncer_SyncAccessProvidersFromTarget(t *testing.T) {
 					ExternalId: "filter1",
 					Name:       "filter1",
 					NamingHint: "filter1",
-					Action:     sync_from_target.Filtered,
+					Action:     types.Filtered,
 					Who: &sync_from_target.WhoItem{
 						Users: []string{"bart@raito.io"},
 					},
@@ -741,7 +742,7 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 					Name:       "Project project1 - Owner",
 					NamingHint: "project_project1_roles_owner",
 					Type:       ptr.String(access_provider.AclSet),
-					Action:     sync_from_target.Grant,
+					Action:     types.Grant,
 					Who: &sync_from_target.WhoItem{
 						Users:           []string{"ruben@raito.io"},
 						Groups:          []string{},
@@ -768,7 +769,7 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 					Name:       "Folder folder1 - Viewer",
 					NamingHint: "folder_folder1_roles_viewer",
 					Type:       ptr.String(access_provider.AclSet),
-					Action:     sync_from_target.Grant,
+					Action:     types.Grant,
 					Who: &sync_from_target.WhoItem{
 						Users:           []string{"dieter@raito.io"},
 						Groups:          []string{"sales@raito.io"},
@@ -851,7 +852,7 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 					Name:       "Folder folder1 - Editor",
 					NamingHint: "folder_folder1_roles_editor",
 					Type:       ptr.String(access_provider.AclSet),
-					Action:     sync_from_target.Grant,
+					Action:     types.Grant,
 					Who: &sync_from_target.WhoItem{
 						Users:           []string{"ruben@raito.io"},
 						Groups:          []string{},
@@ -878,7 +879,7 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 					Name:       "Folder folder1 - Viewer",
 					NamingHint: "folder_folder1_roles_viewer",
 					Type:       ptr.String(access_provider.AclSet),
-					Action:     sync_from_target.Grant,
+					Action:     types.Grant,
 					Who: &sync_from_target.WhoItem{
 						Users:           []string{"dieter@raito.io"},
 						Groups:          []string{},
@@ -939,7 +940,7 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 					Name:       "Project project1 - Owner",
 					NamingHint: "project_project1_roles_owner",
 					Type:       ptr.String(access_provider.AclSet),
-					Action:     sync_from_target.Grant,
+					Action:     types.Grant,
 					Who: &sync_from_target.WhoItem{
 						Users:           []string{"ruben@raito.io"},
 						Groups:          []string{},
@@ -966,7 +967,7 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 					Name:       "Folder folder1 - Non-Raito-Managed-Binding",
 					NamingHint: "folder_folder1_roles_non-raito-managed-binding",
 					Type:       ptr.String(access_provider.AclSet),
-					Action:     sync_from_target.Grant,
+					Action:     types.Grant,
 					Who: &sync_from_target.WhoItem{
 						Users:           []string{"ruben@raito.io"},
 						Groups:          []string{},
@@ -1039,7 +1040,7 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 					Name:       "Project Viewer Mapping",
 					NamingHint: "Project Viewer Mapping",
 					Type:       ptr.String(access_provider.AclSet),
-					Action:     sync_from_target.Grant,
+					Action:     types.Grant,
 					Who: &sync_from_target.WhoItem{
 						Users: []string{"viewer@raito.io"},
 					},
@@ -1067,7 +1068,7 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 					Name:       "Project Editor Mapping",
 					NamingHint: "Project Editor Mapping",
 					Type:       ptr.String(access_provider.AclSet),
-					Action:     sync_from_target.Grant,
+					Action:     types.Grant,
 					Who: &sync_from_target.WhoItem{
 						Users: []string{"editor@raito.io"},
 					},
@@ -1088,7 +1089,7 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 					Name:       "Project Owner Mapping",
 					NamingHint: "Project Owner Mapping",
 					Type:       ptr.String(access_provider.AclSet),
-					Action:     sync_from_target.Grant,
+					Action:     types.Grant,
 					Who: &sync_from_target.WhoItem{
 						Users: []string{"owner@raito.io"},
 					},
@@ -1161,7 +1162,7 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 					Name:       "Project project1 - Owner",
 					NamingHint: "project_project1_roles_owner",
 					Type:       ptr.String(access_provider.AclSet),
-					Action:     sync_from_target.Grant,
+					Action:     types.Grant,
 					Who: &sync_from_target.WhoItem{
 						Users:           []string{"ruben@raito.io"},
 						Groups:          []string{},
@@ -1188,7 +1189,7 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 					Name:       "Grouped permissions for user ruben@raito.io",
 					NamingHint: "Grouped permissions for user ruben@raito.io",
 					Type:       ptr.String(access_provider.AclSet),
-					Action:     sync_from_target.Grant,
+					Action:     types.Grant,
 					Who: &sync_from_target.WhoItem{
 						Users: []string{"ruben@raito.io"},
 					},
@@ -1216,7 +1217,7 @@ func TestAccessSyncer_ConvertBindingsToAccessProviders(t *testing.T) {
 					Name:       "Grouped permissions for user dieter@raito.io",
 					NamingHint: "Grouped permissions for user dieter@raito.io",
 					Type:       ptr.String(access_provider.AclSet),
-					Action:     sync_from_target.Grant,
+					Action:     types.Grant,
 					Who: &sync_from_target.WhoItem{
 						Users: []string{"dieter@raito.io"},
 					},
@@ -1274,7 +1275,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 		NamingHint:  "mask1",
 		Type:        ptr.String("maskType"),
 		ExternalId:  nil,
-		Action:      importer.Mask,
+		Action:      types.Mask,
 		Who: importer.WhoItem{
 			Users: []string{
 				"bart@raito.io",
@@ -1300,7 +1301,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 		Description: "some filter",
 		NamingHint:  "filter1",
 		ExternalId:  nil,
-		Action:      importer.Filtered,
+		Action:      types.Filtered,
 		Who: importer.WhoItem{
 			Users: []string{
 				"bart@raito.io",
@@ -1426,7 +1427,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 						NamingHint:  "ap1",
 						Type:        nil,
 						ExternalId:  nil,
-						Action:      importer.Grant,
+						Action:      types.Grant,
 						Who: importer.WhoItem{
 							Users: []string{
 								"ruben@raito.io",
@@ -1573,7 +1574,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 						NamingHint:  "ap1",
 						Type:        nil,
 						ExternalId:  nil,
-						Action:      importer.Grant,
+						Action:      types.Grant,
 						Who: importer.WhoItem{
 							Users: []string{
 								"ruben@raito.io",
@@ -1670,7 +1671,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 						NamingHint:  "ap1",
 						Type:        nil,
 						ExternalId:  nil,
-						Action:      importer.Deny,
+						Action:      types.Deny,
 						Who: importer.WhoItem{
 							Users: []string{
 								"ruben@raito.io",
@@ -1738,7 +1739,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 						NamingHint:  "ap1",
 						Type:        nil,
 						ExternalId:  nil,
-						Action:      importer.Grant,
+						Action:      types.Grant,
 						Who: importer.WhoItem{
 							Users: []string{
 								"ruben@raito.io",
@@ -1820,7 +1821,7 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 						NamingHint:  "ap1",
 						Type:        nil,
 						ExternalId:  nil,
-						Action:      importer.Grant,
+						Action:      types.Grant,
 						Who: importer.WhoItem{
 							Users: []string{
 								"ruben@raito.io",
@@ -1896,7 +1897,7 @@ func TestAccessSyncer_convertAccessProviderToBindings(t *testing.T) {
 			NamingHint:  "ap1",
 			Type:        nil,
 			ExternalId:  nil,
-			Action:      importer.Grant,
+			Action:      types.Grant,
 			Who: importer.WhoItem{
 				Users: []string{
 					"ruben@raito.io",
@@ -1921,7 +1922,7 @@ func TestAccessSyncer_convertAccessProviderToBindings(t *testing.T) {
 			NamingHint:  "ap2",
 			Type:        nil,
 			ExternalId:  nil,
-			Action:      importer.Grant,
+			Action:      types.Grant,
 			Who: importer.WhoItem{
 				Users: []string{
 					"ruben@raito.io",
@@ -1946,7 +1947,7 @@ func TestAccessSyncer_convertAccessProviderToBindings(t *testing.T) {
 			NamingHint:  "ap3",
 			Type:        nil,
 			ExternalId:  nil,
-			Action:      importer.Grant,
+			Action:      types.Grant,
 			Who: importer.WhoItem{
 				Users: []string{
 					"ruben@raito.io",
@@ -1974,7 +1975,7 @@ func TestAccessSyncer_convertAccessProviderToBindings(t *testing.T) {
 			NamingHint:  "ap3",
 			Type:        nil,
 			ExternalId:  nil,
-			Action:      importer.Grant,
+			Action:      types.Grant,
 			Who: importer.WhoItem{
 				Users: []string{
 					"ruben@raito.io",

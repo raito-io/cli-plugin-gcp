@@ -8,6 +8,7 @@ import (
 	"github.com/aws/smithy-go/ptr"
 	"github.com/raito-io/cli/base/access_provider/sync_from_target"
 	importer "github.com/raito-io/cli/base/access_provider/sync_to_target"
+	"github.com/raito-io/cli/base/access_provider/types"
 	"github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/raito-io/cli/base/wrappers/mocks"
@@ -107,7 +108,7 @@ func TestBqMaskingService_ImportMasks(t *testing.T) {
 					ExternalId: "DataPolicy1",
 					Name:       "maskNameTag1",
 					Type:       ptr.String(datapoliciespb.DataMaskingPolicy_FIRST_FOUR_CHARACTERS.String()),
-					Action:     sync_from_target.Mask,
+					Action:     types.Mask,
 					Who: &sync_from_target.WhoItem{
 						Users:  []string{"user1@raito.io"},
 						Groups: []string{"sales@raito.io"},
@@ -202,7 +203,7 @@ func TestBqMaskingService_ExportMasks(t *testing.T) {
 	newMask := importer.AccessProvider{
 		Id:     "MaskId1",
 		Type:   ptr.String(datapoliciespb.DataMaskingPolicy_FIRST_FOUR_CHARACTERS.String()),
-		Action: importer.Mask,
+		Action: types.Mask,
 		Who: importer.WhoItem{
 			Users:  []string{"user1@raito.io"},
 			Groups: []string{"sales@raito.io"},
@@ -235,7 +236,7 @@ func TestBqMaskingService_ExportMasks(t *testing.T) {
 		Id:         "MaskId1",
 		ExternalId: ptr.String("DataPolicy1,DataPolicy2"),
 		Type:       ptr.String(datapoliciespb.DataMaskingPolicy_FIRST_FOUR_CHARACTERS.String()),
-		Action:     importer.Mask,
+		Action:     types.Mask,
 		Who: importer.WhoItem{
 			Users:  []string{"user1@raito.io"},
 			Groups: []string{"sales@raito.io"},
