@@ -10,6 +10,7 @@ import (
 	"github.com/aws/smithy-go/ptr"
 	"github.com/raito-io/cli/base/access_provider/sync_from_target"
 	importer "github.com/raito-io/cli/base/access_provider/sync_to_target"
+	"github.com/raito-io/cli/base/access_provider/types"
 	ds "github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/cli/base/util/config"
 	"github.com/raito-io/cli/base/wrappers"
@@ -104,7 +105,7 @@ func (m *BqMaskingService) ImportMasks(ctx context.Context, accessProviderHandle
 				Name:       mask.PolicyTag.Name,
 				Type:       ptr.String(mask.DataPolicy.PolicyType.String()),
 				What:       whatItems,
-				Action:     sync_from_target.Mask,
+				Action:     types.Mask,
 				ExternalId: mask.DataPolicy.FullName,
 				Who:        &whoItem,
 				ActualName: mask.PolicyTag.Name,

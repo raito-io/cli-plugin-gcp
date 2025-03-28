@@ -13,6 +13,7 @@ import (
 	"github.com/raito-io/bexpression/datacomparison"
 	"github.com/raito-io/cli/base/access_provider/sync_from_target"
 	"github.com/raito-io/cli/base/access_provider/sync_to_target"
+	"github.com/raito-io/cli/base/access_provider/types"
 	ds "github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/cli/base/wrappers"
 	"github.com/raito-io/golang-set/set"
@@ -63,7 +64,7 @@ func (s *BqFilteringService) ImportFilters(ctx context.Context, config *ds.DataS
 				ExternalId:        externalId,
 				Name:              rap.RowAccessPolicyReference.PolicyId,
 				NamingHint:        rap.RowAccessPolicyReference.PolicyId,
-				Action:            sync_from_target.Filtered,
+				Action:            types.Filtered,
 				Policy:            rap.FilterPredicate,
 				NotInternalizable: !internalizable,
 				What: []sync_from_target.WhatItem{
