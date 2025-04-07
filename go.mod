@@ -5,7 +5,7 @@ go 1.24
 require (
 	cloud.google.com/go/bigquery v1.67.0
 	cloud.google.com/go/datacatalog v1.25.0
-	cloud.google.com/go/iam v1.4.2
+	cloud.google.com/go/iam v1.5.0
 	cloud.google.com/go/resourcemanager v1.10.5
 	github.com/aws/smithy-go v1.22.3
 	github.com/google/uuid v1.6.0
@@ -15,16 +15,16 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/matoous/go-nanoid/v2 v2.1.0
 	github.com/raito-io/bexpression v0.1.2
-	github.com/raito-io/cli v0.71.0
+	github.com/raito-io/cli v0.71.1
 	github.com/raito-io/enumer v0.1.6
 	github.com/raito-io/golang-set v0.0.4
 	github.com/stretchr/testify v1.10.0
 	github.com/vektra/mockery/v2 v2.53.3
 	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394
-	golang.org/x/oauth2 v0.28.0
-	golang.org/x/text v0.23.0
+	golang.org/x/oauth2 v0.29.0
+	golang.org/x/text v0.24.0
 	google.golang.org/api v0.228.0
-	google.golang.org/grpc v1.71.0
+	google.golang.org/grpc v1.71.1
 )
 
 require (
@@ -105,7 +105,7 @@ require (
 	golang.org/x/crypto v0.36.0 // indirect
 	golang.org/x/mod v0.24.0 // indirect
 	golang.org/x/net v0.38.0 // indirect
-	golang.org/x/sync v0.12.0 // indirect
+	golang.org/x/sync v0.13.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect
 	golang.org/x/term v0.30.0 // indirect
 	golang.org/x/time v0.11.0 // indirect
