@@ -107,7 +107,7 @@ func (s *DataUsageSyncer) SyncDataUsage(ctx context.Context, fileCreator wrapper
 
 		if du.User == "" {
 			numSkippedNoUser += 1
-			
+
 			return nil
 		}
 
