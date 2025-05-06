@@ -182,6 +182,7 @@ func NewDataSourceMetaData(_ context.Context, configParams *config.ConfigMap) (*
 		},
 		FilterMetadata: &ds.FilterMetadata{
 			FilterOverridePermissions: []string{roles.RolesBigQueryFilteredDataViewer.Name},
+			ApplicableTypes:           []string{ds.Table},
 		},
 	}
 
@@ -245,6 +246,7 @@ func NewDataSourceMetaData(_ context.Context, configParams *config.ConfigMap) (*
 			MaskOverridePermissions: []string{
 				roles.RolesBigQueryCatalogFineGrainedAccess.Name,
 			},
+			ApplicableTypes: []string{ds.Table},
 		}
 	}
 
