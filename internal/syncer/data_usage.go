@@ -101,11 +101,13 @@ func (s *DataUsageSyncer) SyncDataUsage(ctx context.Context, fileCreator wrapper
 
 		if len(accessedResources) == 0 {
 			numSkippedNoResources += 1
+
 			return nil
 		}
 
 		if du.User == "" {
 			numSkippedNoUser += 1
+
 			return nil
 		}
 
