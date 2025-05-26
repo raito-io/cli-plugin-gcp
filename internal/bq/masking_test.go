@@ -347,6 +347,12 @@ func TestBqMaskingService_ExportMasks(t *testing.T) {
 					ActualName:     "maskNameTag1,maskNameTag2",
 					ExternalId:     ptr.String("DataPolicy1,DataPolicy2"),
 					Type:           ptr.String(datapoliciespb.DataMaskingPolicy_FIRST_FOUR_CHARACTERS.String()),
+					State: &importer.AccessProviderFeedbackState{
+						Who: importer.AccessProviderWhoFeedbackState{
+							Users:  []string{"user1@raito.io"},
+							Groups: []string{"sales@raito.io"},
+						},
+					},
 				},
 			},
 			want: []string{
@@ -375,6 +381,12 @@ func TestBqMaskingService_ExportMasks(t *testing.T) {
 					ActualName:     "maskNameTag1,maskNameTag2",
 					ExternalId:     ptr.String("DataPolicy1,DataPolicy2"),
 					Type:           ptr.String(datapoliciespb.DataMaskingPolicy_FIRST_FOUR_CHARACTERS.String()),
+					State: &importer.AccessProviderFeedbackState{
+						Who: importer.AccessProviderWhoFeedbackState{
+							Users:  []string{"user1@raito.io"},
+							Groups: []string{"sales@raito.io"},
+						},
+					},
 				},
 			},
 			want: []string{

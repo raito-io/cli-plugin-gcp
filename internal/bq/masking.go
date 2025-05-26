@@ -155,7 +155,13 @@ func (m *BqMaskingService) ExportMasks(ctx context.Context, accessProvider *impo
 		ActualName:     strings.Join(actualName, ","),
 		Type:           maskType,
 		ExternalId:     ptr.String(strings.Join(externalId, ",")),
-		Errors:         errors,
+		State: &importer.AccessProviderFeedbackState{
+			Who: importer.AccessProviderWhoFeedbackState{
+				Users:  accessProvider.Who.Users,
+				Groups: accessProvider.Who.Groups,
+			},
+		},
+		Errors: errors,
 	})
 
 	if err != nil {

@@ -1463,6 +1463,12 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 					ActualName:     "apId1",
 					ExternalId:     nil,
 					Type:           ptr.String(access_provider.AclSet),
+					State: &importer.AccessProviderFeedbackState{
+						Who: importer.AccessProviderWhoFeedbackState{
+							Users:  []string{"ruben@raito.io", "sa@raito.gserviceaccount.com"},
+							Groups: []string{"sales@raito.io"},
+						},
+					},
 				},
 			},
 			expectedBindings: set.NewSet[iam.IamBinding](
@@ -1715,6 +1721,13 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 							ActualName:     provider.Name,
 							Type:           provider.Type,
 							ExternalId:     &provider.Name,
+
+							State: &importer.AccessProviderFeedbackState{
+								Who: importer.AccessProviderWhoFeedbackState{
+									Users:  provider.Who.Users,
+									Groups: provider.Who.Groups,
+								},
+							},
 						})
 						if err != nil {
 							return nil, err
@@ -1767,12 +1780,27 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 					ActualName:     "apId1",
 					ExternalId:     nil,
 					Type:           ptr.String(access_provider.AclSet),
+					State: &importer.AccessProviderFeedbackState{
+						Who: importer.AccessProviderWhoFeedbackState{
+							Users: []string{"ruben@raito.io"},
+						},
+					},
 				},
 				{
 					AccessProvider: "mask1",
 					ActualName:     "mask1",
 					ExternalId:     ptr.String("mask1"),
 					Type:           ptr.String("maskType"),
+					State: &importer.AccessProviderFeedbackState{
+						Who: importer.AccessProviderWhoFeedbackState{
+							Users: []string{
+								"bart@raito.io",
+							},
+							Groups: []string{
+								"sales@raito.io",
+							},
+						},
+					},
 				},
 			},
 			expectedBindings: set.NewSet[iam.IamBinding](
@@ -1797,6 +1825,13 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 							ActualName:     provider.Name,
 							Type:           provider.Type,
 							ExternalId:     &provider.Name,
+
+							State: &importer.AccessProviderFeedbackState{
+								Who: importer.AccessProviderWhoFeedbackState{
+									Users:  provider.Who.Users,
+									Groups: provider.Who.Groups,
+								},
+							},
 						})
 						if err != nil {
 							return nil, err
@@ -1849,11 +1884,26 @@ func TestAccessSyncer_SyncAccessProviderToTarget(t *testing.T) {
 					ActualName:     "apId1",
 					ExternalId:     nil,
 					Type:           ptr.String(access_provider.AclSet),
+					State: &importer.AccessProviderFeedbackState{
+						Who: importer.AccessProviderWhoFeedbackState{
+							Users: []string{"ruben@raito.io"},
+						},
+					},
 				},
 				{
 					AccessProvider: "filter1",
 					ActualName:     "filter1",
 					ExternalId:     ptr.String("filter1"),
+					State: &importer.AccessProviderFeedbackState{
+						Who: importer.AccessProviderWhoFeedbackState{
+							Users: []string{
+								"bart@raito.io",
+							},
+							Groups: []string{
+								"sales@raito.io",
+							},
+						},
+					},
 				},
 			},
 			expectedBindings: set.NewSet[iam.IamBinding](

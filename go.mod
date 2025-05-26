@@ -3,51 +3,51 @@ module github.com/raito-io/cli-plugin-gcp
 go 1.24
 
 require (
-	cloud.google.com/go/bigquery v1.67.0
-	cloud.google.com/go/datacatalog v1.25.0
-	cloud.google.com/go/iam v1.4.2
-	cloud.google.com/go/resourcemanager v1.10.5
+	cloud.google.com/go/bigquery v1.68.0
+	cloud.google.com/go/datacatalog v1.26.0
+	cloud.google.com/go/iam v1.5.2
+	cloud.google.com/go/resourcemanager v1.10.6
 	github.com/aws/smithy-go v1.22.3
 	github.com/google/uuid v1.6.0
 	github.com/google/wire v0.6.0
-	github.com/googleapis/gax-go/v2 v2.14.1
+	github.com/googleapis/gax-go/v2 v2.14.2
 	github.com/hashicorp/go-hclog v1.6.3
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/matoous/go-nanoid/v2 v2.1.0
 	github.com/raito-io/bexpression v0.1.2
-	github.com/raito-io/cli v0.71.0
+	github.com/raito-io/cli v0.72.0-dev0
 	github.com/raito-io/enumer v0.1.6
 	github.com/raito-io/golang-set v0.0.4
 	github.com/stretchr/testify v1.10.0
-	github.com/vektra/mockery/v2 v2.53.3
+	github.com/vektra/mockery/v2 v2.53.4
 	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394
-	golang.org/x/oauth2 v0.28.0
+	golang.org/x/oauth2 v0.30.0
 	golang.org/x/text v0.25.0
-	google.golang.org/api v0.228.0
-	google.golang.org/grpc v1.71.0
+	google.golang.org/api v0.232.0
+	google.golang.org/grpc v1.72.0
 )
 
 require (
-	cloud.google.com/go v0.120.0 // indirect
-	cloud.google.com/go/auth v0.15.0 // indirect
+	cloud.google.com/go v0.121.0 // indirect
+	cloud.google.com/go/auth v0.16.1 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
 	cloud.google.com/go/compute/metadata v0.6.0 // indirect
-	cloud.google.com/go/longrunning v0.6.6 // indirect
+	cloud.google.com/go/longrunning v0.6.7 // indirect
 	github.com/Masterminds/semver/v3 v3.3.1 // indirect
 	github.com/apache/arrow/go/v15 v15.0.2 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.36.3 // indirect
-	github.com/aws/aws-sdk-go-v2/config v1.29.12 // indirect
-	github.com/aws/aws-sdk-go-v2/credentials v1.17.65 // indirect
+	github.com/aws/aws-sdk-go-v2/config v1.29.14 // indirect
+	github.com/aws/aws-sdk-go-v2/credentials v1.17.67 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.30 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.34 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.34 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.3 // indirect
-	github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider v1.51.3 // indirect
+	github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider v1.52.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.12.3 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.12.15 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sso v1.25.2 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.30.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sts v1.33.17 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.25.3 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.30.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.33.19 // indirect
 	github.com/bcicen/jstream v1.0.1 // indirect
 	github.com/chigopher/pathlib v0.19.1 // indirect
 	github.com/coder/websocket v1.8.13 // indirect
@@ -68,7 +68,7 @@ require (
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-plugin v1.6.3 // indirect
 	github.com/hashicorp/yamux v0.1.2 // indirect
-	github.com/hasura/go-graphql-client v0.13.1 // indirect
+	github.com/hasura/go-graphql-client v0.14.0 // indirect
 	github.com/huandu/xstrings v1.5.0 // indirect
 	github.com/iancoleman/strcase v0.3.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
@@ -111,9 +111,9 @@ require (
 	golang.org/x/time v0.11.0 // indirect
 	golang.org/x/tools v0.33.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
-	google.golang.org/genproto v0.0.0-20250324211829-b45e905df463 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20250324211829-b45e905df463 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250324211829-b45e905df463 // indirect
+	google.golang.org/genproto v0.0.0-20250505200425-f936aa4a68b2 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20250505200425-f936aa4a68b2 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250505200425-f936aa4a68b2 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

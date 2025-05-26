@@ -175,6 +175,12 @@ func (s *BqFilteringService) ExportFilter(ctx context.Context, accessProvider *s
 		ActualName:     actualName,
 		ExternalId:     externalId,
 		Errors:         errors,
+		State: &sync_to_target.AccessProviderFeedbackState{
+			Who: sync_to_target.AccessProviderWhoFeedbackState{
+				Users:  accessProvider.Who.Users,
+				Groups: accessProvider.Who.Groups,
+			},
+		},
 	})
 	if err != nil {
 		return externalId, fmt.Errorf("add access provider feedback: %w", err)
