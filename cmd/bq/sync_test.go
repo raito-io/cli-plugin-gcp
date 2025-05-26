@@ -169,6 +169,11 @@ func AccessSync(ctx context.Context, config *config.ConfigMap, t *testing.T) {
 				Type:           ptr.String(access_provider.AclSet),
 				Errors:         nil,
 				Warnings:       nil,
+				State: &sync_to_target.AccessProviderFeedbackState{
+					Who: sync_to_target.AccessProviderWhoFeedbackState{
+						Users: []string{"d_hayden@raito.dev"},
+					},
+				},
 			},
 		})
 	})
