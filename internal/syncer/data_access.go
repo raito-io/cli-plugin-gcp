@@ -203,8 +203,8 @@ func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessPro
 		if !ap.Delete {
 			apFeedback[ap.Id].State = &importer.AccessProviderFeedbackState{
 				Who: importer.AccessProviderWhoFeedbackState{
-					Users:       ap.Who.Users,
-					Groups:      ap.Who.Groups,
+					Users:  ap.Who.Users,
+					Groups: ap.Who.Groups,
 				},
 			}
 		}
