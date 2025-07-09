@@ -462,6 +462,12 @@ func TestBqFilteringService_ExportFilter(t *testing.T) {
 				AccessProvider: "apId1",
 				ActualName:     "filter1",
 				ExternalId:     ptr.String("project1.dataset1.table1.filter1"),
+				State: &sync_to_target.AccessProviderFeedbackState{
+					Who: sync_to_target.AccessProviderWhoFeedbackState{
+						Users:  []string{"ruben@raito.io"},
+						Groups: []string{"sales@raito.io"},
+					},
+				},
 			},
 			wantErr: require.NoError,
 		},
@@ -529,6 +535,12 @@ func TestBqFilteringService_ExportFilter(t *testing.T) {
 				AccessProvider: "apId1",
 				ActualName:     "filter3",
 				ExternalId:     ptr.String("project1.dataset1.table1.filter3"),
+				State: &sync_to_target.AccessProviderFeedbackState{
+					Who: sync_to_target.AccessProviderWhoFeedbackState{
+						Users:  []string{"ruben@raito.io"},
+						Groups: []string{"sales@raito.io"},
+					},
+				},
 			},
 			wantErr: require.NoError,
 		},
@@ -586,6 +598,12 @@ func TestBqFilteringService_ExportFilter(t *testing.T) {
 				AccessProvider: "apId1",
 				ActualName:     "filter2",
 				ExternalId:     ptr.String("project1.dataset1.table1.filter2"),
+				State: &sync_to_target.AccessProviderFeedbackState{
+					Who: sync_to_target.AccessProviderWhoFeedbackState{
+						Users:  []string{"ruben@raito.io"},
+						Groups: []string{"sales@raito.io"},
+					},
+				},
 			},
 			wantErr: require.NoError,
 		},

@@ -9,12 +9,13 @@ import (
 
 	"github.com/aws/smithy-go/ptr"
 	"github.com/hashicorp/go-multierror"
-	"github.com/raito-io/cli-plugin-gcp/internal/common/roles"
 	"github.com/raito-io/cli/base/access_provider"
 	"github.com/raito-io/cli/base/access_provider/types"
 	"github.com/raito-io/cli/base/data_source"
 	"github.com/raito-io/cli/base/wrappers"
 	"github.com/raito-io/golang-set/set"
+
+	"github.com/raito-io/cli-plugin-gcp/internal/common/roles"
 
 	exporter "github.com/raito-io/cli/base/access_provider/sync_from_target"
 	importer "github.com/raito-io/cli/base/access_provider/sync_to_target"
@@ -198,6 +199,15 @@ func (a *AccessSyncer) SyncAccessProviderToTarget(ctx context.Context, accessPro
 
 	for _, ap := range grants {
 		apFeedback[ap.Id] = &importer.AccessProviderSyncFeedback{AccessProvider: ap.Id, ActualName: ap.Id, Type: ptr.String(access_provider.AclSet)}
+
+		if !ap.Delete {
+			apFeedback[ap.Id].State = &importer.AccessProviderFeedbackState{
+				Who: importer.AccessProviderWhoFeedbackState{
+					Users:  ap.Who.Users,
+					Groups: ap.Who.Groups,
+				},
+			}
+		}
 	}
 
 	wg := sync.WaitGroup{}
